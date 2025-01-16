@@ -3,8 +3,8 @@
 -- ----------------------------
 drop table if exists sys_dept;
 create table sys_dept (
-                          dept_id           bigint(20)      not null     , --  '部门id',
-                          parent_id         bigint(20)      default 0                  , --  '父部门id',
+                          dept_id           INTEGER      not null primary key  AUTOINCREMENT  , --  '部门id',
+                          parent_id         INTEGER      default 0                  , --  '父部门id',
                           ancestors         varchar(50)     default ''                 , --  '祖级列表',
                           dept_name         varchar(30)     default ''                 , --  '部门名称',
                           order_num         int(4)          default 0                  , --  '显示顺序',
@@ -16,8 +16,7 @@ create table sys_dept (
                           create_by         varchar(64)     default ''                 , --  '创建者',
                           create_time 	    datetime                                   , --  '创建时间',
                           update_by         varchar(64)     default ''                 , --  '更新者',
-                          update_time       datetime                                   , --  '更新时间',
-                          primary key (dept_id)
+                          update_time       datetime                                    --  '更新时间',
 ) ; --  '部门表';
 
 -- ----------------------------
@@ -40,8 +39,8 @@ insert into sys_dept values(109,  102, '0,100,102',  '财务部门',   2, '若�
 -- ----------------------------
 drop table if exists sys_user;
 create table sys_user (
-                          user_id           bigint(20)      not null     , --  '用户ID',
-                          dept_id           bigint(20)      default null               , --  '部门ID',
+                          user_id           INTEGER      not null  primary key  AUTOINCREMENT    , --  '用户ID',
+                          dept_id           INTEGER      default null               , --  '部门ID',
                           user_name         varchar(30)     not null                   , --  '用户账号',
                           nick_name         varchar(30)     not null                   , --  '用户昵称',
                           user_type         varchar(2)      default '00'               , --  '用户类型（00系统用户）',
@@ -58,8 +57,7 @@ create table sys_user (
                           create_time       datetime                                   , --  '创建时间',
                           update_by         varchar(64)     default ''                 , --  '更新者',
                           update_time       datetime                                   , --  '更新时间',
-                          remark            varchar(500)    default null               , --  '备注',
-                          primary key (user_id)
+                          remark            varchar(500)    default null                --  '备注',
 )  ; --  '用户信息表';
 
 -- ----------------------------
@@ -75,7 +73,7 @@ insert into sys_user values(2,  105, 'ry',    '若依', '00', 'ry@qq.com',  '156
 drop table if exists sys_post;
 create table sys_post
 (
-    post_id       bigint(20)      not null     , --  '岗位ID',
+    post_id       INTEGER      not null  primary key  AUTOINCREMENT    , --  '岗位ID',
     post_code     varchar(64)     not null                   , --  '岗位编码',
     post_name     varchar(50)     not null                   , --  '岗位名称',
     post_sort     int(4)          not null                   , --  '显示顺序',
@@ -84,8 +82,7 @@ create table sys_post
     create_time   datetime                                   , --  '创建时间',
     update_by     varchar(64)     default ''			       , --  '更新者',
     update_time   datetime                                   , --  '更新时间',
-    remark        varchar(500)    default null               , --  '备注',
-    primary key (post_id)
+    remark        varchar(500)    default null                --  '备注',
 )  ; --  '岗位信息表';
 
 -- ----------------------------
@@ -102,7 +99,7 @@ insert into sys_post values(4, 'user', '普通员工',  4, '0', 'admin', datetim
 -- ----------------------------
 drop table if exists sys_role;
 create table sys_role (
-                          role_id              bigint(20)      not null     , --  '角色ID',
+                          role_id              INTEGER      not null   primary key  AUTOINCREMENT   , --  '角色ID',
                           role_name            varchar(30)     not null                   , --  '角色名称',
                           role_key             varchar(100)    not null                   , --  '角色权限字符串',
                           role_sort            int(4)          not null                   , --  '显示顺序',
@@ -115,8 +112,7 @@ create table sys_role (
                           create_time          datetime                                   , --  '创建时间',
                           update_by            varchar(64)     default ''                 , --  '更新者',
                           update_time          datetime                                   , --  '更新时间',
-                          remark               varchar(500)    default null               , --  '备注',
-                          primary key (role_id)
+                          remark               varchar(500)    default null                --  '备注',
 )  ; --  '角色信息表';
 
 -- ----------------------------
@@ -131,9 +127,9 @@ insert into sys_role values('2', '普通角色',    'common', 2, 2, 1, 1, '0', '
 -- ----------------------------
 drop table if exists sys_menu;
 create table sys_menu (
-                          menu_id           bigint(20)      not null     , --  '菜单ID',
+                          menu_id           INTEGER      not null  primary key  AUTOINCREMENT    , --  '菜单ID',
                           menu_name         varchar(50)     not null                   , --  '菜单名称',
-                          parent_id         bigint(20)      default 0                  , --  '父菜单ID',
+                          parent_id         INTEGER      default 0                  , --  '父菜单ID',
                           order_num         int(4)          default 0                  , --  '显示顺序',
                           path              varchar(200)    default ''                 , --  '路由地址',
                           component         varchar(255)    default null               , --  '组件路径',
@@ -150,8 +146,7 @@ create table sys_menu (
                           create_time       datetime                                   , --  '创建时间',
                           update_by         varchar(64)     default ''                 , --  '更新者',
                           update_time       datetime                                   , --  '更新时间',
-                          remark            varchar(500)    default ''                 , --  '备注',
-                          primary key (menu_id)
+                          remark            varchar(500)    default ''                  --  '备注',
 )  ; --  '菜单权限表';
 
 -- ----------------------------
@@ -265,8 +260,8 @@ insert into sys_menu values('1060', '生成代码', '116', '6', '#', '', '', '',
 -- ----------------------------
 drop table if exists sys_user_role;
 create table sys_user_role (
-                               user_id   bigint(20) not null , --  '用户ID',
-                               role_id   bigint(20) not null , --  '角色ID',
+                               user_id   INTEGER not null , --  '用户ID',
+                               role_id   INTEGER not null , --  '角色ID',
                                primary key(user_id, role_id)
 )  ; --  '用户和角色关联表';
 
@@ -282,8 +277,8 @@ insert into sys_user_role values ('2', '2');
 -- ----------------------------
 drop table if exists sys_role_menu;
 create table sys_role_menu (
-                               role_id   bigint(20) not null , --  '角色ID',
-                               menu_id   bigint(20) not null , --  '菜单ID',
+                               role_id   INTEGER not null , --  '角色ID',
+                               menu_id   INTEGER not null , --  '菜单ID',
                                primary key(role_id, menu_id)
 ) ; --  '角色和菜单关联表';
 
@@ -381,8 +376,8 @@ insert into sys_role_menu values ('2', '1060');
 -- ----------------------------
 drop table if exists sys_role_dept;
 create table sys_role_dept (
-                               role_id   bigint(20) not null , --  '角色ID',
-                               dept_id   bigint(20) not null , --  '部门ID',
+                               role_id   INTEGER not null , --  '角色ID',
+                               dept_id   INTEGER not null , --  '部门ID',
                                primary key(role_id, dept_id)
 ) ; --  '角色和部门关联表';
 
@@ -400,8 +395,8 @@ insert into sys_role_dept values ('2', '105');
 drop table if exists sys_user_post;
 create table sys_user_post
 (
-    user_id   bigint(20) not null , --  '用户ID',
-    post_id   bigint(20) not null , --  '岗位ID',
+    user_id   INTEGER not null , --  '用户ID',
+    post_id   INTEGER not null , --  '岗位ID',
     primary key (user_id, post_id)
 ) ; --  '用户与岗位关联表';
 
@@ -417,7 +412,7 @@ insert into sys_user_post values ('2', '2');
 -- ----------------------------
 drop table if exists sys_oper_log;
 create table sys_oper_log (
-                              oper_id           bigint(20)      not null     , --  '日志主键',
+                              oper_id           INTEGER      not null   primary key  AUTOINCREMENT   , --  '日志主键',
                               title             varchar(50)     default ''                 , --  '模块标题',
                               business_type     int(2)          default 0                  , --  '业务类型（0其它 1新增 2修改 3删除）',
                               method            varchar(200)    default ''                 , --  '方法名称',
@@ -433,8 +428,7 @@ create table sys_oper_log (
                               status            int(1)          default 0                  , --  '操作状态（0正常 1异常）',
                               error_msg         varchar(2000)   default ''                 , --  '错误消息',
                               oper_time         datetime                                   , --  '操作时间',
-                              cost_time         bigint(20)      default 0                  , --  '消耗时间',
-                              primary key (oper_id)
+                              cost_time         INTEGER      default 0                   --  '消耗时间',
 
 )  ; --  '操作日志记录';
 
@@ -445,7 +439,7 @@ create table sys_oper_log (
 drop table if exists sys_dict_type;
 create table sys_dict_type
 (
-    dict_id          bigint(20)      not null     , --  '字典主键',
+    dict_id          INTEGER      not null   primary key  AUTOINCREMENT   , --  '字典主键',
     dict_name        varchar(100)    default ''                 , --  '字典名称',
     dict_type        varchar(100)    default ''                 , --  '字典类型',
     status           char(1)         default '0'                , --  '状态（0正常 1停用）',
@@ -454,7 +448,6 @@ create table sys_dict_type
     update_by        varchar(64)     default ''                 , --  '更新者',
     update_time      datetime                                   , --  '更新时间',
     remark           varchar(500)    default null               , --  '备注',
-    primary key (dict_id),
     unique (dict_type)
 )  ; --  '字典类型表';
 
@@ -476,7 +469,7 @@ insert into sys_dict_type values(10, '系统状态', 'sys_common_status',   '0',
 drop table if exists sys_dict_data;
 create table sys_dict_data
 (
-    dict_code        bigint(20)      not null     , --  '字典编码',
+    dict_code        INTEGER      not null  primary key  AUTOINCREMENT    , --  '字典编码',
     dict_sort        int(4)          default 0                  , --  '字典排序',
     dict_label       varchar(100)    default ''                 , --  '字典标签',
     dict_value       varchar(100)    default ''                 , --  '字典键值',
@@ -489,8 +482,7 @@ create table sys_dict_data
     create_time      datetime                                   , --  '创建时间',
     update_by        varchar(64)     default ''                 , --  '更新者',
     update_time      datetime                                   , --  '更新时间',
-    remark           varchar(500)    default null               , --  '备注',
-    primary key (dict_code)
+    remark           varchar(500)    default null                --  '备注',
 )  ; --  '字典数据表';
 
 insert into sys_dict_data values(1,  1,  '男',       '0',       'sys_user_sex',        '',   '',        'Y', '0', 'admin', datetime('now'), '', null, '性别男');
@@ -529,7 +521,7 @@ insert into sys_dict_data values(29, 2,  '失败',     '1',       'sys_common_st
 -- ----------------------------
 drop table if exists sys_config;
 create table sys_config (
-                            config_id         int(5)          not null     , --  '参数主键',
+                            config_id         INTEGER          not null   primary key  AUTOINCREMENT   , --  '参数主键',
                             config_name       varchar(100)    default ''                 , --  '参数名称',
                             config_key        varchar(100)    default ''                 , --  '参数键名',
                             config_value      varchar(500)    default ''                 , --  '参数键值',
@@ -538,8 +530,7 @@ create table sys_config (
                             create_time       datetime                                   , --  '创建时间',
                             update_by         varchar(64)     default ''                 , --  '更新者',
                             update_time       datetime                                   , --  '更新时间',
-                            remark            varchar(500)    default null               , --  '备注',
-                            primary key (config_id)
+                            remark            varchar(500)    default null                --  '备注',
 )  ; --  '参数配置表';
 
 insert into sys_config values(1, '主框架页-默认皮肤样式名称',     'sys.index.skinName',            'skin-blue',     'Y', 'admin', datetime('now'), '', null, '蓝色 skin-blue、绿色 skin-green、紫色 skin-purple、红色 skin-red、黄色 skin-yellow' );
@@ -555,7 +546,7 @@ insert into sys_config values(6, '用户登录-黑名单列表',           'sys.
 -- ----------------------------
 drop table if exists sys_logininfor;
 create table sys_logininfor (
-                                info_id        bigint(20)     not null    , --  '访问ID',
+                                info_id        INTEGER     not null primary key  AUTOINCREMENT    , --  '访问ID',
                                 user_name      varchar(50)    default ''                , --  '用户账号',
                                 ipaddr         varchar(128)   default ''                , --  '登录IP地址',
                                 login_location varchar(255)   default ''                , --  '登录地点',
@@ -563,8 +554,7 @@ create table sys_logininfor (
                                 os             varchar(50)    default ''                , --  '操作系统',
                                 status         char(1)        default '0'               , --  '登录状态（0成功 1失败）',
                                 msg            varchar(255)   default ''                , --  '提示消息',
-                                login_time     datetime                                 , --  '访问时间',
-                                primary key (info_id)
+                                login_time     datetime                                  --  '访问时间',
 )  ; --  '系统访问记录';
 
 
@@ -573,7 +563,7 @@ create table sys_logininfor (
 -- ----------------------------
 drop table if exists sys_job;
 create table sys_job (
-                         job_id              bigint(20)    not null     , --  '任务ID',
+                         job_id              INTEGER    not null     , --  '任务ID',
                          job_name            varchar(64)   default ''                 , --  '任务名称',
                          job_group           varchar(64)   default 'DEFAULT'          , --  '任务组名',
                          invoke_target       varchar(500)  not null                   , --  '调用目标字符串',
@@ -599,15 +589,14 @@ insert into sys_job values(3, '系统默认（多参）', 'DEFAULT', 'ryTask.ryM
 -- ----------------------------
 drop table if exists sys_job_log;
 create table sys_job_log (
-                             job_log_id          bigint(20)     not null     , --  '任务日志ID',
+                             job_log_id          INTEGER     not null   primary key  AUTOINCREMENT   , --  '任务日志ID',
                              job_name            varchar(64)    not null                   , --  '任务名称',
                              job_group           varchar(64)    not null                   , --  '任务组名',
                              invoke_target       varchar(500)   not null                   , --  '调用目标字符串',
                              job_message         varchar(500)                              , --  '日志信息',
                              status              char(1)        default '0'                , --  '执行状态（0正常 1失败）',
                              exception_info      varchar(2000)  default ''                 , --  '异常信息',
-                             create_time         datetime                                  , --  '创建时间',
-                             primary key (job_log_id)
+                             create_time         datetime                                   --  '创建时间',
 )  ; --  '定时任务调度日志表';
 
 
@@ -616,7 +605,7 @@ create table sys_job_log (
 -- ----------------------------
 drop table if exists sys_notice;
 create table sys_notice (
-                            notice_id         int(4)          not null     , --  '公告ID',
+                            notice_id         INTEGER         not null  primary key  AUTOINCREMENT    , --  '公告ID',
                             notice_title      varchar(50)     not null                   , --  '公告标题',
                             notice_type       char(1)         not null                   , --  '公告类型（1通知 2公告）',
                             notice_content    longblob        default null               , --  '公告内容',
@@ -625,8 +614,7 @@ create table sys_notice (
                             create_time       datetime                                   , --  '创建时间',
                             update_by         varchar(64)     default ''                 , --  '更新者',
                             update_time       datetime                                   , --  '更新时间',
-                            remark            varchar(255)    default null               , --  '备注',
-                            primary key (notice_id)
+                            remark            varchar(255)    default null                --  '备注',
 )  ; --  '通知公告表';
 
 -- ----------------------------
@@ -641,7 +629,7 @@ insert into sys_notice values('2', '维护通知：2018-07-01 若依系统凌晨
 -- ----------------------------
 drop table if exists gen_table;
 create table gen_table (
-                           table_id          bigint(20)      not null     , --  '编号',
+                           table_id          INTEGER      not null   primary key  AUTOINCREMENT   , --  '编号',
                            table_name        varchar(200)    default ''                 , --  '表名称',
                            table_, --      varchar(500)    default ''                 , --  '表描述',
                            sub_table_name    varchar(64)     default null               , --  '关联子表的表名',
@@ -661,8 +649,7 @@ create table gen_table (
                            create_time 	    datetime                                   , --  '创建时间',
                            update_by         varchar(64)     default ''                 , --  '更新者',
                            update_time       datetime                                   , --  '更新时间',
-                           remark            varchar(500)    default null               , --  '备注',
-                           primary key (table_id)
+                           remark            varchar(500)    default null                --  '备注',
 )  ; --  '代码生成业务表';
 
 
@@ -671,8 +658,8 @@ create table gen_table (
 -- ----------------------------
 drop table if exists gen_table_column;
 create table gen_table_column (
-                                  column_id         bigint(20)      not null     , --  '编号',
-                                  table_id          bigint(20)                                 , --  '归属表编号',
+                                  column_id         INTEGER      not null   primary key  AUTOINCREMENT   , --  '编号',
+                                  table_id          INTEGER                                 , --  '归属表编号',
                                   column_name       varchar(200)                               , --  '列名称',
                                   column_, --     varchar(500)                               , --  '列描述',
                                   column_type       varchar(100)                               , --  '列类型',
@@ -692,6 +679,5 @@ create table gen_table_column (
                                   create_by         varchar(64)     default ''                 , --  '创建者',
                                   create_time 	    datetime                                   , --  '创建时间',
                                   update_by         varchar(64)     default ''                 , --  '更新者',
-                                  update_time       datetime                                   , --  '更新时间',
-                                  primary key (column_id)
+                                  update_time       datetime                                    --  '更新时间',
 ) ; --  '代码生成业务表字段';
