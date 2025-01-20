@@ -3,10 +3,14 @@ package com.ruoyi.common.core.redis;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.github.benmanes.caffeine.cache.Expiry;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.Getter;
 import org.apache.poi.ss.formula.functions.T;
 import org.checkerframework.checker.index.qual.NonNegative;
 import org.springframework.data.redis.core.BoundSetOperations;
 import org.springframework.stereotype.Component;
+import org.springframework.util.AntPathMatcher;
 import org.springframework.util.CollectionUtils;
 
 import java.time.Duration;
@@ -26,42 +30,34 @@ import java.util.stream.Collectors;
 public class CaffeineCacheImpl implements RedisCache {
 
 
-    private static class CacheObject<T> {
+
+    @Data
+    @AllArgsConstructor
+    protected static class CacheObject<T> {
         private T value;
         private Duration expire;
-
-        public T getValue() {
-            return value;
-        }
+        /**
+         * 过期时间点，毫秒
+         */
+        private Long expireTime;
 
         public CacheObject(T value, Duration expire) {
             this.value = value;
             this.expire = expire;
-        }
-
-        public CacheObject<T> setValue(T value) {
-            this.value = value;
-            return this;
-        }
-
-        public Duration getExpire() {
-            return expire;
-        }
-
-        public CacheObject<T> setExpire(Duration expire) {
-            this.expire = expire;
-            return this;
         }
     }
 
     /**
      * 缓存管理器
      */
-    private final Cache<String, CacheObject<?>> caffeeCache;
+    @Getter
+    private final Cache<String, CacheObject<?>> caffeineCache;
+
+
 
     public CaffeineCacheImpl() {
         // 默认1w个空间
-        caffeeCache = Caffeine.newBuilder()
+        caffeineCache = Caffeine.newBuilder()
                 .maximumSize(10_000)
                 .expireAfter(new Expiry<String, CacheObject<?>>() {
                     @Override
@@ -70,6 +66,7 @@ public class CaffeineCacheImpl implements RedisCache {
                             // 模拟永不过期
                             return Long.MAX_VALUE;
                         }
+                        value.expireTime = System.currentTimeMillis() + value.expire.toMillis();
                         return value.expire.toNanos();
                     }
 
@@ -94,7 +91,7 @@ public class CaffeineCacheImpl implements RedisCache {
      */
     @Override
     public <T> void setCacheObject(String key, T value) {
-        caffeeCache.put(key, new CacheObject<>(value, null));
+        caffeineCache.put(key, new CacheObject<>(value, null));
     }
 
     /**
@@ -107,7 +104,7 @@ public class CaffeineCacheImpl implements RedisCache {
      */
     @Override
     public <T> void setCacheObject(String key, T value, Integer timeout, TimeUnit timeUnit) {
-        caffeeCache.put(key, new CacheObject<>(value, Duration.ofSeconds(timeUnit.toSeconds(timeout))));
+        caffeineCache.put(key, new CacheObject<>(value, Duration.ofSeconds(timeUnit.toSeconds(timeout))));
 
 
     }
@@ -116,17 +113,18 @@ public class CaffeineCacheImpl implements RedisCache {
      * 设置有效时间
      *
      * @param key     Redis键
-     * @param timeout 超时时间
+     * @param timeout 超时时间,秒
      * @return true=设置成功；false=设置失败
      */
     @Override
     public boolean expire(String key, long timeout) {
-        CacheObject<?> v = caffeeCache.getIfPresent(key);
+        CacheObject<?> v = caffeineCache.getIfPresent(key);
         if (Objects.isNull(v)) {
             return false;
         }
+        caffeineCache.invalidate(key); // 通过重新创建缓存的方式触发crate事件，重置超时时间
         v.setExpire(Duration.ofSeconds(timeout));
-        caffeeCache.put(key, v);
+        caffeineCache.put(key, v);
         return true;
     }
 
@@ -151,11 +149,18 @@ public class CaffeineCacheImpl implements RedisCache {
      */
     @Override
     public long getExpire(String key) {
-        CacheObject<?> v = caffeeCache.getIfPresent(key);
-        if (Objects.isNull(v)) {
-            return 0;
+        // 与redis 一致
+        if (!hasKey(key)) {
+            return -1;
         }
-        return v.getExpire().getSeconds();
+
+        CacheObject<?> v = caffeineCache.getIfPresent(key);
+        if (Objects.isNull(v) || Objects.isNull(v.getExpireTime())) {
+            return -2;
+        }
+        // 增加20ms 误差，针对990毫秒返回0秒的情况
+        long ttl = v.getExpireTime() - System.currentTimeMillis() + 20;
+        return ttl > 0 ? ttl/1000 : 0;
     }
 
     /**
@@ -166,7 +171,7 @@ public class CaffeineCacheImpl implements RedisCache {
      */
     @Override
     public Boolean hasKey(String key) {
-        return caffeeCache.getIfPresent(key) != null;
+        return caffeineCache.getIfPresent(key) != null;
     }
 
     /**
@@ -177,7 +182,7 @@ public class CaffeineCacheImpl implements RedisCache {
      */
     @Override
     public <T> T getCacheObject(String key) {
-        CacheObject<T> v = (CacheObject<T>) caffeeCache.getIfPresent(key);
+        CacheObject<T> v = (CacheObject<T>) caffeineCache.getIfPresent(key);
         if (Objects.isNull(v)) {
             return null;
         }
@@ -191,7 +196,7 @@ public class CaffeineCacheImpl implements RedisCache {
      */
     @Override
     public boolean deleteObject(String key) {
-        caffeeCache.invalidate(key);
+        caffeineCache.invalidate(key);
         return true;
     }
 
@@ -207,7 +212,7 @@ public class CaffeineCacheImpl implements RedisCache {
             return false;
         }
 
-        collection.forEach(e-> caffeeCache.invalidate(Objects.toString(e)));
+        collection.forEach(e-> caffeineCache.invalidate(Objects.toString(e)));
         return true;
     }
 
@@ -264,7 +269,7 @@ public class CaffeineCacheImpl implements RedisCache {
      * 缓存Map
      *
      * @param key
-     * @param dataMap
+     * @param dataMap 如果map需要修改，请传可修改的map类型
      */
     @Override
     public <T> void setCacheMap(String key, Map<String, T> dataMap) {
@@ -343,13 +348,13 @@ public class CaffeineCacheImpl implements RedisCache {
      */
     @Override
     public boolean deleteCacheMapValue(String key, String hKey) {
-        CacheObject<Map<String, T>> v = (CacheObject<Map<String, T>>) caffeeCache.getIfPresent(key);
+        CacheObject<Map<String, T>> v = (CacheObject<Map<String, T>>) caffeineCache.getIfPresent(key);
         if (Objects.isNull(v) || Objects.isNull(v.getValue().get(hKey))) {
             return false;
         }
 
         v.getValue().remove(hKey);
-        caffeeCache.put(key, v);
+        caffeineCache.put(key, v);
 
         return true;
     }
@@ -362,9 +367,10 @@ public class CaffeineCacheImpl implements RedisCache {
      */
     @Override
     public Collection<String> keys(String pattern) {
+        AntPathMatcher antPathMatcher = new AntPathMatcher();
         // 这里使用缓存的所有键进行匹配（模拟 Redis 的 keys 命令）
-        return caffeeCache.asMap().keySet().stream()
-                .filter(key -> key.matches(pattern))  // 使用正则表达式进行匹配
+        return caffeineCache.asMap().keySet().stream()
+                .filter(key -> antPathMatcher.match(pattern, key))  // 使用正则表达式进行匹配
                 .collect(Collectors.toSet());
     }
 }
