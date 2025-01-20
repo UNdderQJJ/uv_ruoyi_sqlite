@@ -12,3 +12,7 @@
 - java 17
 - sqlite 3.48.0
 - Caffeine 
+
+
+# 部署
+1. 正常的打包整spring fatjar包，并部署到服务器即可
