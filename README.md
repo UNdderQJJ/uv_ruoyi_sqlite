@@ -10,7 +10,7 @@
 # 技术栈
 - springboot 3.3.5
 - java 17
-- sqlite 3.48.0
+- sqlite 3.45.3
 - Caffeine 3.1.8
 
 
