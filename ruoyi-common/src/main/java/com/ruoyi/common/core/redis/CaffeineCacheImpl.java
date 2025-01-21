@@ -29,7 +29,7 @@ import java.util.stream.Collectors;
 @Component
 public class CaffeineCacheImpl implements RedisCache {
 
-
+    private final int MAXIMUM_SIZE = 10000;
 
     @Data
     @AllArgsConstructor
@@ -58,7 +58,8 @@ public class CaffeineCacheImpl implements RedisCache {
     public CaffeineCacheImpl() {
         // 默认1w个空间
         caffeineCache = Caffeine.newBuilder()
-                .maximumSize(10_000)
+                .maximumSize(MAXIMUM_SIZE)
+                .recordStats()
                 .expireAfter(new Expiry<String, CacheObject<?>>() {
                     @Override
                     public long expireAfterCreate(String key, CacheObject value, long currentTime) {
@@ -372,5 +373,9 @@ public class CaffeineCacheImpl implements RedisCache {
         return caffeineCache.asMap().keySet().stream()
                 .filter(key -> antPathMatcher.match(pattern, key))  // 使用正则表达式进行匹配
                 .collect(Collectors.toSet());
+    }
+
+    public int getMaxSize() {
+        return MAXIMUM_SIZE;
     }
 }

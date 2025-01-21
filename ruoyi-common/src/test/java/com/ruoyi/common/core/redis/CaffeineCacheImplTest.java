@@ -205,4 +205,12 @@ class CaffeineCacheImplTest {
         print("keys 后");
 
     }
+
+    @org.junit.jupiter.api.Test
+    void testSize() {
+        cache.setCacheObject("key17", "value17");
+        Assertions.assertEquals(cache.getCaffeineCache().estimatedSize(), cache.getCaffeineCache().asMap().size());
+        System.out.println(cache.getCaffeineCache().estimatedSize());
+        print("testSize 后");
+    }
 }
