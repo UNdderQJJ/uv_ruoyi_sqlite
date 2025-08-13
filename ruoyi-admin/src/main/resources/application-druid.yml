@@ -6,7 +6,7 @@ spring:
         druid:
             # 主库数据源
             master:
-                url: jdbc:sqlite::resource:db/app.db
+                url: jdbc:sqlite:${user.dir}/uv-sqlite.db
                 username:
                 password:
             # 从库数据源
