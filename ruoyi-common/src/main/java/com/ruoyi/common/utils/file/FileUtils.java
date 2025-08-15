@@ -9,8 +9,6 @@ import java.io.OutputStream;
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.ArrayUtils;
 import com.ruoyi.common.config.RuoYiConfig;
@@ -154,64 +152,6 @@ public class FileUtils
 
         // 不在允许下载的文件规则
         return false;
-    }
-
-    /**
-     * 下载文件名重新编码
-     * 
-     * @param request 请求对象
-     * @param fileName 文件名
-     * @return 编码后的文件名
-     */
-    public static String setFileDownloadHeader(HttpServletRequest request, String fileName) throws UnsupportedEncodingException
-    {
-        final String agent = request.getHeader("USER-AGENT");
-        String filename = fileName;
-        if (agent.contains("MSIE"))
-        {
-            // IE浏览器
-            filename = URLEncoder.encode(filename, "utf-8");
-            filename = filename.replace("+", " ");
-        }
-        else if (agent.contains("Firefox"))
-        {
-            // 火狐浏览器
-            filename = new String(fileName.getBytes(), "ISO8859-1");
-        }
-        else if (agent.contains("Chrome"))
-        {
-            // google浏览器
-            filename = URLEncoder.encode(filename, "utf-8");
-        }
-        else
-        {
-            // 其它浏览器
-            filename = URLEncoder.encode(filename, "utf-8");
-        }
-        return filename;
-    }
-
-    /**
-     * 下载文件名重新编码
-     *
-     * @param response 响应对象
-     * @param realFileName 真实文件名
-     */
-    public static void setAttachmentResponseHeader(HttpServletResponse response, String realFileName) throws UnsupportedEncodingException
-    {
-        String percentEncodedFileName = percentEncode(realFileName);
-
-        StringBuilder contentDispositionValue = new StringBuilder();
-        contentDispositionValue.append("attachment; filename=")
-                .append(percentEncodedFileName)
-                .append(";")
-                .append("filename*=")
-                .append("utf-8''")
-                .append(percentEncodedFileName);
-
-        response.addHeader("Access-Control-Expose-Headers", "Content-Disposition,download-filename");
-        response.setHeader("Content-disposition", contentDispositionValue.toString());
-        response.setHeader("download-filename", percentEncodedFileName);
     }
 
     /**

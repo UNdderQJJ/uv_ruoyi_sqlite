@@ -23,7 +23,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
-import jakarta.servlet.http.HttpServletResponse;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.RegExUtils;
 import org.apache.commons.lang3.reflect.FieldUtils;
@@ -75,7 +74,6 @@ import com.ruoyi.common.annotation.Excel.ColumnType;
 import com.ruoyi.common.annotation.Excel.Type;
 import com.ruoyi.common.annotation.Excels;
 import com.ruoyi.common.config.RuoYiConfig;
-import com.ruoyi.common.core.domain.AjaxResult;
 import com.ruoyi.common.core.text.Convert;
 import com.ruoyi.common.exception.UtilException;
 import com.ruoyi.common.utils.DateUtils;
@@ -87,7 +85,7 @@ import com.ruoyi.common.utils.file.ImageUtils;
 import com.ruoyi.common.utils.reflect.ReflectUtils;
 
 /**
- * Excel相关处理
+ * Excel相关处理（简化版本）
  * 
  * @author ruoyi
  */
@@ -527,66 +525,10 @@ public class ExcelUtil<T>
     /**
      * 对list数据源将其里面的数据导入到excel表单
      * 
-     * @param list 导出数据集合
      * @param sheetName 工作表的名称
      * @return 结果
      */
-    public AjaxResult exportExcel(List<T> list, String sheetName)
-    {
-        return exportExcel(list, sheetName, StringUtils.EMPTY);
-    }
-
-    /**
-     * 对list数据源将其里面的数据导入到excel表单
-     * 
-     * @param list 导出数据集合
-     * @param sheetName 工作表的名称
-     * @param title 标题
-     * @return 结果
-     */
-    public AjaxResult exportExcel(List<T> list, String sheetName, String title)
-    {
-        this.init(list, sheetName, title, Type.EXPORT);
-        return exportExcel();
-    }
-
-    /**
-     * 对list数据源将其里面的数据导入到excel表单
-     * 
-     * @param response 返回数据
-     * @param list 导出数据集合
-     * @param sheetName 工作表的名称
-     * @return 结果
-     */
-    public void exportExcel(HttpServletResponse response, List<T> list, String sheetName)
-    {
-        exportExcel(response, list, sheetName, StringUtils.EMPTY);
-    }
-
-    /**
-     * 对list数据源将其里面的数据导入到excel表单
-     * 
-     * @param response 返回数据
-     * @param list 导出数据集合
-     * @param sheetName 工作表的名称
-     * @param title 标题
-     * @return 结果
-     */
-    public void exportExcel(HttpServletResponse response, List<T> list, String sheetName, String title)
-    {
-        response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
-        response.setCharacterEncoding("utf-8");
-        this.init(list, sheetName, title, Type.EXPORT);
-        exportExcel(response);
-    }
-
-    /**
-     * 对list数据源将其里面的数据导入到excel表单
-     * 
-     * @param sheetName 工作表的名称
-     * @return 结果
-     */
-    public AjaxResult importTemplateExcel(String sheetName)
+    public String importTemplateExcel(String sheetName)
     {
         return importTemplateExcel(sheetName, StringUtils.EMPTY);
     }
@@ -598,7 +540,7 @@ public class ExcelUtil<T>
      * @param title 标题
      * @return 结果
      */
-    public AjaxResult importTemplateExcel(String sheetName, String title)
+    public String importTemplateExcel(String sheetName, String title)
     {
         this.init(null, sheetName, title, Type.IMPORT);
         return exportExcel();
@@ -607,57 +549,9 @@ public class ExcelUtil<T>
     /**
      * 对list数据源将其里面的数据导入到excel表单
      * 
-     * @param sheetName 工作表的名称
      * @return 结果
      */
-    public void importTemplateExcel(HttpServletResponse response, String sheetName)
-    {
-        importTemplateExcel(response, sheetName, StringUtils.EMPTY);
-    }
-
-    /**
-     * 对list数据源将其里面的数据导入到excel表单
-     * 
-     * @param sheetName 工作表的名称
-     * @param title 标题
-     * @return 结果
-     */
-    public void importTemplateExcel(HttpServletResponse response, String sheetName, String title)
-    {
-        response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
-        response.setCharacterEncoding("utf-8");
-        this.init(null, sheetName, title, Type.IMPORT);
-        exportExcel(response);
-    }
-
-    /**
-     * 对list数据源将其里面的数据导入到excel表单
-     * 
-     * @return 结果
-     */
-    public void exportExcel(HttpServletResponse response)
-    {
-        try
-        {
-            writeSheet();
-            wb.write(response.getOutputStream());
-        }
-        catch (Exception e)
-        {
-            log.error("导出Excel异常{}", e.getMessage());
-        }
-        finally
-        {
-            IOUtils.closeQuietly(wb);
-        }
-    }
-
-    /**
-     * 对list数据源将其里面的数据导入到excel表单
-     * 
-     * @return 结果
-     */
-    public AjaxResult exportExcel()
+    public String exportExcel()
     {
         OutputStream out = null;
         try
@@ -666,7 +560,7 @@ public class ExcelUtil<T>
             String filename = encodingFilename(sheetName);
             out = new FileOutputStream(getAbsoluteFile(filename));
             wb.write(out);
-            return AjaxResult.success(filename);
+            return filename;
         }
         catch (Exception e)
         {
