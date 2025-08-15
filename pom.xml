@@ -192,6 +192,12 @@
 <!--                <version>3.34.0</version>-->
 <!--            </dependency>-->
 
+            <dependency>
+                <groupId>io.netty</groupId>
+                <artifactId>netty-all</artifactId>
+                <version>4.1.114.Final</version>
+            </dependency>
+
         </dependencies>
     </dependencyManagement>
 
