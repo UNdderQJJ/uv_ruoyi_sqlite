@@ -141,7 +141,7 @@ public class IpUtils
     public static String getHostIp()
     {
         return getIpAddr();
-    }
+        }
 
     public static String getHostName()
     {

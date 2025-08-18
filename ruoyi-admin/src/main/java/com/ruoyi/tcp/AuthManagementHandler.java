@@ -67,7 +67,7 @@ public class AuthManagementHandler {
                     return login(body);
                 case "/auth/getInfo":
                     return getUserInfo(body);
-                case "/auth/ ":
+                case "/auth/getRouters":
                     return getRouters(body);
                 case "/auth/logout":
                     return logout(body);

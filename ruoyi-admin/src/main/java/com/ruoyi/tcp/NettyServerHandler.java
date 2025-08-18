@@ -13,12 +13,15 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
+import java.util.HashMap;
+import java.util.Map;
+
 /**
  * Netty TCP 业务处理器
  * 负责路由和分发TCP请求到相应的业务处理器
  */
 @Component
-@ChannelHandler.Sharable // 标注该 Handler 可以被多个 Channel 安全地共享，因为它是单例的
+@ChannelHandler.Sharable
 public class NettyServerHandler extends SimpleChannelInboundHandler<String> {
 
     private static final Logger log = LoggerFactory.getLogger(NettyServerHandler.class);
@@ -54,7 +57,7 @@ public class NettyServerHandler extends SimpleChannelInboundHandler<String> {
         // 增加对空消息的判断，让服务器更健壮
         if (msg == null || msg.trim().isEmpty()) {
             log.warn("[Netty-Handler] 收到来自客户端 [{}] 的空消息或空白消息，已忽略。", ctx.channel().remoteAddress());
-            return; // 如果是空消息，直接忽略并返回，不执行后续逻辑
+            return;
         }
 
         String clientAddress = ctx.channel().remoteAddress().toString();
@@ -96,14 +99,22 @@ public class NettyServerHandler extends SimpleChannelInboundHandler<String> {
             response = TcpResponse.error("服务器内部错误: " + e.getMessage());
         }
 
-        // 3. 将响应写回客户端时，在末尾加上换行符
+        // 3. 将响应写回客户端
         try {
+            // 构建响应数据
+            Map<String, Object> responseData = new HashMap<>();
+            responseData.put("code", response.getCode());
+            responseData.put("message", response.getMessage());
+            responseData.put("data", response.getResult());
+            
             // 回显 requestId 到响应顶层
-            if (requestId != null && response != null && response.getResult() != null) {
-                response.getResult().put("id", requestId);
+            if (requestId != null) {
+                responseData.put("id", requestId);
             }
-            String responseJson = objectMapper.writeValueAsString(response.getResult());
+            
+            String responseJson = objectMapper.writeValueAsString(responseData);
             log.debug("[Netty-Handler] 发送响应给客户端 [{}]: {}", clientAddress, responseJson);
+            
             // 在 JSON 字符串末尾拼接一个换行符再发送
             ctx.writeAndFlush(responseJson + "\n");
         } catch (JsonProcessingException e) {

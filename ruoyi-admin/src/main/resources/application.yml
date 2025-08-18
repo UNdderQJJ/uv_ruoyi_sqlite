@@ -13,27 +13,23 @@ ruoyi:
   # 验证码类型 math 数字计算 char 字符验证
   captchaType: math
 
+# TCP服务配置
+tcp:
+  # TCP服务器端口
+  port: 9999
+  # 最大连接数
+  max-connections: 1000
+  # 连接超时时间（毫秒）
+  connection-timeout: 30000
+
 # Netty服务器配置
 netty:
-  port: 9999 # 你可以设置为任何未被占用的端口
-
-# 开发环境配置
-server:
-  # 服务器的HTTP端口，默认为8080
-  port: 8080
-  servlet:
-    # 应用的访问路径
-    context-path: /
-  tomcat:
-    # tomcat的URI编码
-    uri-encoding: UTF-8
-    # 连接数满后的排队数，默认为100
-    accept-count: 1000
-    threads:
-      # tomcat最大线程数，默认为200
-      max: 800
-      # Tomcat启动初始化的线程数，默认值10
-      min-spare: 100
+  # Netty服务器端口（与TCP端口保持一致）
+  port: 9999
+  # 最大连接数
+  max-connections: 1000
+  # 连接超时时间（秒）
+  connection-timeout: 30
 
 # 日志配置
 logging:
@@ -51,47 +47,20 @@ user:
 
 # Spring配置
 spring:
+  # 禁用Web自动配置
+  main:
+    web-application-type: none
   # 资源信息
   messages:
     # 国际化资源文件路径
     basename: i18n/messages
   profiles:
     active: druid
-  # 文件上传
-  servlet:
-    multipart:
-      # 单个文件大小
-      max-file-size: 10MB
-      # 设置总上传的文件大小
-      max-request-size: 20MB
   # 服务模块
   devtools:
     restart:
       # 热部署开关
       enabled: false
-#  data:
-#    # redis 配置
-#    redis:
-#      # 地址
-#      host: 192.168.203.22
-#      # 端口，默认为6379
-#      port: 6379
-#      # 数据库索引
-#      database: 12
-#      # 密码
-#      password: testing
-#      # 连接超时时间
-#      timeout: 10s
-#      lettuce:
-#        pool:
-#          # 连接池中的最小空闲连接
-#          min-idle: 0
-#          # 连接池中的最大空闲连接
-#          max-idle: 8
-#          # 连接池的最大数据库连接数
-#          max-active: 8
-#          # #连接池最大阻塞等待时间（使用负值表示没有限制）
-#          max-wait: -1ms
 
 # token配置
 token:
@@ -116,26 +85,3 @@ pagehelper:
   helperDialect: sqlite
   supportMethodsArguments: true
   params: count=countSql
-
-# Springdoc配置
-springdoc:
-  api-docs:
-    path: /v3/api-docs
-  swagger-ui:
-    enabled: true
-    path: /swagger-ui.html
-    tags-sorter: alpha
-  group-configs:
-    - group: 'default'
-      display-name: '测试模块'
-      paths-to-match: '/**'
-      packages-to-scan: com.ruoyi.web.controller.tool
-
-# 防止XSS攻击
-xss:
-  # 过滤开关
-  enabled: true
-  # 排除链接（多个用逗号分隔）
-  excludes: /system/notice
-  # 匹配链接
-  urlPatterns: /system/*,/monitor/*,/tool/*
