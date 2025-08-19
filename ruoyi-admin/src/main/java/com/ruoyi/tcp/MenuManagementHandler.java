@@ -1,17 +1,22 @@
 package com.ruoyi.tcp;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ruoyi.common.core.TcpResponse;
 import com.ruoyi.common.core.domain.entity.SysMenu;
+import com.ruoyi.common.core.domain.entity.SysRole;
 import com.ruoyi.common.utils.StringUtils;
 import com.ruoyi.system.service.ISysMenuService;
+import io.netty.util.internal.ObjectUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 
 /**
  * 菜单管理TCP处理器
@@ -81,8 +86,8 @@ public class MenuManagementHandler {
      * 获取菜单详情
      */
     private TcpResponse getMenuDetail(String body) throws JsonProcessingException {
-        Long menuId = objectMapper.readValue(body, Long.class);
-        SysMenu menu = menuService.selectMenuById(menuId);
+        SysMenu menuQuery = objectMapper.readValue(body, SysMenu.class);
+        SysMenu menu = menuService.selectMenuById(menuQuery.getMenuId());
         if (menu == null) {
             return TcpResponse.error("菜单不存在");
         }
@@ -122,7 +127,7 @@ public class MenuManagementHandler {
         }
         
         // 校验外链地址
-        if ("1".equals(menu.getIsFrame()) && !StringUtils.ishttp(menu.getPath())) {
+        if ("0".equals(menu.getIsFrame()) && !StringUtils.ishttp(menu.getPath())) {
             return TcpResponse.error("修改菜单'" + menu.getMenuName() + "'失败，地址必须以http(s)://开头");
         }
         
@@ -140,7 +145,8 @@ public class MenuManagementHandler {
      * 删除菜单
      */
     private TcpResponse removeMenu(String body) throws JsonProcessingException {
-        Long menuId = objectMapper.readValue(body, Long.class);
+        SysMenu menu = objectMapper.readValue(body, SysMenu.class);
+        Long menuId = menu.getMenuId();
         
         // 检查是否存在子菜单
         if (menuService.hasChildByMenuId(menuId)) {
@@ -175,10 +181,18 @@ public class MenuManagementHandler {
      * 加载对应角色菜单列表树
      */
     private TcpResponse getRoleMenuTreeSelect(String body) throws JsonProcessingException {
-        Long roleId = objectMapper.readValue(body, Long.class);
+        SysRole role = objectMapper.readValue(body, SysRole.class);
+
+        Long roleId = role.getRoleId();
         
         // 获取当前用户ID，这里使用默认值1（管理员）
-        Long userId = 1L;
+        Map<String, Object> params = objectMapper.readValue(body, new TypeReference<>() {});
+        if(Objects.isNull(params.get("userId").toString())){
+            return TcpResponse.error("userId不能为空");
+        }
+        Long userId = Long.valueOf(params.get("userId").toString());
+
+
         List<SysMenu> menus = menuService.selectMenuList(userId);
         
         // 构建返回结果

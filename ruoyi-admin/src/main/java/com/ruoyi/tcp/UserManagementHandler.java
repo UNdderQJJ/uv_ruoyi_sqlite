@@ -6,12 +6,16 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.pagehelper.Page;
 import com.github.pagehelper.PageHelper;
 import com.ruoyi.common.core.TcpResponse;
+import com.ruoyi.common.core.domain.entity.SysRole;
 import com.ruoyi.common.core.domain.entity.SysUser;
 import com.ruoyi.common.core.domain.model.TcpRequest;
 import com.ruoyi.common.core.page.TableDataInfo;
+import com.ruoyi.common.utils.SecurityUtils;
 import com.ruoyi.common.utils.StringUtils;
 import com.ruoyi.system.mapper.SysUserMapper;
 import com.ruoyi.system.service.ISysUserService;
+import com.ruoyi.system.service.ISysRoleService;
+import com.ruoyi.system.service.ISysPostService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -19,6 +23,7 @@ import org.springframework.stereotype.Component;
 
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * 用户管理TCP处理器
@@ -37,6 +42,12 @@ public class UserManagementHandler {
 
     @Autowired
     private SysUserMapper userMapper;
+
+    @Autowired
+    private ISysRoleService roleService;
+
+    @Autowired
+    private ISysPostService postService;
 
     /**
      * 处理用户管理相关的TCP请求
@@ -126,12 +137,39 @@ public class UserManagementHandler {
      * 获取用户详情
      */
     private TcpResponse getUserDetail(String body) throws JsonProcessingException {
-        Long userId = objectMapper.readValue(body, Long.class);
-        SysUser user = userService.selectUserById(userId);
-        if (user == null) {
-            return TcpResponse.error("用户不存在");
+        SysUser user = objectMapper.readValue(body, SysUser.class);
+        Long userId = user.getUserId();
+
+         // 构建详细响应数据
+         Map<String, Object> data;
+        
+        if (StringUtils.isNotNull(userId)) {
+//            // 检查用户数据权限
+//            userService.checkUserDataScope(userId);
+
+            // 获取用户基本信息
+            SysUser sysUser = userService.selectUserById(userId);
+            if (sysUser == null) {
+                return TcpResponse.error("用户不存在");
+            }
+
+            // 构建详细响应数据
+            data = Map.of(
+                    "user", sysUser,
+                    "postIds", postService.selectPostListByUserId(userId),
+                    "roleIds", sysUser.getRoles().stream().map(SysRole::getRoleId).collect(Collectors.toList()),
+                    "roles", SysUser.isAdmin(userId) ? roleService.selectRoleAll() :
+                            roleService.selectRoleAll().stream().filter(r -> !r.isAdmin()).collect(Collectors.toList()),
+                    "posts", postService.selectPostAll()
+            );
         }
-        return TcpResponse.success(user);
+             data = Map.of(
+                     "roles", SysUser.isAdmin(userId) ? roleService.selectRoleAll() :
+                        roleService.selectRoleAll().stream().filter(r -> !r.isAdmin()).collect(Collectors.toList()),
+                "posts", postService.selectPostAll()
+             );
+            
+            return TcpResponse.success(data);
     }
 
     /**
@@ -156,6 +194,7 @@ public class UserManagementHandler {
         }
 
         user.setCreateBy("tcp_admin");
+        user.setPassword(SecurityUtils.encryptPassword(user.getPassword()));
         int rows = userService.insertUser(user);
         return rows > 0 ? TcpResponse.success("新增成功") : TcpResponse.error("新增失败");
     }
@@ -185,6 +224,7 @@ public class UserManagementHandler {
         }
 
         user.setUpdateBy("tcp_admin");
+         user.setPassword(SecurityUtils.encryptPassword(user.getPassword()));
         int rows = userService.updateUser(user);
         return rows > 0 ? TcpResponse.success("修改成功") : TcpResponse.error("修改失败");
     }
@@ -193,8 +233,9 @@ public class UserManagementHandler {
      * 删除用户
      */
     private TcpResponse removeUsers(String body) throws JsonProcessingException {
-        Long[] userIds = objectMapper.readValue(body, Long[].class);
-        int rows = userService.deleteUserByIds(userIds);
+        SysUser user = objectMapper.readValue(body, SysUser.class);
+        Long userId =user.getUserId();
+        int rows = userService.deleteUserById(userId);
         return rows > 0 ? TcpResponse.success("删除成功") : TcpResponse.error("删除失败");
     }
 

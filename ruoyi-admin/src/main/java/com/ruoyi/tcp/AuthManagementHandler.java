@@ -94,10 +94,14 @@ public class AuthManagementHandler {
         try {
             // 使用TCP专用登录服务
             String token = tcpLoginService.login(loginBody.getUsername(), loginBody.getPassword());
-            
+             // 获取登录用户信息
+            LoginUser loginUser = getLoginUserFromToken(token);
             // 构建返回结果
             var result = new java.util.HashMap<String, Object>();
             result.put("token", token);
+            if (loginUser != null) {
+                result.put("userId", loginUser.getUserId());
+            }
             result.put("msg", "登录成功");
             
             return TcpResponse.success(result);

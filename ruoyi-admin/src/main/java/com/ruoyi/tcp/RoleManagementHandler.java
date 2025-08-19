@@ -121,8 +121,8 @@ public class RoleManagementHandler {
      * 获取角色详情
      */
     private TcpResponse getRoleDetail(String body) throws JsonProcessingException {
-        Long roleId = objectMapper.readValue(body, Long.class);
-        SysRole role = roleService.selectRoleById(roleId);
+        SysRole roleId = objectMapper.readValue(body, SysRole.class);
+        SysRole role = roleService.selectRoleById(roleId.getRoleId());
         if (role == null) {
             return TcpResponse.error("角色不存在");
         }
@@ -178,8 +178,9 @@ public class RoleManagementHandler {
      * 删除角色
      */
     private TcpResponse removeRoles(String body) throws JsonProcessingException {
-        Long[] roleIds = objectMapper.readValue(body, Long[].class);
-        int rows = roleService.deleteRoleByIds(roleIds);
+        SysRole role = objectMapper.readValue(body,SysRole.class);
+        Long roleId = role.getRoleId();
+        int rows = roleService.deleteRoleById(roleId);
         return rows > 0 ? TcpResponse.success("删除成功") : TcpResponse.error("删除失败");
     }
 
