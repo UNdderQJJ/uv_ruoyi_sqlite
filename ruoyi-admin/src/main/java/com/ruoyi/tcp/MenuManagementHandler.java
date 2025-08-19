@@ -126,10 +126,10 @@ public class MenuManagementHandler {
             return TcpResponse.error("修改菜单'" + menu.getMenuName() + "'失败，菜单名称已存在");
         }
         
-        // 校验外链地址
-        if ("0".equals(menu.getIsFrame()) && !StringUtils.ishttp(menu.getPath())) {
-            return TcpResponse.error("修改菜单'" + menu.getMenuName() + "'失败，地址必须以http(s)://开头");
-        }
+//        // 校验外链地址
+//        if ("0".equals(menu.getIsFrame()) && !StringUtils.ishttp(menu.getPath())) {
+//            return TcpResponse.error("修改菜单'" + menu.getMenuName() + "'失败，地址必须以http(s)://开头");
+//        }
         
         // 校验上级菜单不能选择自己
         if (menu.getMenuId().equals(menu.getParentId())) {

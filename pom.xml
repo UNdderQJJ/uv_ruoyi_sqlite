@@ -113,12 +113,7 @@
                 <version>${poi.version}</version>
             </dependency>
 
-            <!-- velocity代码生成使用模板 -->
-            <dependency>
-                <groupId>org.apache.velocity</groupId>
-                <artifactId>velocity-engine-core</artifactId>
-                <version>${velocity.version}</version>
-            </dependency>
+            
 
             <!-- 阿里JSON解析器 -->
             <dependency>
@@ -143,12 +138,7 @@
 
 
 
-            <!-- 代码生成-->
-            <dependency>
-                <groupId>com.ruoyi</groupId>
-                <artifactId>ruoyi-generator</artifactId>
-                <version>${ruoyi.version}</version>
-            </dependency>
+            
 
             <!-- 核心模块-->
             <dependency>
@@ -191,7 +181,6 @@
         <module>ruoyi-admin</module>
         <module>ruoyi-framework</module>
         <module>ruoyi-system</module>
-        <module>ruoyi-generator</module>
         <module>ruoyi-common</module>
     </modules>
     <packaging>pom</packaging>
