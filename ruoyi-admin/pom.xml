@@ -36,11 +36,7 @@
             <artifactId>ruoyi-framework</artifactId>
         </dependency>
 
-        <!-- 定时任务-->
-        <dependency>
-            <groupId>com.ruoyi</groupId>
-            <artifactId>ruoyi-quartz</artifactId>
-        </dependency>
+
 
         <!-- 代码生成-->
         <dependency>
@@ -57,7 +53,7 @@
                 <artifactId>spring-boot-maven-plugin</artifactId>
                 <version>3.3.5</version>
                 <configuration>
-                    <fork>true</fork> <!-- 如果没有该配置，devtools不会生效 -->
+                     <jvmArguments>-Dspring.devtools.restart.enabled=true</jvmArguments> <!-- 如果没有该配置，devtools不会生效 -->
                 </configuration>
                 <executions>
                     <execution>
