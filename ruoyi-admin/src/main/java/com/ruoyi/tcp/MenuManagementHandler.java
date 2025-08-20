@@ -104,11 +104,11 @@ public class MenuManagementHandler {
         if (!menuService.checkMenuNameUnique(menu)) {
             return TcpResponse.error("新增菜单'" + menu.getMenuName() + "'失败，菜单名称已存在");
         }
-        
-        // 校验外链地址
-        if ("1".equals(menu.getIsFrame()) && !StringUtils.ishttp(menu.getPath())) {
-            return TcpResponse.error("新增菜单'" + menu.getMenuName() + "'失败，地址必须以http(s)://开头");
-        }
+
+//        // 校验外链地址
+//        if ("1".equals(menu.getIsFrame()) && !StringUtils.ishttp(menu.getPath())) {
+//            return TcpResponse.error("新增菜单'" + menu.getMenuName() + "'失败，地址必须以http(s)://开头");
+//        }
 
         menu.setCreateBy("tcp_admin");
         int rows = menuService.insertMenu(menu);

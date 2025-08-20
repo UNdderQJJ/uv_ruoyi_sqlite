@@ -162,13 +162,13 @@ public class UserManagementHandler {
                             roleService.selectRoleAll().stream().filter(r -> !r.isAdmin()).collect(Collectors.toList()),
                     "posts", postService.selectPostAll()
             );
-        }
+        }else {
              data = Map.of(
                      "roles", SysUser.isAdmin(userId) ? roleService.selectRoleAll() :
                         roleService.selectRoleAll().stream().filter(r -> !r.isAdmin()).collect(Collectors.toList()),
                 "posts", postService.selectPostAll()
              );
-            
+        }
             return TcpResponse.success(data);
     }
 
@@ -254,7 +254,7 @@ public class UserManagementHandler {
         }
         
         // 使用正确的方法签名
-        int rows = userService.resetUserPwd(user.getUserName(), newPassword);
+        int rows = userService.resetUserPwd(user.getUserName(), SecurityUtils.encryptPassword(newPassword));
         return rows > 0 ? TcpResponse.success("密码重置成功") : TcpResponse.error("密码重置失败");
     }
 
