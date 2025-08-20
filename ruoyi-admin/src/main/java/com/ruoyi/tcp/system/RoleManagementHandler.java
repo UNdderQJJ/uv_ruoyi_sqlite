@@ -1,4 +1,4 @@
-package com.ruoyi.tcp;
+package com.ruoyi.tcp.system;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;

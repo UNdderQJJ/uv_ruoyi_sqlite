@@ -1,0 +1,164 @@
+package com.ruoyi.business.domain;
+
+import com.ruoyi.common.core.domain.BaseEntity;
+import org.apache.commons.lang3.builder.ToStringBuilder;
+import org.apache.commons.lang3.builder.ToStringStyle;
+
+/**
+ * 数据池对象 data_pool
+ * 
+ * @author ruoyi
+ */
+public class DataPool extends BaseEntity
+{
+    private static final long serialVersionUID = 1L;
+
+    /** 主键 */
+    private Long id;
+
+    /** 数据池名称 */
+    private String poolName;
+
+    /** 数据源类型（U_DISK, TCP_SERVER, TCP_CLIENT, HTTP, MQTT, WEBSOCKET） */
+    private String sourceType;
+
+    /** 总数据量 */
+    private Long totalCount;
+
+    /** 待打印数量 */
+    private Long pendingCount;
+
+    /** 运行状态（IDLE, RUNNING, WARNING, ERROR） */
+    private String status;
+
+    /** 详细配置 */
+    private String sourceConfigJson;
+
+    /** 解析规则 */
+    private String parsingRuleJson;
+
+    /** 触发条件配置 */
+    private String triggerConfigJson;
+
+    /** 删除标志（0代表存在 2代表删除） */
+    private String delFlag;
+
+    public void setId(Long id) 
+    {
+        this.id = id;
+    }
+
+    public Long getId() 
+    {
+        return id;
+    }
+
+    public void setPoolName(String poolName) 
+    {
+        this.poolName = poolName;
+    }
+
+    public String getPoolName() 
+    {
+        return poolName;
+    }
+
+    public void setSourceType(String sourceType) 
+    {
+        this.sourceType = sourceType;
+    }
+
+    public String getSourceType() 
+    {
+        return sourceType;
+    }
+
+    public void setTotalCount(Long totalCount) 
+    {
+        this.totalCount = totalCount;
+    }
+
+    public Long getTotalCount() 
+    {
+        return totalCount;
+    }
+
+    public void setPendingCount(Long pendingCount) 
+    {
+        this.pendingCount = pendingCount;
+    }
+
+    public Long getPendingCount() 
+    {
+        return pendingCount;
+    }
+
+    public void setStatus(String status) 
+    {
+        this.status = status;
+    }
+
+    public String getStatus() 
+    {
+        return status;
+    }
+
+    public void setSourceConfigJson(String sourceConfigJson) 
+    {
+        this.sourceConfigJson = sourceConfigJson;
+    }
+
+    public String getSourceConfigJson() 
+    {
+        return sourceConfigJson;
+    }
+
+    public void setParsingRuleJson(String parsingRuleJson) 
+    {
+        this.parsingRuleJson = parsingRuleJson;
+    }
+
+    public String getParsingRuleJson() 
+    {
+        return parsingRuleJson;
+    }
+
+    public void setTriggerConfigJson(String triggerConfigJson) 
+    {
+        this.triggerConfigJson = triggerConfigJson;
+    }
+
+    public String getTriggerConfigJson() 
+    {
+        return triggerConfigJson;
+    }
+
+    public void setDelFlag(String delFlag) 
+    {
+        this.delFlag = delFlag;
+    }
+
+    public String getDelFlag() 
+    {
+        return delFlag;
+    }
+
+    @Override
+    public String toString() {
+        return new ToStringBuilder(this, ToStringStyle.MULTI_LINE_STYLE)
+            .append("id", getId())
+            .append("poolName", getPoolName())
+            .append("sourceType", getSourceType())
+            .append("totalCount", getTotalCount())
+            .append("pendingCount", getPendingCount())
+            .append("status", getStatus())
+            .append("sourceConfigJson", getSourceConfigJson())
+            .append("parsingRuleJson", getParsingRuleJson())
+            .append("triggerConfigJson", getTriggerConfigJson())
+            .append("delFlag", getDelFlag())
+            .append("createTime", getCreateTime())
+            .append("updateTime", getUpdateTime())
+            .append("remark", getRemark())
+            .toString();
+    }
+}

@@ -149,6 +149,13 @@
                 <version>${ruoyi.version}</version>
             </dependency>
 
+            <!-- 业务模块-->
+            <dependency>
+                <groupId>com.ruoyi</groupId>
+                <artifactId>ruoyi-business</artifactId>
+                <version>${ruoyi.version}</version>
+            </dependency>
+
             <!-- SQLite JDBC 驱动 -->
 <!--            <dependency>-->
 <!--                <groupId>org.xerial</groupId>-->
@@ -170,6 +177,7 @@
         <module>ruoyi-framework</module>
         <module>ruoyi-system</module>
         <module>ruoyi-common</module>
+        <module>ruoyi-business</module>
     </modules>
     <packaging>pom</packaging>
 
