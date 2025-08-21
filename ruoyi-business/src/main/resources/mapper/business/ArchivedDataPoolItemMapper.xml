@@ -1,0 +1,180 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.business.mapper.ArchivedDataPoolItemMapper">
+    
+    <resultMap type="ArchivedDataPoolItem" id="ArchivedDataPoolItemResult">
+        <result property="id" column="id"/>
+        <result property="itemData" column="item_data"/>
+        <result property="finalStatus" column="final_status"/>
+        <result property="printCount" column="print_count"/>
+        <result property="poolId" column="pool_id"/>
+        <result property="poolName" column="pool_name"/>
+        <result property="deviceId" column="device_id"/>
+        <result property="receivedTime" column="received_time"/>
+        <result property="printedTime" column="printed_time"/>
+        <result property="archivedTime" column="archived_time"/>
+        <result property="verificationData" column="verification_data"/>
+        <result property="verificationStatus" column="verification_status"/>
+        <result property="delFlag" column="del_flag"/>
+        <result property="createTime" column="create_time"/>
+        <result property="updateTime" column="update_time"/>
+        <result property="remark" column="remark"/>
+    </resultMap>
+
+    <sql id="selectArchivedDataPoolItemVo">
+        select id, item_data, final_status, print_count, pool_id, pool_name, device_id, 
+               received_time, printed_time, archived_time, verification_data, verification_status, 
+               del_flag, create_time, update_time, remark
+        from archived_data_pool_item
+    </sql>
+
+    <select id="selectArchivedDataPoolItemList" parameterType="ArchivedDataPoolItem" resultMap="ArchivedDataPoolItemResult">
+        <include refid="selectArchivedDataPoolItemVo"/>
+        <where>  
+            <if test="itemData != null  and itemData != ''"> and item_data like concat('%', #{itemData}, '%')</if>
+            <if test="finalStatus != null  and finalStatus != ''"> and final_status = #{finalStatus}</if>
+            <if test="poolId != null "> and pool_id = #{poolId}</if>
+            <if test="poolName != null  and poolName != ''"> and pool_name like concat('%', #{poolName}, '%')</if>
+            <if test="deviceId != null  and deviceId != ''"> and device_id = #{deviceId}</if>
+            <if test="verificationStatus != null  and verificationStatus != ''"> and verification_status = #{verificationStatus}</if>
+            and del_flag = '0'
+        </where>
+        order by archived_time desc
+    </select>
+    
+    <select id="selectArchivedDataPoolItemById" parameterType="Long" resultMap="ArchivedDataPoolItemResult">
+        <include refid="selectArchivedDataPoolItemVo"/>
+        where id = #{id} and del_flag = '0'
+    </select>
+        
+    <insert id="insertArchivedDataPoolItem" parameterType="ArchivedDataPoolItem" useGeneratedKeys="false">
+        insert into archived_data_pool_item
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="id != null">id,</if>
+            <if test="itemData != null">item_data,</if>
+            <if test="finalStatus != null">final_status,</if>
+            <if test="printCount != null">print_count,</if>
+            <if test="poolId != null">pool_id,</if>
+            <if test="poolName != null">pool_name,</if>
+            <if test="deviceId != null">device_id,</if>
+            <if test="receivedTime != null">received_time,</if>
+            <if test="printedTime != null">printed_time,</if>
+            <if test="archivedTime != null">archived_time,</if>
+            <if test="verificationData != null">verification_data,</if>
+            <if test="verificationStatus != null">verification_status,</if>
+            <if test="delFlag != null">del_flag,</if>
+            <if test="createTime != null">create_time,</if>
+            <if test="updateTime != null">update_time,</if>
+            <if test="remark != null">remark,</if>
+         </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="id != null">#{id},</if>
+            <if test="itemData != null">#{itemData},</if>
+            <if test="finalStatus != null">#{finalStatus},</if>
+            <if test="printCount != null">#{printCount},</if>
+            <if test="poolId != null">#{poolId},</if>
+            <if test="poolName != null">#{poolName},</if>
+            <if test="deviceId != null">#{deviceId},</if>
+            <if test="receivedTime != null">#{receivedTime},</if>
+            <if test="printedTime != null">#{printedTime},</if>
+            <if test="archivedTime != null">#{archivedTime},</if>
+            <if test="verificationData != null">#{verificationData},</if>
+            <if test="verificationStatus != null">#{verificationStatus},</if>
+            <if test="delFlag != null">#{delFlag},</if>
+            <if test="createTime != null">#{createTime},</if>
+            <if test="updateTime != null">#{updateTime},</if>
+            <if test="remark != null">#{remark},</if>
+         </trim>
+    </insert>
+
+    <update id="updateArchivedDataPoolItem" parameterType="ArchivedDataPoolItem">
+        update archived_data_pool_item
+        <trim prefix="SET" suffixOverrides=",">
+            <if test="itemData != null">item_data = #{itemData},</if>
+            <if test="finalStatus != null">final_status = #{finalStatus},</if>
+            <if test="printCount != null">print_count = #{printCount},</if>
+            <if test="poolId != null">pool_id = #{poolId},</if>
+            <if test="poolName != null">pool_name = #{poolName},</if>
+            <if test="deviceId != null">device_id = #{deviceId},</if>
+            <if test="receivedTime != null">received_time = #{receivedTime},</if>
+            <if test="printedTime != null">printed_time = #{printedTime},</if>
+            <if test="archivedTime != null">archived_time = #{archivedTime},</if>
+            <if test="verificationData != null">verification_data = #{verificationData},</if>
+            <if test="verificationStatus != null">verification_status = #{verificationStatus},</if>
+            <if test="delFlag != null">del_flag = #{delFlag},</if>
+            <if test="createTime != null">create_time = #{createTime},</if>
+            <if test="updateTime != null">update_time = #{updateTime},</if>
+            <if test="remark != null">remark = #{remark},</if>
+        </trim>
+        where id = #{id}
+    </update>
+
+    <delete id="deleteArchivedDataPoolItemById" parameterType="Long">
+        update archived_data_pool_item set del_flag = '2' where id = #{id}
+    </delete>
+
+    <delete id="deleteArchivedDataPoolItemByIds" parameterType="String">
+        update archived_data_pool_item set del_flag = '2' where id in 
+        <foreach item="id" collection="array" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </delete>
+
+    <select id="selectArchivedDataPoolItemByPoolId" parameterType="Long" resultMap="ArchivedDataPoolItemResult">
+        <include refid="selectArchivedDataPoolItemVo"/>
+        where pool_id = #{poolId} and del_flag = '0'
+        order by archived_time desc
+    </select>
+
+    <select id="selectArchivedDataPoolItemByTimeRange" resultMap="ArchivedDataPoolItemResult">
+        <include refid="selectArchivedDataPoolItemVo"/>
+        where del_flag = '0'
+        <if test="poolId != null"> and pool_id = #{poolId}</if>
+        <if test="startTime != null"> and archived_time >= #{startTime}</if>
+        <if test="endTime != null"> and archived_time &lt;= #{endTime}</if>
+        order by archived_time desc
+    </select>
+
+    <select id="selectArchivedDataPoolItemByStatus" resultMap="ArchivedDataPoolItemResult">
+        <include refid="selectArchivedDataPoolItemVo"/>
+        where del_flag = '0'
+        <if test="poolId != null"> and pool_id = #{poolId}</if>
+        and final_status = #{finalStatus}
+        order by archived_time desc
+    </select>
+
+    <select id="selectArchivedDataPoolItemByDeviceId" parameterType="String" resultMap="ArchivedDataPoolItemResult">
+        <include refid="selectArchivedDataPoolItemVo"/>
+        where device_id = #{deviceId} and del_flag = '0'
+        order by archived_time desc
+    </select>
+
+    <select id="selectArchivedDataPoolItemByVerificationStatus" resultMap="ArchivedDataPoolItemResult">
+        <include refid="selectArchivedDataPoolItemVo"/>
+        where del_flag = '0'
+        <if test="poolId != null"> and pool_id = #{poolId}</if>
+        and verification_status = #{verificationStatus}
+        order by archived_time desc
+    </select>
+
+    <select id="getArchivedDataStatistics" parameterType="Long" resultMap="ArchivedDataPoolItemResult">
+        <include refid="selectArchivedDataPoolItemVo"/>
+        where del_flag = '0'
+        <if test="poolId != null"> and pool_id = #{poolId}</if>
+        order by archived_time desc
+    </select>
+
+    <delete id="cleanArchivedDataBeforeTime">
+        update archived_data_pool_item set del_flag = '2' 
+        where del_flag = '0'
+        <if test="poolId != null"> and pool_id = #{poolId}</if>
+        and archived_time &lt; #{beforeTime}
+    </delete>
+
+    <select id="checkArchivedDataExists" parameterType="Long" resultType="int">
+        select count(1) from archived_data_pool_item where id = #{id} and del_flag = '0'
+    </select>
+
+</mapper>
