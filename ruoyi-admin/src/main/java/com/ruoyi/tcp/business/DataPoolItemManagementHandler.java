@@ -65,8 +65,8 @@ public class DataPoolItemManagementHandler {
                     return markAsFailed(body);
                 case "/business/dataPoolItem/releaseLock":
                     return releaseLock(body);
-                case "/business/dataPoolItem/releaseLockByLockId":
-                    return releaseLockByLockId(body);
+                case "/business/dataPoolItem/releaseLockByDeviceId":
+                    return releaseLockByDeviceId(body);
                 case "/business/dataPoolItem/getPending":
                     return getPendingItems(body);
                 case "/business/dataPoolItem/statistics":
@@ -92,6 +92,9 @@ public class DataPoolItemManagementHandler {
      */
     private TcpResponse listDataPoolItems(String body) throws JsonProcessingException {
         DataPoolItem queryItem = objectMapper.readValue(body, DataPoolItem.class);
+        
+        // 兼容性处理：支持旧的lockId参数名
+        // 注意：现在统一使用deviceId字段
         
         List<DataPoolItem> items = dataPoolItemService.selectDataPoolItemList(queryItem);
         
@@ -218,15 +221,15 @@ public class DataPoolItemManagementHandler {
         Map<String, Object> params = objectMapper.readValue(body, new TypeReference<Map<String, Object>>() {});
         
         Long id = Long.valueOf(params.get("id").toString());
-        String lockId = params.get("lockId").toString();
+        String deviceId = params.get("deviceId").toString();
         
-        boolean result = dataPoolItemService.lockDataPoolItem(id, lockId);
+        boolean result = dataPoolItemService.lockDataPoolItem(id, deviceId);
         
         if (result) {
-            log.info("[DataPoolItemManagement] 锁定热数据成功，ID: {}, lockId: {}", id, lockId);
+            log.info("[DataPoolItemManagement] 锁定热数据成功，ID: {}, deviceId: {}", id, deviceId);
             return TcpResponse.success("锁定热数据成功");
         } else {
-            log.error("[DataPoolItemManagement] 锁定热数据失败，ID: {}, lockId: {}", id, lockId);
+            log.error("[DataPoolItemManagement] 锁定热数据失败，ID: {}, deviceId: {}", id, deviceId);
             return TcpResponse.error("锁定热数据失败，可能已被其他设备锁定");
         }
     }
@@ -239,14 +242,14 @@ public class DataPoolItemManagementHandler {
         
         @SuppressWarnings("unchecked")
         List<Long> ids = (List<Long>) params.get("ids");
-        String lockId = params.get("lockId").toString();
+        String deviceId = params.get("deviceId").toString();
         
-        int lockedCount = dataPoolItemService.batchLockDataPoolItems(ids, lockId);
+        int lockedCount = dataPoolItemService.batchLockDataPoolItems(ids, deviceId);
         
         Map<String, Object> result = new HashMap<>();
         result.put("lockedCount", lockedCount);
         result.put("totalCount", ids.size());
-        result.put("lockId", lockId);
+        result.put("deviceId", deviceId);
         
         log.info("[DataPoolItemManagement] 批量锁定热数据，成功: {}, 总数: {}", lockedCount, ids.size());
         return TcpResponse.success("批量锁定热数据完成", result);
@@ -316,19 +319,19 @@ public class DataPoolItemManagementHandler {
     }
 
     /**
-     * 根据锁定ID释放锁定
+     * 根据设备ID释放锁定
      */
-    private TcpResponse releaseLockByLockId(String body) throws JsonProcessingException {
+    private TcpResponse releaseLockByDeviceId(String body) throws JsonProcessingException {
         Map<String, Object> params = objectMapper.readValue(body, new TypeReference<Map<String, Object>>() {});
         
-        String lockId = params.get("lockId").toString();
-        int releasedCount = dataPoolItemService.releaseLockByLockId(lockId);
+        String deviceId = params.get("deviceId").toString();
+        int releasedCount = dataPoolItemService.releaseLockByLockId(deviceId);
         
         Map<String, Object> result = new HashMap<>();
         result.put("releasedCount", releasedCount);
-        result.put("lockId", lockId);
+        result.put("deviceId", deviceId);
         
-        log.info("[DataPoolItemManagement] 根据锁定ID释放锁定，释放数量: {}, lockId: {}", releasedCount, lockId);
+        log.info("[DataPoolItemManagement] 根据设备ID释放锁定，释放数量: {}, deviceId: {}", releasedCount, deviceId);
         return TcpResponse.success("释放锁定成功", result);
     }
 

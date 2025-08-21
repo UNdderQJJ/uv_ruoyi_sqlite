@@ -80,33 +80,33 @@ public class DataPoolItemServiceImpl implements IDataPoolItemService {
     }
 
     /**
-     * 锁定数据项（设置状态为PRINTING并设置lockId）
+     * 锁定数据项（设置状态为PRINTING并设置deviceId）
      * 
      * @param id 数据项ID
-     * @param lockId 锁定ID
+     * @param deviceId 设备ID
      * @return 是否成功
      */
     @Override
-    public boolean lockDataPoolItem(Long id, String lockId) {
-        if (StringUtils.isEmpty(lockId)) {
+    public boolean lockDataPoolItem(Long id, String deviceId) {
+        if (StringUtils.isEmpty(deviceId)) {
             return false;
         }
-        return dataPoolItemMapper.lockDataPoolItem(id, lockId) > 0;
+        return dataPoolItemMapper.lockDataPoolItem(id, deviceId) > 0;
     }
 
     /**
      * 批量锁定数据项
      * 
      * @param ids 数据项ID列表
-     * @param lockId 锁定ID
+     * @param deviceId 设备ID
      * @return 成功锁定的数量
      */
     @Override
-    public int batchLockDataPoolItems(List<Long> ids, String lockId) {
-        if (ids == null || ids.isEmpty() || StringUtils.isEmpty(lockId)) {
+    public int batchLockDataPoolItems(List<Long> ids, String deviceId) {
+        if (ids == null || ids.isEmpty() || StringUtils.isEmpty(deviceId)) {
             return 0;
         }
-        return dataPoolItemMapper.batchLockDataPoolItems(ids, lockId);
+        return dataPoolItemMapper.batchLockDataPoolItems(ids, deviceId);
     }
 
     /**
@@ -165,7 +165,7 @@ public class DataPoolItemServiceImpl implements IDataPoolItemService {
     }
 
     /**
-     * 释放锁定（清空lockId，状态改为PENDING）
+     * 释放锁定（清空deviceId，状态改为PENDING）
      * 
      * @param id 数据项ID
      * @return 是否成功
@@ -176,17 +176,17 @@ public class DataPoolItemServiceImpl implements IDataPoolItemService {
     }
 
     /**
-     * 根据锁定ID释放锁定
+     * 根据设备ID释放锁定
      * 
-     * @param lockId 锁定ID
+     * @param deviceId 设备ID
      * @return 影响的数据项数量
      */
     @Override
-    public int releaseLockByLockId(String lockId) {
-        if (StringUtils.isEmpty(lockId)) {
+    public int releaseLockByLockId(String deviceId) {
+        if (StringUtils.isEmpty(deviceId)) {
             return 0;
         }
-        return dataPoolItemMapper.releaseLockByLockId(lockId);
+        return dataPoolItemMapper.releaseLockByLockId(deviceId);
     }
 
     /**
@@ -418,7 +418,7 @@ public class DataPoolItemServiceImpl implements IDataPoolItemService {
     }
 
     /**
-     * 重置失败的数据项（将FAILED状态改为PENDING，清空lockId）
+     * 重置失败的数据项（将FAILED状态改为PENDING，清空deviceId）
      * 
      * @param poolId 数据池ID（可选）
      * @return 重置的数据项数量
@@ -433,11 +433,11 @@ public class DataPoolItemServiceImpl implements IDataPoolItemService {
         List<DataPoolItem> failedItems = selectDataPoolItemList(queryItem);
         
         int resetCount = 0;
-        for (DataPoolItem item : failedItems) {
-            // 重置状态为PENDING，清空lockId
-            item.setStatus(ItemStatus.PENDING.getCode());
-            item.setLockId(null);
-            if (updateDataPoolItem(item) > 0) {
+        for (DataPoolItem entity : failedItems) {
+            // 重置状态为PENDING，清空deviceId
+            entity.setStatus(ItemStatus.PENDING.getCode());
+            entity.setDeviceId(null);
+            if (updateDataPoolItem(entity) > 0) {
                 resetCount++;
             }
         }
@@ -467,14 +467,14 @@ public class DataPoolItemServiceImpl implements IDataPoolItemService {
         queryItem.setStatus(ItemStatus.PRINTING.getCode());
         
         List<DataPoolItem> printingItems = selectDataPoolItemList(queryItem);
-        Set<String> activeLockIds = new HashSet<>();
+        Set<String> activeDeviceIds = new HashSet<>();
         for (DataPoolItem item : printingItems) {
-            if (StringUtils.isNotEmpty(item.getLockId())) {
-                activeLockIds.add(item.getLockId());
+            if (StringUtils.isNotEmpty(item.getDeviceId())) {
+                activeDeviceIds.add(item.getDeviceId());
             }
         }
-        queueInfo.put("activeLockIds", activeLockIds);
-        queueInfo.put("activePrinterCount", activeLockIds.size());
+        queueInfo.put("activeDeviceIds", activeDeviceIds);
+        queueInfo.put("activePrinterCount", activeDeviceIds.size());
         
         return queueInfo;
     }

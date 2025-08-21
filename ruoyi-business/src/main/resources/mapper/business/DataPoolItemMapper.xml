@@ -10,7 +10,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         <result property="itemData"     column="item_data"    />
         <result property="status"       column="status"       />
         <result property="printCount"   column="print_count"  />
-        <result property="lockId"       column="lock_id"      />
+        <result property="deviceId"     column="device_id"      />
         <result property="receivedTime" column="received_time"/>
         <result property="delFlag"      column="del_flag"     />
         <result property="createTime"   column="create_time"  />
@@ -18,7 +18,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
     </resultMap>
 
     <sql id="selectDataPoolItemVo">
-        select id, pool_id, item_data, status, print_count, lock_id, received_time, del_flag, create_time, update_time
+        select id, pool_id, item_data, status, print_count, device_id, received_time, del_flag, create_time, update_time
         from data_pool_item
     </sql>
 
@@ -30,7 +30,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="itemData != null and itemData != ''">and item_data like concat('%', #{itemData}, '%')</if>
             <if test="status != null and status != ''">and status = #{status}</if>
             <if test="printCount != null">and print_count = #{printCount}</if>
-            <if test="lockId != null and lockId != ''">and lock_id = #{lockId}</if>
+            <if test="deviceId != null and deviceId != ''">and device_id = #{deviceId}</if>
             <if test="receivedTime != null">and received_time = #{receivedTime}</if>
         </where>
         order by received_time desc
@@ -64,7 +64,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
     <update id="lockDataPoolItem">
         update data_pool_item
         set status = 'PRINTING',
-            lock_id = #{lockId},
+            device_id = #{deviceId},
             update_time = now()
         where id = #{id} 
           and status = 'PENDING' 
@@ -74,7 +74,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
     <update id="batchLockDataPoolItems">
         update data_pool_item
         set status = 'PRINTING',
-            lock_id = #{lockId},
+            device_id = #{deviceId},
             update_time = now()
         where id in
         <foreach item="id" collection="ids" open="(" separator="," close=")">
@@ -95,7 +95,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
     <update id="releaseLock">
         update data_pool_item
         set status = 'PENDING',
-            lock_id = null,
+            device_id = null,
             update_time = now()
         where id = #{id} and del_flag = '0'
     </update>
@@ -103,9 +103,9 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
     <update id="releaseLockByLockId">
         update data_pool_item
         set status = 'PENDING',
-            lock_id = null,
+            device_id = null,
             update_time = now()
-        where lock_id = #{lockId} and del_flag = '0'
+        where device_id = #{deviceId} and del_flag = '0'
     </update>
 
     <insert id="insertDataPoolItem" parameterType="DataPoolItem" useGeneratedKeys="true" keyProperty="id">
@@ -115,7 +115,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="itemData != null and itemData != ''">item_data,</if>
             <if test="status != null and status != ''">status,</if>
             <if test="printCount != null">print_count,</if>
-            <if test="lockId != null">lock_id,</if>
+            <if test="deviceId != null">device_id,</if>
             <if test="receivedTime != null">received_time,</if>
             <if test="delFlag != null">del_flag,</if>
             <if test="createTime != null">create_time,</if>
@@ -126,7 +126,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="itemData != null and itemData != ''">#{itemData},</if>
             <if test="status != null and status != ''">#{status},</if>
             <if test="printCount != null">#{printCount},</if>
-            <if test="lockId != null">#{lockId},</if>
+            <if test="deviceId != null">#{deviceId},</if>
             <if test="receivedTime != null">#{receivedTime},</if>
             <if test="delFlag != null">#{delFlag},</if>
             <if test="createTime != null">#{createTime},</if>
@@ -149,7 +149,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="itemData != null and itemData != ''">item_data = #{itemData},</if>
             <if test="status != null and status != ''">status = #{status},</if>
             <if test="printCount != null">print_count = #{printCount},</if>
-            <if test="lockId != null">lock_id = #{lockId},</if>
+            <if test="deviceId != null">device_id = #{deviceId},</if>
             <if test="receivedTime != null">received_time = #{receivedTime},</if>
             <if test="updateTime != null">update_time = #{updateTime},</if>
         </trim>

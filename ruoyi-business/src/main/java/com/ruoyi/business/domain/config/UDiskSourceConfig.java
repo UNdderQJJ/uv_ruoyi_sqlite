@@ -1,10 +1,13 @@
 package com.ruoyi.business.domain.config;
 
+import lombok.Data;
+
 /**
  * U盘导入配置
  * 
  * @author ruoyi
  */
+@Data
 public class UDiskSourceConfig extends SourceConfig {
     
     /** 文件路径 */
@@ -22,43 +25,4 @@ public class UDiskSourceConfig extends SourceConfig {
     /** 是否自动监控 */
     private Boolean autoMonitor;
 
-    public String getFilePath() {
-        return filePath;
-    }
-
-    public void setFilePath(String filePath) {
-        this.filePath = filePath;
-    }
-
-    public String getSheetNameOrIndex() {
-        return sheetNameOrIndex;
-    }
-
-    public void setSheetNameOrIndex(String sheetNameOrIndex) {
-        this.sheetNameOrIndex = sheetNameOrIndex;
-    }
-
-    public Integer getStartRow() {
-        return startRow;
-    }
-
-    public void setStartRow(Integer startRow) {
-        this.startRow = startRow;
-    }
-
-    public Integer getDataColumn() {
-        return dataColumn;
-    }
-
-    public void setDataColumn(Integer dataColumn) {
-        this.dataColumn = dataColumn;
-    }
-
-    public Boolean getAutoMonitor() {
-        return autoMonitor;
-    }
-
-    public void setAutoMonitor(Boolean autoMonitor) {
-        this.autoMonitor = autoMonitor;
-    }
 }

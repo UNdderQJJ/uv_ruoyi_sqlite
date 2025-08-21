@@ -5,10 +5,13 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ruoyi.business.domain.DataPool;
+import com.ruoyi.business.domain.DataPoolItem;
 import com.ruoyi.business.domain.config.UDiskSourceConfig;
 import com.ruoyi.business.enums.SourceType;
 import com.ruoyi.business.service.DataPoolConfigValidationService;
 import com.ruoyi.business.service.IDataPoolService;
+import com.ruoyi.business.service.IDataPoolItemService;
+import com.ruoyi.business.service.IArchivedDataPoolItemService;
 
 import com.ruoyi.business.service.UDiskDataSchedulerService;
 import com.ruoyi.business.service.UDiskFileReaderService;
@@ -47,6 +50,12 @@ public class DataPoolManagementHandler
 
     @Resource
     private UDiskFileReaderService uDiskFileReaderService;
+
+    @Resource
+    private IDataPoolItemService dataPoolItemService;
+
+    @Resource
+    private IArchivedDataPoolItemService archivedDataPoolItemService;
 
 
 
@@ -238,11 +247,61 @@ public class DataPoolManagementHandler
     private TcpResponse deleteDataPool(String body) throws JsonProcessingException {
         Map<String, Object> params = objectMapper.readValue(body, new TypeReference<>() {});
         Long id = Long.valueOf(params.get("id").toString());
+
+        DataPool dataPool = dataPoolService.selectDataPoolById(id);
         
         int result = dataPoolService.deleteDataPoolById(id);
         
         if (result > 0) {
-            return TcpResponse.success("删除数据池成功");
+            //将数据池中的数据删除，移动至归档表
+            try {
+                // 1. 查询该数据池下的所有热数据项
+                List<DataPoolItem> dataPoolItems = dataPoolItemService.selectDataPoolItemByPoolId(id);
+                
+                if (!dataPoolItems.isEmpty()) {
+                    log.info("[DataPoolManagement] 删除数据池 {} 时，发现 {} 条热数据项需要归档", id, dataPoolItems.size());
+                    
+                    // 2. 将所有热数据项归档（包括待打印、正在打印、已打印、失败的数据）
+                    int archivedCount = archivedDataPoolItemService.batchArchiveDataPoolItems(dataPoolItems);
+                    
+                    // 3. 删除热数据项
+                    int deletedCount = 0;
+                    for (DataPoolItem item : dataPoolItems) {
+                        if (dataPoolItemService.deleteDataPoolItemById(item.getId()) > 0) {
+                            deletedCount++;
+                        }
+                    }
+                    
+                    log.info("[DataPoolManagement] 删除数据池 {} 时，成功归档 {} 条热数据项，删除 {} 条热数据项", id, archivedCount, deletedCount);
+                } else {
+                    log.info("[DataPoolManagement] 删除数据池 {} 时，没有发现需要归档的热数据项", id);
+                }
+                
+                log.info("[DataPoolManagement] 删除数据池 {} 成功", id);
+                
+                // 构建响应数据，包含删除操作的详细信息
+                Map<String, Object> responseData = new HashMap<>();
+                responseData.put("dataPoolId", id);
+                responseData.put("dataPoolName", dataPool.getPoolName());
+                responseData.put("archivedItemsCount", dataPoolItems.size());
+                responseData.put("deletedItemsCount", dataPoolItems.size());
+                responseData.put("message", "删除数据池成功");
+                
+                return TcpResponse.success("删除数据池成功", responseData);
+                
+            } catch (Exception e) {
+                log.error("[DataPoolManagement] 删除数据池 {} 时归档数据失败", id, e);
+                
+                // 构建警告响应数据
+                Map<String, Object> warningData = new HashMap<>();
+                warningData.put("dataPoolId", id);
+                warningData.put("dataPoolName", dataPool.getPoolName());
+                warningData.put("warning", "数据归档过程中出现异常，请检查日志");
+                warningData.put("errorMessage", e.getMessage());
+                
+                // 即使归档失败，数据池删除操作已经成功，返回成功但记录警告
+                return TcpResponse.success("删除数据池成功，但数据归档过程中出现异常，请检查日志", warningData);
+            }
         } else {
             return TcpResponse.error("删除数据池失败");
         }

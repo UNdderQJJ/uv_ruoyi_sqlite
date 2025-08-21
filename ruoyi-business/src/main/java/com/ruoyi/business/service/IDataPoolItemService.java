@@ -54,22 +54,22 @@ public interface IDataPoolItemService {
     public List<DataPoolItem> selectPendingItems(Long poolId, Integer limit);
 
     /**
-     * 锁定数据项（设置状态为PRINTING并设置lockId）
+     * 锁定数据项（设置状态为PRINTING并设置deviceId）
      * 
      * @param id 数据项ID
-     * @param lockId 锁定ID
+     * @param deviceId 设备ID
      * @return 是否成功
      */
-    public boolean lockDataPoolItem(Long id, String lockId);
+    public boolean lockDataPoolItem(Long id, String deviceId);
 
     /**
      * 批量锁定数据项
      * 
      * @param ids 数据项ID列表
-     * @param lockId 锁定ID
+     * @param deviceId 设备ID
      * @return 成功锁定的数量
      */
-    public int batchLockDataPoolItems(List<Long> ids, String lockId);
+    public int batchLockDataPoolItems(List<Long> ids, String deviceId);
 
     /**
      * 更新数据项状态
@@ -98,7 +98,7 @@ public interface IDataPoolItemService {
     public boolean markAsFailed(Long id);
 
     /**
-     * 释放锁定（清空lockId，状态改为PENDING）
+     * 释放锁定（清空deviceId，状态改为PENDING）
      * 
      * @param id 数据项ID
      * @return 是否成功
@@ -106,12 +106,12 @@ public interface IDataPoolItemService {
     public boolean releaseLock(Long id);
 
     /**
-     * 根据锁定ID释放锁定
+     * 根据设备ID释放锁定
      * 
-     * @param lockId 锁定ID
+     * @param deviceId 设备ID
      * @return 影响的数据项数量
      */
-    public int releaseLockByLockId(String lockId);
+    public int releaseLockByLockId(String deviceId);
 
     /**
      * 新增数据池热数据
@@ -205,7 +205,7 @@ public interface IDataPoolItemService {
     public int cleanPrintedData(Long poolId, Date beforeTime);
 
     /**
-     * 重置失败的数据项（将FAILED状态改为PENDING，清空lockId）
+     * 重置失败的数据项（将FAILED状态改为PENDING，清空deviceId）
      * 
      * @param poolId 数据池ID（可选）
      * @return 重置的数据项数量

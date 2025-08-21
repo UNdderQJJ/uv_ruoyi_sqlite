@@ -36,9 +36,9 @@ public class DataPoolItem extends BaseEntity {
     @Excel(name = "打印次数")
     private Integer printCount;
     
-    /** 锁定ID（哪个设备或线程正在处理） */
-    @Excel(name = "锁定ID")
-    private String lockId;
+    /** 设备ID（哪个设备正在处理） */
+    @Excel(name = "设备ID")
+    private String deviceId;
     
     /** 数据接收时间 */
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
@@ -49,70 +49,6 @@ public class DataPoolItem extends BaseEntity {
     private String delFlag;
 
     
-    public void setId(Long id) {
-        this.id = id;
-    }
-    
-    public Long getId() {
-        return id;
-    }
-    
-    public void setPoolId(Long poolId) {
-        this.poolId = poolId;
-    }
-    
-    public Long getPoolId() {
-        return poolId;
-    }
-    
-    public void setItemData(String itemData) {
-        this.itemData = itemData;
-    }
-    
-    public String getItemData() {
-        return itemData;
-    }
-    
-    public void setStatus(String status) {
-        this.status = status;
-    }
-    
-    public String getStatus() {
-        return status;
-    }
-    
-    public void setPrintCount(Integer printCount) {
-        this.printCount = printCount;
-    }
-    
-    public Integer getPrintCount() {
-        return printCount;
-    }
-    
-    public void setLockId(String lockId) {
-        this.lockId = lockId;
-    }
-    
-    public String getLockId() {
-        return lockId;
-    }
-    
-    public void setReceivedTime(Date receivedTime) {
-        this.receivedTime = receivedTime;
-    }
-    
-    public Date getReceivedTime() {
-        return receivedTime;
-    }
-    
-    public void setDelFlag(String delFlag) {
-        this.delFlag = delFlag;
-    }
-    
-    public String getDelFlag() {
-        return delFlag;
-    }
-    
     @Override
     public String toString() {
         return new StringBuilder()
@@ -122,7 +58,7 @@ public class DataPoolItem extends BaseEntity {
             .append(", itemData='").append(itemData).append('\'')
             .append(", status='").append(status).append('\'')
             .append(", printCount=").append(printCount)
-            .append(", lockId='").append(lockId).append('\'')
+            .append(", deviceId='").append(deviceId).append('\'')
             .append(", receivedTime=").append(receivedTime)
             .append(", delFlag='").append(delFlag).append('\'')
             .append(", createTime=").append(getCreateTime())

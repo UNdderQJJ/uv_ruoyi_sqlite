@@ -52,22 +52,22 @@ public interface DataPoolItemMapper {
     public List<DataPoolItem> selectPendingItems(Long poolId, Integer limit);
 
     /**
-     * 锁定数据项（设置状态为PRINTING并设置lockId）
+     * 锁定数据项（设置状态为PRINTING并设置deviceId）
      * 
      * @param id 数据项ID
-     * @param lockId 锁定ID
+     * @param deviceId 设备ID
      * @return 影响行数
      */
-    public int lockDataPoolItem(Long id, String lockId);
+    public int lockDataPoolItem(Long id, String deviceId);
 
     /**
      * 批量锁定数据项
      * 
      * @param ids 数据项ID列表
-     * @param lockId 锁定ID
+     * @param deviceId 设备ID
      * @return 影响行数
      */
-    public int batchLockDataPoolItems(List<Long> ids, String lockId);
+    public int batchLockDataPoolItems(List<Long> ids, String deviceId);
 
     /**
      * 更新数据项状态
@@ -80,7 +80,7 @@ public interface DataPoolItemMapper {
     public int updateDataPoolItemStatus(Long id, String status, Integer printCount);
 
     /**
-     * 释放锁定（清空lockId，状态改为PENDING）
+     * 释放锁定（清空deviceId，状态改为PENDING）
      * 
      * @param id 数据项ID
      * @return 影响行数
@@ -88,12 +88,12 @@ public interface DataPoolItemMapper {
     public int releaseLock(Long id);
 
     /**
-     * 根据锁定ID释放锁定
+     * 根据设备ID释放锁定
      * 
-     * @param lockId 锁定ID
+     * @param deviceId 设备ID
      * @return 影响行数
      */
-    public int releaseLockByLockId(String lockId);
+    public int releaseLockByLockId(String deviceId);
 
     /**
      * 新增数据池热数据

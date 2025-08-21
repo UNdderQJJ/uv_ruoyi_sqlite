@@ -37,7 +37,7 @@ public class DataPoolItemTcpApiDocumentation {
      * {
      *   "poolId": 1,              // 可选，数据池ID
      *   "status": "PENDING",      // 可选，数据状态
-     *   "lockId": "device001"     // 可选，锁定ID
+     *   "deviceId": "device001"   // 可选，设备ID
      * }
      * 
      * 响应示例:
@@ -51,7 +51,7 @@ public class DataPoolItemTcpApiDocumentation {
      *       "itemData": "打印数据内容",
      *       "status": "PENDING",
      *       "printCount": 0,
-     *       "lockId": null,
+     *       "deviceId": null,
      *       "receivedTime": "2024-01-01 10:00:00",
      *       "createTime": "2024-01-01 10:00:00",
      *       "updateTime": "2024-01-01 10:00:00"
@@ -177,7 +177,7 @@ public class DataPoolItemTcpApiDocumentation {
      * 请求体参数:
      * {
      *   "id": 1,                  // 必填，数据项ID
-     *   "lockId": "device001"     // 必填，锁定ID（设备或线程标识）
+     *   "deviceId": "device001"   // 必填，设备ID
      * }
      * 
      * 响应示例:
@@ -196,7 +196,7 @@ public class DataPoolItemTcpApiDocumentation {
      * 请求体参数:
      * {
      *   "ids": [1, 2, 3],         // 必填，数据项ID列表
-     *   "lockId": "device001"     // 必填，锁定ID
+     *   "deviceId": "device001"   // 必填，设备ID
      * }
      * 
      * 响应示例:
@@ -268,12 +268,12 @@ public class DataPoolItemTcpApiDocumentation {
      * 11. 根据锁定ID释放锁定
      * ================================
      * 
-     * 路径: /business/dataPoolItem/releaseLockByLockId
+     * 路径: /business/dataPoolItem/releaseLockByDeviceId
      * 方法: TCP请求
      * 
      * 请求体参数:
      * {
-     *   "lockId": "device001"     // 必填，锁定ID
+     *   "deviceId": "device001"   // 必填，设备ID
      * }
      * 
      * 响应示例:
@@ -335,7 +335,7 @@ public class DataPoolItemTcpApiDocumentation {
      *     "printedCount": 35,
      *     "failedCount": 5,
      *     "earliestPendingTime": "2024-01-01 10:00:00",
-     *     "activeLockIds": ["device001", "device002"],
+     *     "activeDeviceIds": ["device001", "device002"],
      *     "activePrinterCount": 2,
      *     "poolId": 1
      *   }
@@ -444,7 +444,7 @@ public class DataPoolItemTcpApiDocumentation {
      *    /business/dataPoolItem/markPrinted 或 /business/dataPoolItem/markFailed
      * 
      * 4. 设备断线后释放锁定:
-     *    /business/dataPoolItem/releaseLockByLockId
+     *    /business/dataPoolItem/releaseLockByDeviceId
      * 
      * 5. 监控打印队列状态:
      *    /business/dataPoolItem/queueInfo 或 /business/dataPoolItem/statistics
@@ -466,11 +466,11 @@ public class DataPoolItemTcpApiDocumentation {
      * 并发控制说明
      * ================================
      * 
-     * 1. lockId字段用于实现分布式锁机制
+     * 1. deviceId字段用于标识正在处理数据的设备
      * 2. 只有状态为PENDING的数据项可以被锁定
      * 3. 锁定后状态自动变为PRINTING
-     * 4. 设备异常断线时应调用releaseLockByLockId释放所有锁定
-     * 5. 建议lockId使用设备唯一标识，如MAC地址或设备编号
+     * 4. 设备异常断线时应调用releaseLockByDeviceId释放所有锁定
+     * 5. 建议deviceId使用设备唯一标识，如MAC地址或设备编号
      * 
      */
 }

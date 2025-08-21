@@ -1,5 +1,7 @@
 package com.ruoyi.business.domain.config;
 
+import lombok.Data;
+
 import java.util.List;
 
 /**
@@ -7,6 +9,7 @@ import java.util.List;
  * 
  * @author ruoyi
  */
+@Data
 public class HttpSourceConfig extends SourceConfig {
     
     /** 请求URL */
@@ -21,37 +24,6 @@ public class HttpSourceConfig extends SourceConfig {
     /** 请求体 */
     private String body;
 
-    public String getUrl() {
-        return url;
-    }
-
-    public void setUrl(String url) {
-        this.url = url;
-    }
-
-    public String getMethod() {
-        return method;
-    }
-
-    public void setMethod(String method) {
-        this.method = method;
-    }
-
-    public List<HttpHeader> getHeaders() {
-        return headers;
-    }
-
-    public void setHeaders(List<HttpHeader> headers) {
-        this.headers = headers;
-    }
-
-    public String getBody() {
-        return body;
-    }
-
-    public void setBody(String body) {
-        this.body = body;
-    }
 
     /**
      * HTTP请求头

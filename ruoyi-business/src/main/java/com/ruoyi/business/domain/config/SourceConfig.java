@@ -17,6 +17,6 @@ import com.fasterxml.jackson.annotation.JsonTypeInfo;
     @JsonSubTypes.Type(value = MqttSourceConfig.class, name = "MQTT"),
     @JsonSubTypes.Type(value = WebSocketSourceConfig.class, name = "WEBSOCKET")
 })
-public abstract class SourceConfig {
+public abstract class  SourceConfig {
     // 基类可以包含通用配置
 }
