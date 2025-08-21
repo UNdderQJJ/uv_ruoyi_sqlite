@@ -6,6 +6,7 @@ import org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration;
 import org.springframework.boot.autoconfigure.web.servlet.WebMvcAutoConfiguration;
 import org.springframework.boot.autoconfigure.web.servlet.ServletWebServerFactoryAutoConfiguration;
 import org.springframework.boot.autoconfigure.web.servlet.error.ErrorMvcAutoConfiguration;
+import org.springframework.scheduling.annotation.EnableScheduling;
 
 /**
  * 启动程序
@@ -18,6 +19,7 @@ import org.springframework.boot.autoconfigure.web.servlet.error.ErrorMvcAutoConf
     ServletWebServerFactoryAutoConfiguration.class,
     ErrorMvcAutoConfiguration.class
 })
+@EnableScheduling
 public class RuoYiApplication
 {
     public static void main(String[] args)

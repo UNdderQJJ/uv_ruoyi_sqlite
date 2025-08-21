@@ -147,7 +147,7 @@ public class DataPoolConfigValidationService {
             }
 
             // 验证阈值触发类型的必要字段
-            if (TriggerType.BELOW_THRESHOLD.getCode().equals(config.getTriggerType())) {
+            if (TriggerType.THRESHOLD.getCode().equals(config.getTriggerType())) {
                 if (config.getThreshold() == null || config.getThreshold() <= 0) {
                     return false;
                 }

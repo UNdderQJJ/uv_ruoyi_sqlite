@@ -1,13 +1,20 @@
 package com.ruoyi.tcp.business;
 
+import com.alibaba.fastjson2.JSON;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ruoyi.business.domain.DataPool;
+import com.ruoyi.business.domain.config.UDiskSourceConfig;
+import com.ruoyi.business.enums.SourceType;
+import com.ruoyi.business.service.DataPoolConfigValidationService;
 import com.ruoyi.business.service.IDataPoolService;
 
+import com.ruoyi.business.service.UDiskDataSchedulerService;
+import com.ruoyi.business.service.UDiskFileReaderService;
 import com.ruoyi.common.core.TcpResponse;
 import com.ruoyi.common.utils.StringUtils;
+import jakarta.annotation.Resource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -31,6 +38,15 @@ public class DataPoolManagementHandler
 
     @Autowired
     private IDataPoolService dataPoolService;
+
+    @Resource
+    private DataPoolConfigValidationService dataPoolConfigValidationService;
+
+    @Resource
+    private UDiskDataSchedulerService uDiskDataSchedulerService;
+
+    @Resource
+    private UDiskFileReaderService uDiskFileReaderService;
 
 
 
@@ -58,6 +74,8 @@ public class DataPoolManagementHandler
                     return startDataPool(body);
                 case "/business/dataPool/stop":
                     return stopDataPool(body);
+                case "/business/dataPool/updatePoolItem":
+                    return updatePoolItem(body);
                 case "/business/dataPool/updateStatus":
                     return updateDataPoolStatus(body);
                 case "/business/dataPool/updateCount":
@@ -117,11 +135,27 @@ public class DataPoolManagementHandler
         DataPool dataPool = objectMapper.readValue(body, DataPool.class);
         
         // 验证必填参数
-        if (StringUtils.isEmpty(dataPool.getPoolName()) || StringUtils.isEmpty(dataPool.getSourceType())) {
-            return TcpResponse.error("缺少必要参数: poolName, sourceType");
+        if (StringUtils.isEmpty(dataPool.getPoolName())) {
+            return TcpResponse.error("缺少必要参数: 数据池名称");
+        }
+        if (StringUtils.isEmpty(dataPool.getSourceType())) {
+            return TcpResponse.error("缺少必要参数: 数据源类型");
         }
 
         int result = dataPoolService.insertDataPool(dataPool);
+
+        //判断数据源是否填写正确
+        DataPoolConfigValidationService.ValidationResult validationResult =
+                dataPoolConfigValidationService.validateDataPoolConfig(dataPool.getSourceType(),
+                dataPool.getSourceConfigJson(),
+                dataPool.getParsingRuleJson(),
+                dataPool.getTriggerConfigJson());
+        if (validationResult.isValid()) {
+            // 只有在文件未读取完成时才拉取数据
+            if (!"1".equals(dataPool.getFileReadCompleted())) {
+                uDiskDataSchedulerService.manualTriggerDataReading(dataPool.getId(), null);
+            }
+        }
         
         if (result > 0) {
             var responseData = new HashMap<String, Object>();
@@ -142,13 +176,60 @@ public class DataPoolManagementHandler
             return TcpResponse.error("缺少数据池ID参数");
         }
 
-        int result = dataPoolService.updateDataPool(dataPool);
+        //判断数据源是否填写正确
+        DataPoolConfigValidationService.ValidationResult validationResult =
+                dataPoolConfigValidationService.validateDataPoolConfig(dataPool.getSourceType(),
+                dataPool.getSourceConfigJson(),
+                dataPool.getParsingRuleJson(),
+                dataPool.getTriggerConfigJson());
+        if (!validationResult.isValid()) {
+            return TcpResponse.error("数据源配置无效: " + validationResult.getErrorMessage());
+        }
+         int result = dataPoolService.updateDataPool(dataPool);
+
+        // 只有在文件未读取完成时才拉取数据
+        if (!"1".equals(dataPool.getFileReadCompleted())) {
+            uDiskDataSchedulerService.manualTriggerDataReading(dataPool.getId(), null);
+        }
         
         if (result > 0) {
             return TcpResponse.success("更新数据池成功");
         } else {
             return TcpResponse.error("更新数据池失败");
         }
+    }
+
+    /**
+     * 更新数据池，拉取数据源数据
+     */
+    private TcpResponse updatePoolItem(String body) throws JsonProcessingException {
+        DataPool dataPool11 = objectMapper.readValue(body, DataPool.class);
+
+        DataPool dataPool = dataPoolService.selectDataPoolById(dataPool11.getId());
+        //判断数据源是否填写正确
+        DataPoolConfigValidationService.ValidationResult validationResult =
+                dataPoolConfigValidationService.validateDataPoolConfig(dataPool.getSourceType(),
+                dataPool.getSourceConfigJson(),
+                dataPool.getParsingRuleJson(),
+                dataPool.getTriggerConfigJson());
+        if (!validationResult.isValid()) {
+            return TcpResponse.error("数据源配置无效: " + validationResult.getErrorMessage());
+        }
+        //如果U盘数据池文件更新
+        if(SourceType.U_DISK.getCode().equals(dataPool.getSourceType())){
+             UDiskSourceConfig configNew = JSON.parseObject(dataPool11.getSourceConfigJson(), UDiskSourceConfig.class);
+              UDiskSourceConfig configOld = JSON.parseObject(dataPool.getSourceConfigJson(), UDiskSourceConfig.class);
+              if(!configNew.getFilePath().equals(configOld.getFilePath())){
+                  uDiskFileReaderService.resetReadPosition(dataPool11.getId(), null);
+              }
+        }
+
+          // 只有在文件未读取完成时才拉取数据
+        if (!"1".equals(dataPool.getFileReadCompleted())) {
+            uDiskDataSchedulerService.manualTriggerDataReading(dataPool.getId(), null);
+        }
+
+       return TcpResponse.success("更新数据池成功");
     }
 
     /**

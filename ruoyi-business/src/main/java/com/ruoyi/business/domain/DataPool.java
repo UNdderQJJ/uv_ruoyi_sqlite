@@ -1,6 +1,7 @@
 package com.ruoyi.business.domain;
 
 import com.ruoyi.common.core.domain.BaseEntity;
+import lombok.Data;
 import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.apache.commons.lang3.builder.ToStringStyle;
 
@@ -9,6 +10,7 @@ import org.apache.commons.lang3.builder.ToStringStyle;
  * 
  * @author ruoyi
  */
+@Data
 public class DataPool extends BaseEntity
 {
     private static final long serialVersionUID = 1L;
@@ -43,105 +45,8 @@ public class DataPool extends BaseEntity
     /** 删除标志（0代表存在 2代表删除） */
     private String delFlag;
 
-    public void setId(Long id) 
-    {
-        this.id = id;
-    }
-
-    public Long getId() 
-    {
-        return id;
-    }
-
-    public void setPoolName(String poolName) 
-    {
-        this.poolName = poolName;
-    }
-
-    public String getPoolName() 
-    {
-        return poolName;
-    }
-
-    public void setSourceType(String sourceType) 
-    {
-        this.sourceType = sourceType;
-    }
-
-    public String getSourceType() 
-    {
-        return sourceType;
-    }
-
-    public void setTotalCount(Long totalCount) 
-    {
-        this.totalCount = totalCount;
-    }
-
-    public Long getTotalCount() 
-    {
-        return totalCount;
-    }
-
-    public void setPendingCount(Long pendingCount) 
-    {
-        this.pendingCount = pendingCount;
-    }
-
-    public Long getPendingCount() 
-    {
-        return pendingCount;
-    }
-
-    public void setStatus(String status) 
-    {
-        this.status = status;
-    }
-
-    public String getStatus() 
-    {
-        return status;
-    }
-
-    public void setSourceConfigJson(String sourceConfigJson) 
-    {
-        this.sourceConfigJson = sourceConfigJson;
-    }
-
-    public String getSourceConfigJson() 
-    {
-        return sourceConfigJson;
-    }
-
-    public void setParsingRuleJson(String parsingRuleJson) 
-    {
-        this.parsingRuleJson = parsingRuleJson;
-    }
-
-    public String getParsingRuleJson() 
-    {
-        return parsingRuleJson;
-    }
-
-    public void setTriggerConfigJson(String triggerConfigJson) 
-    {
-        this.triggerConfigJson = triggerConfigJson;
-    }
-
-    public String getTriggerConfigJson() 
-    {
-        return triggerConfigJson;
-    }
-
-    public void setDelFlag(String delFlag) 
-    {
-        this.delFlag = delFlag;
-    }
-
-    public String getDelFlag() 
-    {
-        return delFlag;
-    }
+    /** 文件读取完成标志（0代表未完成 1代表已完成） */
+    private String fileReadCompleted;
 
     @Override
     public String toString() {

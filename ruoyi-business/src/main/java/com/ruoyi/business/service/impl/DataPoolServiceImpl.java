@@ -6,9 +6,11 @@ import com.ruoyi.business.mapper.DataPoolMapper;
 import com.ruoyi.business.service.IDataPoolService;
 import com.ruoyi.common.utils.DateUtils;
 import jakarta.annotation.Resource;
+import org.apache.poi.ss.formula.functions.Now;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.util.Date;
 import java.util.List;
 
 /**
@@ -61,6 +63,8 @@ public class DataPoolServiceImpl implements IDataPoolService
         // 设置初始计数为0
         dataPool.setTotalCount(0L);
         dataPool.setPendingCount(0L);
+        // 设置文件读取完成标志为未完成
+        dataPool.setFileReadCompleted("0");
         return dataPoolMapper.insertDataPool(dataPool);
     }
 

@@ -117,7 +117,7 @@ public class DataPoolConfigExampleService {
      */
     public String getTriggerConfigExample() {
         TriggerConfig config = configFactory.createTriggerConfig(
-            TriggerType.BELOW_THRESHOLD.getCode(),
+            TriggerType.THRESHOLD.getCode(),
             100,
             "GET_DATA_NOW"
         );
@@ -129,7 +129,7 @@ public class DataPoolConfigExampleService {
      */
     public String getMqttTriggerConfigExample() {
         TriggerConfig config = configFactory.createMqttTriggerConfig(
-            TriggerType.BELOW_THRESHOLD.getCode(),
+            TriggerType.THRESHOLD.getCode(),
             100,
             "printer/data/response",
             "printer/data/request",
@@ -246,7 +246,7 @@ public class DataPoolConfigExampleService {
 
         // 低于阈值触发
         TriggerConfig belowThresholdConfig = configFactory.createTriggerConfig(
-            TriggerType.BELOW_THRESHOLD.getCode(),
+            TriggerType.THRESHOLD.getCode(),
             100,
             "GET_DATA_NOW"
         );
@@ -254,7 +254,7 @@ public class DataPoolConfigExampleService {
 
         // 定时触发
         TriggerConfig scheduledConfig = configFactory.createTriggerConfig(
-            TriggerType.SCHEDULED.getCode(),
+            TriggerType.INTERVAL.getCode(),
             null,
             "GET_DATA_NOW"
         );

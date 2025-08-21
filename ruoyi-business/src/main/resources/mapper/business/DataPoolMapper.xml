@@ -15,6 +15,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         <result property="parsingRuleJson"   column="parsing_rule_json" />
         <result property="triggerConfigJson" column="trigger_config_json"/>
         <result property="delFlag"           column="del_flag"          />
+        <result property="fileReadCompleted" column="file_read_completed"/>
         <result property="createBy"          column="create_by"         />
         <result property="createTime"        column="create_time"       />
         <result property="updateBy"          column="update_by"         />
@@ -23,7 +24,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
     </resultMap>
 
     <sql id="selectDataPoolVo">
-        select id, pool_name, source_type, total_count, pending_count, status, source_config_json, parsing_rule_json, trigger_config_json, del_flag, create_by, create_time, update_by, update_time, remark from data_pool
+        select id, pool_name, source_type, total_count, pending_count, status, source_config_json, parsing_rule_json, trigger_config_json, del_flag, file_read_completed, create_by, create_time, update_by, update_time, remark from data_pool
     </sql>
 
     <select id="selectDataPoolList" parameterType="DataPool" resultMap="DataPoolResult">
@@ -32,6 +33,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="poolName != null  and poolName != ''"> and pool_name like concat('%', #{poolName}, '%')</if>
             <if test="sourceType != null  and sourceType != ''"> and source_type = #{sourceType}</if>
             <if test="status != null  and status != ''"> and status = #{status}</if>
+              <if test="fileReadCompleted != null  and fileReadCompleted != ''"> and file_read_completed = #{fileReadCompleted}</if>
             and del_flag = '0'
         </where>
     </select>
@@ -53,6 +55,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="parsingRuleJson != null">parsing_rule_json,</if>
             <if test="triggerConfigJson != null">trigger_config_json,</if>
             <if test="delFlag != null">del_flag,</if>
+            <if test="fileReadCompleted != null">file_read_completed,</if>
             <if test="createBy != null">create_by,</if>
             <if test="createTime != null">create_time,</if>
             <if test="updateBy != null">update_by,</if>
@@ -69,6 +72,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="parsingRuleJson != null">#{parsingRuleJson},</if>
             <if test="triggerConfigJson != null">#{triggerConfigJson},</if>
             <if test="delFlag != null">#{delFlag},</if>
+            <if test="fileReadCompleted != null">#{fileReadCompleted},</if>
             <if test="createBy != null">#{createBy},</if>
             <if test="createTime != null">#{createTime},</if>
             <if test="updateBy != null">#{updateBy},</if>
@@ -89,6 +93,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="parsingRuleJson != null">parsing_rule_json = #{parsingRuleJson},</if>
             <if test="triggerConfigJson != null">trigger_config_json = #{triggerConfigJson},</if>
             <if test="delFlag != null">del_flag = #{delFlag},</if>
+            <if test="fileReadCompleted != null">file_read_completed = #{fileReadCompleted},</if>
             <if test="createBy != null">create_by = #{createBy},</if>
             <if test="createTime != null">create_time = #{createTime},</if>
             <if test="updateBy != null">update_by = #{updateBy},</if>

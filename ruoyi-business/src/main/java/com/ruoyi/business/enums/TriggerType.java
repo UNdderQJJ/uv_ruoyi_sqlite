@@ -5,30 +5,49 @@ package com.ruoyi.business.enums;
  * 
  * @author ruoyi
  */
-public enum TriggerType
-{
-    /** 低于阈值触发 */
-    BELOW_THRESHOLD("BELOW_THRESHOLD", "低于阈值触发"),
+public enum TriggerType {
+    
+    /** 阈值触发 */
+    THRESHOLD("THRESHOLD", "阈值触发"),
     
     /** 定时触发 */
-    SCHEDULED("SCHEDULED", "定时触发");
-
+    INTERVAL("INTERVAL", "定时触发"),
+    
+    /** 手动触发 */
+    MANUAL("MANUAL", "手动触发");
+    
     private final String code;
     private final String info;
-
-    TriggerType(String code, String info)
-    {
+    
+    TriggerType(String code, String info) {
         this.code = code;
         this.info = info;
     }
-
-    public String getCode()
-    {
+    
+    public String getCode() {
         return code;
     }
-
-    public String getInfo()
-    {
+    
+    public String getInfo() {
         return info;
+    }
+    
+    /**
+     * 根据代码获取枚举
+     */
+    public static TriggerType getByCode(String code) {
+        for (TriggerType type : values()) {
+            if (type.getCode().equals(code)) {
+                return type;
+            }
+        }
+        return null;
+    }
+    
+    /**
+     * 判断是否为有效类型
+     */
+    public static boolean isValidType(String code) {
+        return getByCode(code) != null;
     }
 }
