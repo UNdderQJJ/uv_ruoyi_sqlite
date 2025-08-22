@@ -2,7 +2,7 @@
 <!DOCTYPE mapper
 PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
-<mapper namespace="com.ruoyi.business.mapper.DataPoolItemMapper">
+<mapper namespace="com.ruoyi.business.mapper.DataPoolItem.DataPoolItemMapper">
     
     <resultMap type="DataPoolItem" id="DataPoolItemResult">
         <result property="id"           column="id"           />
