@@ -172,4 +172,17 @@ public class DataPoolServiceImpl implements IDataPoolService
         dataPool.setUpdateTime(DateUtils.getNowDate());
         return dataPoolMapper.updateDataPool(dataPool);
     }
+
+    /**
+     * 更新数据池连接状态
+     */
+    @Override
+    public int updateConnectionState(Long id, String connectionState)
+    {
+        DataPool dataPool = new DataPool();
+        dataPool.setId(id);
+        dataPool.setConnectionState(connectionState);
+        dataPool.setUpdateTime(DateUtils.getNowDate());
+        return dataPoolMapper.updateDataPool(dataPool);
+    }
 }

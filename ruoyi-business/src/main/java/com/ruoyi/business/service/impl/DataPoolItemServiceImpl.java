@@ -375,22 +375,22 @@ public class DataPoolItemServiceImpl implements IDataPoolItemService {
         
         for (Map<String, Object> statusCount : statusCounts) {
             String status = (String) statusCount.get("status");
-            Long count = (Long) statusCount.get("count");
+            Integer count = (Integer) statusCount.get("count");
             
-            totalCount += count.intValue();
+            totalCount += count;
             
             switch (status) {
                 case "PENDING":
-                    pendingCount = count.intValue();
+                    pendingCount = count;
                     break;
                 case "PRINTING":
-                    printingCount = count.intValue();
+                    printingCount = count;
                     break;
                 case "PRINTED":
-                    printedCount = count.intValue();
+                    printedCount = count;
                     break;
                 case "FAILED":
-                    failedCount = count.intValue();
+                    failedCount = count;
                     break;
             }
         }

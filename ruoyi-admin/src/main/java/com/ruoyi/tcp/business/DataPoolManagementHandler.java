@@ -15,6 +15,7 @@ import com.ruoyi.business.service.IArchivedDataPoolItemService;
 
 import com.ruoyi.business.service.UDiskDataSchedulerService;
 import com.ruoyi.business.service.UDiskFileReaderService;
+import com.ruoyi.business.tcp.TcpClientManager;
 import com.ruoyi.common.core.TcpResponse;
 import com.ruoyi.common.utils.StringUtils;
 import jakarta.annotation.Resource;
@@ -57,6 +58,9 @@ public class DataPoolManagementHandler
     @Resource
     private IArchivedDataPoolItemService archivedDataPoolItemService;
 
+    @Resource
+    private TcpClientManager tcpClientManager;
+
 
 
     /**
@@ -89,6 +93,10 @@ public class DataPoolManagementHandler
                     return updateDataPoolStatus(body);
                 case "/business/dataPool/updateCount":
                     return updateDataPoolCount(body);
+                case "/business/dataPool/connect":
+                    return connectDataPool(body);
+                case "/business/dataPool/disconnect":
+                    return disconnectDataPool(body);
                 default:
                     log.warn("[DataPoolManagement] 未知的数据池操作路径: {}", path);
                     return TcpResponse.error("未知的数据池操作: " + path);
@@ -372,5 +380,48 @@ public class DataPoolManagementHandler
         } else {
             return TcpResponse.error("更新数据池计数失败");
         }
+    }
+
+    /**
+     * 手动连接TCP_SERVER类型数据池
+     */
+    private TcpResponse connectDataPool(String body) throws JsonProcessingException {
+        DataPool dataPool = objectMapper.readValue(body, DataPool.class);
+
+        DataPool pool = dataPoolService.selectDataPoolById(dataPool.getId());
+        if (pool == null) {
+            return TcpResponse.error("数据池不存在");
+        }
+        if (!SourceType.TCP_SERVER.getCode().equals(pool.getSourceType())) {
+            return TcpResponse.error("数据池类型不是TCP_SERVER");
+        }
+//        // 仅在运行状态下允许连接
+//        if (!"RUNNING".equals(pool.getStatus())) {
+//            return TcpResponse.error("数据池不在运行状态，无法连接");
+//        }
+
+        tcpClientManager.getOrCreateProvider(dataPool.getId()).ensureConnected();
+        return TcpResponse.success("已触发连接");
+    }
+
+    /**
+     * 手动断开TCP_SERVER类型数据池
+     */
+    private TcpResponse disconnectDataPool(String body) throws JsonProcessingException {
+        DataPool dataPool = objectMapper.readValue(body, DataPool.class);
+        DataPool pool = dataPoolService.selectDataPoolById(dataPool.getId());
+        if (pool == null) {
+            return TcpResponse.error("数据池不存在");
+        }
+        if (!SourceType.TCP_SERVER.getCode().equals(pool.getSourceType())) {
+            return TcpResponse.error("数据池类型不是TCP_SERVER");
+        }
+
+        // 移除并关闭客户端连接
+        tcpClientManager.removeProvider(dataPool.getId());
+        // 写回连接状态
+        dataPoolService.updateConnectionState(dataPool.getId(), "DISCONNECTED");
+
+        return TcpResponse.success("已断开连接");
     }
 }

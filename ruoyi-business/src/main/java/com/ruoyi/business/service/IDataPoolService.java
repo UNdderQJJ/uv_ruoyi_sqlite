@@ -92,4 +92,12 @@ public interface IDataPoolService
      * @return 结果
      */
     public int updateDataPoolCount(Long id, Long totalCount, Long pendingCount);
+
+    /**
+     * 更新数据池连接状态
+     * @param id 数据池主键
+     * @param connectionState 连接状态
+     * @return 结果
+     */
+    public int updateConnectionState(Long id, String connectionState);
 }

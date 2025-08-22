@@ -33,6 +33,9 @@ public class DataPool extends BaseEntity
     /** 运行状态（IDLE, RUNNING, WARNING, ERROR） */
     private String status;
 
+    /** 连接状态（DISCONNECTED, CONNECTING, CONNECTED） */
+    private String connectionState;
+
     /** 详细配置 */
     private String sourceConfigJson;
 
@@ -57,6 +60,7 @@ public class DataPool extends BaseEntity
             .append("totalCount", getTotalCount())
             .append("pendingCount", getPendingCount())
             .append("status", getStatus())
+            .append("connectionState", getConnectionState())
             .append("sourceConfigJson", getSourceConfigJson())
             .append("parsingRuleJson", getParsingRuleJson())
             .append("triggerConfigJson", getTriggerConfigJson())

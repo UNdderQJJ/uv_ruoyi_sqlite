@@ -2,6 +2,7 @@ package com.ruoyi.business.mapper;
 
 import com.ruoyi.business.domain.DataPoolItem;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 数据池热数据Mapper接口
@@ -149,7 +150,7 @@ public interface DataPoolItemMapper {
      * @param poolId 数据池ID（可选）
      * @return 状态统计结果
      */
-    public List<java.util.Map<String, Object>> countByStatus(Long poolId);
+    public List<Map<String, Object>> countByStatus(Long poolId);
 
     /**
      * 清理已打印成功的数据（可选功能）
