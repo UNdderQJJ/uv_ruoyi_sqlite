@@ -7,7 +7,7 @@ import com.ruoyi.business.enums.PoolStatus;
 import com.ruoyi.business.enums.SourceType;
 import com.ruoyi.business.enums.TriggerType;
 import com.ruoyi.business.service.DataPool.IDataPoolService;
-import com.ruoyi.business.service.DataPool.TcpServer.tcp.TcpServerManager;
+import com.ruoyi.business.service.DataPool.TcpServer.tcp.TcpClientManager;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -22,14 +22,15 @@ import java.util.List;
  * 定时检查 TCP_SERVER 类型（作为客户端连接远端）的数据池
  */
 @Service
-public class TcpServerDataSchedulerService {
+public class TcpClientDataSchedulerService {
 
-    private static final Logger log = LoggerFactory.getLogger(TcpServerDataSchedulerService.class);
+    private static final Logger log = LoggerFactory.getLogger(TcpClientDataSchedulerService.class);
 
     @Resource
     private IDataPoolService dataPoolService;
+    
     @Resource
-    private TcpServerManager tcpServerManager;
+    private TcpClientManager tcpClientManager;
 
     private static final int DEFAULT_THRESHOLD = 100;
 
@@ -60,11 +61,11 @@ public class TcpServerDataSchedulerService {
         int threshold = trigger != null && trigger.getThreshold() != null ? trigger.getThreshold() : DEFAULT_THRESHOLD;
 
         // 连接保障
-        tcpServerManager.getOrCreateProvider(pool.getId()).ensureConnected();
+        tcpClientManager.getOrCreateProvider(pool.getId()).ensureConnected();
 
         // 判断是否触发请求
         if (shouldTrigger(pool, trigger, threshold)) {
-            tcpServerManager.getOrCreateProvider(pool.getId()).requestDataIfConnected();
+            tcpClientManager.getOrCreateProvider(pool.getId()).requestDataIfConnected();
         }
     }
 

@@ -15,7 +15,7 @@ import com.ruoyi.business.service.ArchivedDataPoolItem.IArchivedDataPoolItemServ
 
 import com.ruoyi.business.service.DataPool.UDisk.UDiskDataSchedulerService;
 import com.ruoyi.business.service.DataPool.UDisk.UDiskFileReaderService;
-import com.ruoyi.business.service.DataPool.TcpServer.tcp.TcpServerManager;
+import com.ruoyi.business.service.DataPool.TcpServer.tcp.TcpClientManager;
 import com.ruoyi.common.core.TcpResponse;
 import com.ruoyi.common.utils.StringUtils;
 import jakarta.annotation.Resource;
@@ -59,7 +59,7 @@ public class DataPoolManagementHandler
     private IArchivedDataPoolItemService archivedDataPoolItemService;
 
     @Resource
-    private TcpServerManager tcpServerManager;
+    private TcpClientManager tcpClientManager;
 
 
 
@@ -400,7 +400,7 @@ public class DataPoolManagementHandler
 //            return TcpResponse.error("数据池不在运行状态，无法连接");
 //        }
 
-        tcpServerManager.getOrCreateProvider(dataPool.getId()).ensureConnected();
+        tcpClientManager.getOrCreateProvider(dataPool.getId()).ensureConnected();
         return TcpResponse.success("已触发连接");
     }
 
@@ -418,7 +418,7 @@ public class DataPoolManagementHandler
         }
 
         // 移除并关闭客户端连接
-        tcpServerManager.removeProvider(dataPool.getId());
+        tcpClientManager.removeProvider(dataPool.getId());
         // 写回连接状态
         dataPoolService.updateConnectionState(dataPool.getId(), "DISCONNECTED");
 

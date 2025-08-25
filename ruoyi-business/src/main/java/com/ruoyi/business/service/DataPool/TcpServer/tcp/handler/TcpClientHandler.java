@@ -1,6 +1,6 @@
 package com.ruoyi.business.service.DataPool.TcpServer.tcp.handler;
 
-import com.ruoyi.business.service.DataPool.TcpServer.tcp.TcpServerProvider;
+import com.ruoyi.business.service.DataPool.TcpServer.tcp.TcpClientProvider;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
 import io.netty.handler.timeout.IdleStateEvent;
@@ -10,13 +10,13 @@ import org.slf4j.LoggerFactory;
 /**
  * Netty 客户端入站处理器
  */
-public class TcpServerHandler extends SimpleChannelInboundHandler<String> {
+public class TcpClientHandler extends SimpleChannelInboundHandler<String> {
 
-    private static final Logger log = LoggerFactory.getLogger(TcpServerHandler.class);
+    private static final Logger log = LoggerFactory.getLogger(TcpClientHandler.class);
 
-    private final TcpServerProvider provider;
+    private final TcpClientProvider provider;
 
-    public TcpServerHandler(TcpServerProvider provider) {
+    public TcpClientHandler(TcpClientProvider provider) {
         this.provider = provider;
     }
 
