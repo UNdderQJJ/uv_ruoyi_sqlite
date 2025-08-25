@@ -1,9 +1,9 @@
-package com.ruoyi.business.service.DataPool.TcpClient.tcp;
+package com.ruoyi.business.service.DataPool.TcpServer.tcp;
 
 import com.ruoyi.business.service.DataPool.DataPoolConfigFactory;
 import com.ruoyi.business.service.DataPool.IDataPoolService;
-import com.ruoyi.business.service.DataPool.TcpClient.tcp.ingest.DataIngestionService;
-import com.ruoyi.business.service.DataPool.TcpClient.tcp.parse.ParsingRuleEngineService;
+import com.ruoyi.business.service.DataPool.TcpServer.tcp.ingest.DataIngestionService;
+import com.ruoyi.business.service.DataPool.TcpServer.tcp.parse.ParsingRuleEngineService;
 import jakarta.annotation.Resource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -16,9 +16,9 @@ import java.util.concurrent.ConcurrentHashMap;
  * TcpClientProvider 管理器：生命周期管理 & 提供按池获取
  */
 @Component
-public class TcpClientManager {
+public class TcpServerManager {
 
-    private static final Logger log = LoggerFactory.getLogger(TcpClientManager.class);
+    private static final Logger log = LoggerFactory.getLogger(TcpServerManager.class);
 
     @Resource
     private IDataPoolService dataPoolService;
@@ -29,18 +29,18 @@ public class TcpClientManager {
     @Resource
     private ParsingRuleEngineService parsingRuleEngineService;
 
-    private final Map<Long, TcpClientProvider> providers = new ConcurrentHashMap<>();
+    private final Map<Long, TcpServerProvider> providers = new ConcurrentHashMap<>();
 
-    public TcpClientProvider getOrCreateProvider(Long poolId) {
+    public TcpServerProvider getOrCreateProvider(Long poolId) {
         return providers.computeIfAbsent(poolId, id -> {
-            TcpClientProvider provider = new TcpClientProvider(id, dataPoolService, configFactory, ingestionService, parsingRuleEngineService);
+            TcpServerProvider provider = new TcpServerProvider(id, dataPoolService, configFactory, ingestionService, parsingRuleEngineService);
             provider.ensureConnected();
             return provider;
         });
     }
 
     public void removeProvider(Long poolId) {
-        TcpClientProvider provider = providers.remove(poolId);
+        TcpServerProvider provider = providers.remove(poolId);
         if (provider != null) {
             provider.close();
         }
@@ -50,7 +50,7 @@ public class TcpClientManager {
      * 根据数据池最新配置刷新 Provider
      */
     public void refreshProvider(Long poolId) {
-        TcpClientProvider provider = providers.get(poolId);
+        TcpServerProvider provider = providers.get(poolId);
         if (provider != null) {
             provider.reloadConfigs();
             provider.ensureConnected();

@@ -1,4 +1,4 @@
-package com.ruoyi.business.service.DataPool.TcpClient.tcp.parse;
+package com.ruoyi.business.service.DataPool.TcpServer.tcp.parse;
 
 import com.jayway.jsonpath.JsonPath;
 import com.ruoyi.business.domain.config.ParsingRuleConfig;

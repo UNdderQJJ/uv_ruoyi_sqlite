@@ -1,4 +1,4 @@
-package com.ruoyi.business.service.DataPool.TcpClient.tcp;
+package com.ruoyi.business.service.DataPool.TcpServer.tcp;
 
 import com.ruoyi.business.domain.DataPool;
 import com.ruoyi.business.domain.config.ParsingRuleConfig;
@@ -6,9 +6,9 @@ import com.ruoyi.business.domain.config.TcpServerSourceConfig;
 import com.ruoyi.business.domain.config.TriggerConfig;
 import com.ruoyi.business.service.DataPool.DataPoolConfigFactory;
 import com.ruoyi.business.service.DataPool.IDataPoolService;
-import com.ruoyi.business.service.DataPool.TcpClient.tcp.handler.TcpClientHandler;
-import com.ruoyi.business.service.DataPool.TcpClient.tcp.ingest.DataIngestionService;
-import com.ruoyi.business.service.DataPool.TcpClient.tcp.parse.ParsingRuleEngineService;
+import com.ruoyi.business.service.DataPool.TcpServer.tcp.handler.TcpServerHandler;
+import com.ruoyi.business.service.DataPool.TcpServer.tcp.ingest.DataIngestionService;
+import com.ruoyi.business.service.DataPool.TcpServer.tcp.parse.ParsingRuleEngineService;
 import com.ruoyi.business.enums.PoolStatus;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.buffer.Unpooled;
@@ -31,13 +31,13 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * 针对单个数据池的 TCP 客户端提供者
  * 负责连接管理、发送请求、接收响应与回调入库
  */
-public class TcpClientProvider {
+public class TcpServerProvider {
 
     public enum ConnectionState {
         DISCONNECTED, CONNECTING, CONNECTED
     }
 
-    private static final Logger log = LoggerFactory.getLogger(TcpClientProvider.class);
+    private static final Logger log = LoggerFactory.getLogger(TcpServerProvider.class);
 
     private final Long poolId;
     private final IDataPoolService dataPoolService;
@@ -55,7 +55,7 @@ public class TcpClientProvider {
     private volatile ConnectionState connectionState = ConnectionState.DISCONNECTED;
     private final AtomicBoolean requestInProgress = new AtomicBoolean(false);
 
-    public TcpClientProvider(Long poolId,
+    public TcpServerProvider(Long poolId,
                              IDataPoolService dataPoolService,
                              DataPoolConfigFactory configFactory,
                              DataIngestionService ingestionService,
@@ -108,7 +108,7 @@ public class TcpClientProvider {
                         pipeline.addLast(new DelimiterBasedFrameDecoder(1024 * 1024, Delimiters.lineDelimiter()));
                         pipeline.addLast(new StringDecoder(StandardCharsets.UTF_8));
                         pipeline.addLast(new StringEncoder(StandardCharsets.UTF_8));
-                        pipeline.addLast(new TcpClientHandler(TcpClientProvider.this));
+                        pipeline.addLast(new TcpServerHandler(TcpServerProvider.this));
                     }
                 });
     }

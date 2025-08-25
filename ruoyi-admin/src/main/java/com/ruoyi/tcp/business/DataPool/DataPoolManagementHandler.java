@@ -15,7 +15,7 @@ import com.ruoyi.business.service.ArchivedDataPoolItem.IArchivedDataPoolItemServ
 
 import com.ruoyi.business.service.DataPool.UDisk.UDiskDataSchedulerService;
 import com.ruoyi.business.service.DataPool.UDisk.UDiskFileReaderService;
-import com.ruoyi.business.service.DataPool.TcpClient.tcp.TcpClientManager;
+import com.ruoyi.business.service.DataPool.TcpServer.tcp.TcpServerManager;
 import com.ruoyi.common.core.TcpResponse;
 import com.ruoyi.common.utils.StringUtils;
 import jakarta.annotation.Resource;
@@ -59,7 +59,7 @@ public class DataPoolManagementHandler
     private IArchivedDataPoolItemService archivedDataPoolItemService;
 
     @Resource
-    private TcpClientManager tcpClientManager;
+    private TcpServerManager tcpServerManager;
 
 
 
@@ -392,15 +392,15 @@ public class DataPoolManagementHandler
         if (pool == null) {
             return TcpResponse.error("数据池不存在");
         }
-        if (!SourceType.TCP_CLIENT.getCode().equals(pool.getSourceType())) {
-            return TcpResponse.error("数据池类型不是TCP_CLIENT");
+        if (!SourceType.TCP_SERVER.getCode().equals(pool.getSourceType())) {
+            return TcpResponse.error("数据池类型不是TCP_SERVER");
         }
 //        // 仅在运行状态下允许连接
 //        if (!"RUNNING".equals(pool.getStatus())) {
 //            return TcpResponse.error("数据池不在运行状态，无法连接");
 //        }
 
-        tcpClientManager.getOrCreateProvider(dataPool.getId()).ensureConnected();
+        tcpServerManager.getOrCreateProvider(dataPool.getId()).ensureConnected();
         return TcpResponse.success("已触发连接");
     }
 
@@ -413,12 +413,12 @@ public class DataPoolManagementHandler
         if (pool == null) {
             return TcpResponse.error("数据池不存在");
         }
-        if (!SourceType.TCP_CLIENT.getCode().equals(pool.getSourceType())) {
-            return TcpResponse.error("数据池类型不是TCP_CLIENT");
+        if (!SourceType.TCP_SERVER.getCode().equals(pool.getSourceType())) {
+            return TcpResponse.error("数据池类型不是TCP_SERVER");
         }
 
         // 移除并关闭客户端连接
-        tcpClientManager.removeProvider(dataPool.getId());
+        tcpServerManager.removeProvider(dataPool.getId());
         // 写回连接状态
         dataPoolService.updateConnectionState(dataPool.getId(), "DISCONNECTED");
 
