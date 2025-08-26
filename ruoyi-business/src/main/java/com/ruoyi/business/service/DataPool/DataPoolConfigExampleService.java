@@ -68,11 +68,19 @@ public class DataPoolConfigExampleService {
         header2.setKey("Authorization");
         header2.setValue("Bearer your_token");
 
+        HttpSourceConfig.HttpBody body1 = new HttpSourceConfig.HttpBody();
+        body1.setKey("page");
+        body1.setValue("1");
+
+        HttpSourceConfig.HttpBody body2 = new HttpSourceConfig.HttpBody();
+        body2.setKey("size");
+        body2.setValue("2");
+
         HttpSourceConfig config = configFactory.createHttpConfig(
             "https://api.example.com/data",
             "POST",
             Arrays.asList(header1, header2),
-            "{\"page\": 1, \"size\": 100}"
+                Arrays.asList(body1, body2)
         );
         return JSON.toJSONString(config, String.valueOf(true));
     }

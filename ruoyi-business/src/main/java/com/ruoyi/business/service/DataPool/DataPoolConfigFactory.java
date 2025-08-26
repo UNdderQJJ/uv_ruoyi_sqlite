@@ -4,6 +4,8 @@ import com.alibaba.fastjson2.JSON;
 import com.ruoyi.business.domain.config.*;
 import org.springframework.stereotype.Component;
 
+import java.util.List;
+
 /**
  * 数据池配置工厂类
  * 用于创建和解析不同类型的数据源配置
@@ -49,8 +51,8 @@ public class DataPoolConfigFactory {
     /**
      * 创建HTTP配置
      */
-    public HttpSourceConfig createHttpConfig(String url, String method, 
-                                           java.util.List<HttpSourceConfig.HttpHeader> headers, String body) {
+    public HttpSourceConfig createHttpConfig(String url, String method,
+                                             List<HttpSourceConfig.HttpHeader> headers, List<HttpSourceConfig.HttpBody> body) {
         HttpSourceConfig config = new HttpSourceConfig();
         config.setUrl(url);
         config.setMethod(method);

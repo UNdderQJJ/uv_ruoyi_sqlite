@@ -103,6 +103,7 @@ public class UDiskDataSchedulerService {
             queryParam.setSourceType(SourceType.U_DISK.getCode());
             queryParam.setStatus(PoolStatus.RUNNING.getCode()); // 只检查运行中的数据池
             queryParam.setFileReadCompleted("0");// 只检查未读取完成的数据池
+            queryParam.setDelFlag("0"); // 未删除
             
             List<DataPool> dataPools = dataPoolService.selectDataPoolList(queryParam);
             if (dataPools == null || dataPools.isEmpty()) {

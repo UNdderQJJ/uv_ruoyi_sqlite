@@ -46,6 +46,8 @@ public class TcpServerDataSchedulerService {
             DataPool query = new DataPool();
             query.setSourceType(SourceType.TCP_CLIENT.getCode());
             query.setStatus(PoolStatus.RUNNING.getCode());
+            query.setDelFlag("0"); // 未删除
+
             List<DataPool> pools = dataPoolService.selectDataPoolList(query);
             
             if (pools == null || pools.isEmpty()) {

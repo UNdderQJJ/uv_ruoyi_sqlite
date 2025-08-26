@@ -20,32 +20,25 @@ public class HttpSourceConfig extends SourceConfig {
     
     /** 请求头 */
     private List<HttpHeader> headers;
-    
+
     /** 请求体 */
-    private String body;
+    private List<HttpBody> body;
 
 
     /**
      * HTTP请求头
      */
+    @Data
     public static class HttpHeader {
         private String key;
         private String value;
-
-        public String getKey() {
-            return key;
-        }
-
-        public void setKey(String key) {
-            this.key = key;
-        }
-
-        public String getValue() {
-            return value;
-        }
-
-        public void setValue(String value) {
-            this.value = value;
-        }
+    }
+    /**
+     * HTTP请求体
+     */
+    @Data
+    public static class HttpBody {
+        private String key;
+        private String value;
     }
 }
