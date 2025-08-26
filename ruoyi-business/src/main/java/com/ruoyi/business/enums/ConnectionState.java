@@ -1,8 +1,12 @@
 package com.ruoyi.business.enums;
 
+import lombok.Data;
+import lombok.Getter;
+
 /**
  * 连接状态枚举
  */
+@Getter
 public enum ConnectionState {
     DISCONNECTED("DISCONNECTED", "已断开"),
     CONNECTING("CONNECTING", "正在连接"),
@@ -18,13 +22,6 @@ public enum ConnectionState {
         this.info = info;
     }
 
-    public String getCode() {
-        return code;
-    }
-
-    public String getInfo() {
-        return info;
-    }
 }
 
 

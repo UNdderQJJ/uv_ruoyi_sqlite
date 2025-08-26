@@ -10,12 +10,16 @@ import com.ruoyi.business.domain.config.UDiskSourceConfig;
 import com.ruoyi.business.enums.SourceType;
 import com.ruoyi.business.service.DataPool.DataPoolConfigValidationService;
 import com.ruoyi.business.service.DataPool.IDataPoolService;
+import com.ruoyi.business.service.DataPool.TcpClient.tcp.TcpServerManager;
+import com.ruoyi.business.service.DataPool.WebSocket.WebSocketManager;
 import com.ruoyi.business.service.DataPoolItem.IDataPoolItemService;
 import com.ruoyi.business.service.ArchivedDataPoolItem.IArchivedDataPoolItemService;
 
 import com.ruoyi.business.service.DataPool.UDisk.UDiskDataSchedulerService;
 import com.ruoyi.business.service.DataPool.UDisk.UDiskFileReaderService;
 import com.ruoyi.business.service.DataPool.TcpServer.tcp.TcpClientManager;
+import com.ruoyi.business.service.DataPool.Http.HttpManager;
+import com.ruoyi.business.service.DataPool.Mqtt.MqttManager;
 import com.ruoyi.common.core.TcpResponse;
 import com.ruoyi.common.utils.StringUtils;
 import jakarta.annotation.Resource;
@@ -60,6 +64,18 @@ public class DataPoolManagementHandler
 
     @Resource
     private TcpClientManager tcpClientManager;
+    
+    @Resource
+    private TcpServerManager tcpServerManager;
+    
+    @Resource
+    private HttpManager httpManager;
+    
+    @Resource
+    private MqttManager mqttManager;
+    
+    @Resource
+    private WebSocketManager webSocketManager;
 
 
 
@@ -204,6 +220,9 @@ public class DataPoolManagementHandler
         }
          int result = dataPoolService.updateDataPool(dataPool);
 
+        // 更新数据池配置后，刷新相关Provider的配置
+        refreshProviderConfig(dataPool.getId(), dataPool.getSourceType());
+
         // 只有在文件未读取完成时才拉取数据
         if (!"1".equals(dataPool.getFileReadCompleted())) {
             uDiskDataSchedulerService.manualTriggerDataReading(dataPool.getId(), null);
@@ -213,6 +232,41 @@ public class DataPoolManagementHandler
             return TcpResponse.success("更新数据池成功");
         } else {
             return TcpResponse.error("更新数据池失败");
+        }
+    }
+    
+    /**
+     * 刷新Provider配置
+     */
+    private void refreshProviderConfig(Long poolId, String sourceType) {
+        try {
+            switch (sourceType) {
+                case "TCP_SERVER":
+                    // 刷新TCP客户端Provider配置
+                    tcpClientManager.getOrCreateProvider(poolId).reloadConfigs();
+                    break;
+                case "TCP_CLIENT":
+                    // 刷新TCP服务端Provider配置
+                    tcpServerManager.getOrCreateProvider(poolId).reloadConfigs();
+                    break;
+                case "HTTP":
+                    // 刷新HTTP Provider配置
+                    httpManager.getOrCreateProvider(poolId).reloadConfigs();
+                    break;
+                case "MQTT":
+                    // 刷新MQTT Provider配置
+                    mqttManager.getOrCreateProvider(poolId).reloadConfigs();
+                    break;
+                case "WEBSOCKET":
+                    // 刷新WebSocket Provider配置
+                    webSocketManager.getOrCreateProvider(poolId).reloadConfigs();
+                    break;
+                default:
+                    log.debug("[DataPoolManagement] 未知的数据源类型，跳过配置刷新: {}", sourceType);
+            }
+            log.info("[DataPoolManagement] 已刷新数据池配置: poolId={}, sourceType={}", poolId, sourceType);
+        } catch (Exception e) {
+            log.warn("[DataPoolManagement] 刷新Provider配置失败: poolId={}, sourceType={}", poolId, sourceType, e);
         }
     }
 

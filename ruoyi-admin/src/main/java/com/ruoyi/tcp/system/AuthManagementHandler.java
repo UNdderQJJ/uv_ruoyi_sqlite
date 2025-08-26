@@ -101,6 +101,7 @@ public class AuthManagementHandler {
             result.put("token", token);
             if (loginUser != null) {
                 result.put("userId", loginUser.getUserId());
+                result.put("username", loginUser.getUsername());
             }
             result.put("msg", "登录成功");
             
