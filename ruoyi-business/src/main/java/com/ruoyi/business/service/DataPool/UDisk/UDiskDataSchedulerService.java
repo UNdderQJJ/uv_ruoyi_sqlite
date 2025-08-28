@@ -38,7 +38,7 @@ public class UDiskDataSchedulerService {
     private static final int DEFAULT_THRESHOLD = 100;
 
     // 默认批次大小：每次最多读取的数据量
-    private static final int DEFAULT_BATCH_SIZE = 500;
+    private static final int DEFAULT_BATCH_SIZE = 10;
     
     /**
      * 手动触发数据读取
@@ -47,27 +47,25 @@ public class UDiskDataSchedulerService {
      * @param batchSize 批次大小（可选，为null时使用配置或默认值）
      * @return 读取的数据量
      */
-    public int manualTriggerDataReading(Long poolId, Integer batchSize) {
+    public String manualTriggerDataReading(Long poolId, Integer batchSize) {
         // 查询数据池
         DataPool dataPool = dataPoolService.selectDataPoolById(poolId);
         if (dataPool == null) {
             log.error("数据池不存在: {}", poolId);
-            System.out.println("数据池不存在"+poolId);
-            return 0;
+            return "数据池不存在";
         }
         
         // 检查数据池类型
         if (!SourceType.U_DISK.getCode().equals(dataPool.getSourceType())) {
             log.error("数据池类型不是U盘类型: {}", dataPool.getSourceType());
-            System.out.println("数据池类型不是U盘类型"+dataPool.getSourceType());
-            return 0;
+            return "数据池类型不是U盘类型";
         }
         
         // 检查文件是否已经读取完成
         if ("1".equals(dataPool.getFileReadCompleted())) {
             log.info("数据池 {} 的文件已经读取完成，无需再次读取", dataPool.getPoolName());
-            System.out.println("数据池"+dataPool.getPoolName()+"的文件已经读取完成，无需再次读取");
-            return 0;
+            dataPoolService.updateDataPoolStatus(poolId, PoolStatus.WINING.getCode());
+            return "数据池"+dataPool.getPoolName()+"的文件已经读取完成，无需再次读取";
         }
         
         // 获取批次大小
@@ -76,28 +74,30 @@ public class UDiskDataSchedulerService {
         //获取阈值
         int threshold =  getThresholdFromConfig(dataPool);
         
-        log.info("手动触发数据池 {} 读取数据, 批次大小: {}", dataPool.getPoolName(), actualBatchSize);
-        System.out.println("手动触发数据池"+dataPool.getPoolName()+"读取数据, 批次大小: "+actualBatchSize);
-        
-        // 更新连接状态为正在读取
-        dataPoolService.updateConnectionState(poolId, ConnectionState.CONNECTING.getCode());
+        log.info("触发数据池 {} 读取数据, 批次大小: {}", dataPool.getPoolName(), actualBatchSize);
         
         // 调用文件读取服务，阈值设为0确保一定会读取
-        int readCount = uDiskFileReaderService.readDataIfBelowThreshold(dataPool, threshold, actualBatchSize);
-        
+        int readCount = 0;
+        try {
+            readCount = uDiskFileReaderService.readDataIfBelowThreshold(dataPool, threshold, actualBatchSize);
+        } catch (Exception e) {
+            // 更新连接状态为断开
+            throw new IllegalStateException("文件读取出错"+e.getMessage());
+        }
+        // 更新连接状态为已连接（文件可读）
+        dataPoolService.updateConnectionState(poolId, ConnectionState.CONNECTED.getCode());
+
         if (readCount > 0) {
             log.info("数据池 {} 成功读取 {} 条数据", dataPool.getPoolName(), readCount);
-            System.out.println("数据池"+dataPool.getPoolName()+"成功读取"+readCount+"条数据");
-            // 更新连接状态为已连接（文件可读）
-            dataPoolService.updateConnectionState(poolId, ConnectionState.CONNECTED.getCode());
+
+            return "数据池"+dataPool.getPoolName()+"成功读取"+readCount+"条数据";
         } else {
             log.info("数据池 {} 没有新数据可读取", dataPool.getPoolName());
-            System.out.println("数据池"+dataPool.getPoolName()+"没有新数据可读取");
             // 如果没有数据可读，可能是文件不存在或已读完，更新状态为断开
-            dataPoolService.updateConnectionState(poolId, ConnectionState.DISCONNECTED.getCode());
+//            dataPoolService.updateConnectionState(poolId, ConnectionState.DISCONNECTED.getCode());
+            return "数据池"+dataPool.getPoolName()+"没有新数据可读取";
         }
-        
-        return readCount;
+
     }
     
     /**

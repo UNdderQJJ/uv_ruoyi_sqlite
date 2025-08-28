@@ -168,7 +168,10 @@ public class WebSocketNotificationService {
         connectionStateMap.put("new", event.getNewConnectionState() != null ? event.getNewConnectionState().getCode() : null);
         connectionStateMap.put("oldInfo", event.getOldConnectionState() != null ? event.getOldConnectionState().getInfo() : "未知状态");
         connectionStateMap.put("newInfo", event.getNewConnectionState() != null ? event.getNewConnectionState().getInfo() : "未知状态");
-        message.put("connectionState", connectionStateMap);
+        
+        if (!event.getOldConnectionState().equals(event.getNewConnectionState())) {
+            message.put("connectionState", connectionStateMap);
+        }
 
         // 运行状态处理
         Map<String, Object> poolStatusMap = new HashMap<>();
@@ -176,7 +179,10 @@ public class WebSocketNotificationService {
         poolStatusMap.put("new", event.getNewPoolStatus() != null ? event.getNewPoolStatus().getCode() : null);
         poolStatusMap.put("oldInfo", event.getOldPoolStatus() != null ? event.getOldPoolStatus().getInfo() : "未知状态");
         poolStatusMap.put("newInfo", event.getNewPoolStatus() != null ? event.getNewPoolStatus().getInfo() : "未知状态");
-        message.put("poolStatus", poolStatusMap);
+
+        if (!event.getOldPoolStatus().equals(event.getNewPoolStatus())) {
+            message.put("poolStatus", poolStatusMap);
+        }
 
         message.put("timestamp", event.getTimestamp());
 

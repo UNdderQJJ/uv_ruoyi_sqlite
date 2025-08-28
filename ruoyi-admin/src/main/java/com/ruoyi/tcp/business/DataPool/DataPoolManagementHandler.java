@@ -313,10 +313,6 @@ public class DataPoolManagementHandler
               }
         }
 
-          // 只有在文件未读取完成时才拉取数据
-        if (!"1".equals(dataPool.getFileReadCompleted())) {
-            uDiskDataSchedulerService.manualTriggerDataReading(dataPool.getId(), null);
-        }
 
        return TcpResponse.success("更新数据池成功");
     }
@@ -483,47 +479,51 @@ public class DataPoolManagementHandler
 
         try {
             // 不直接启动定时任务，等待连接成功事件触发
-            
+
+            String successMessage;
             switch (sourceType) {
                 case "U_DISK":
                     // U盘类型：触发文件读取
-                    int readCount = uDiskDataSchedulerService.manualTriggerDataReading(poolId, null);
-                    log.info("[DataPoolManagement] U盘数据源启动成功，读取数据量: {}", readCount);
-                    return TcpResponse.success("U盘数据源启动成功，读取数据量: " + readCount);
-                    
+                    successMessage = uDiskDataSchedulerService.manualTriggerDataReading(poolId, null);
+                    break;
                 case "TCP_SERVER":
                     // TCP服务端：建立连接
                     tcpClientManager.getOrCreateProvider(poolId).ensureConnected();
                     log.info("[DataPoolManagement] TCP服务端数据源启动成功");
-                    return TcpResponse.success("TCP服务端数据源启动成功");
-                    
+                    successMessage = "TCP服务端数据源启动成功";
+                    break;
                 case "TCP_CLIENT":
                     // TCP客户端：启动监听
                     tcpServerManager.getOrCreateProvider(poolId);
                     log.info("[DataPoolManagement] TCP客户端数据源启动成功");
-                    return TcpResponse.success("TCP客户端数据源启动成功");
-                    
+                    successMessage = "TCP客户端数据源启动成功";
+                    break;
                 case "HTTP":
                     // HTTP：创建Provider（HTTP是请求驱动的，无需特殊启动）
                     httpManager.getOrCreateProvider(poolId);
                     log.info("[DataPoolManagement] HTTP数据源启动成功");
-                    return TcpResponse.success("HTTP数据源启动成功");
-                    
+                    successMessage = "HTTP数据源启动成功";
+                    break;
                 case "MQTT":
                     // MQTT：建立连接
                     mqttManager.getOrCreateProvider(poolId);
                     log.info("[DataPoolManagement] MQTT数据源启动成功");
-                    return TcpResponse.success("MQTT数据源启动成功");
-                    
+                    successMessage = "MQTT数据源启动成功";
+                    break;
                 case "WEBSOCKET":
                     // WebSocket：建立连接
                     webSocketManager.getOrCreateProvider(poolId);
                     log.info("[DataPoolManagement] WebSocket数据源启动成功");
-                    return TcpResponse.success("WebSocket数据源启动成功");
-                    
+                    successMessage = "WebSocket数据源启动成功";
+                    break;
                 default:
-                    return TcpResponse.error("不支持的数据源类型: " + sourceType);
+                    successMessage = "不支持的数据源类型: " + sourceType;
+                    break;
             }
+            // 启动定时任务
+            dataPoolSchedulerService.startDataPoolWithScheduler(dataPool.getId());
+
+            return TcpResponse.success(successMessage);
         } catch (Exception e) {
             log.error("[DataPoolManagement] 启动数据源失败: poolId={}, sourceType={}", poolId, sourceType, e);
             //更新数据池状态
@@ -547,7 +547,9 @@ public class DataPoolManagementHandler
         }
 
          //更新数据池状态
-        dataPoolService.updateDataPoolStatus(poolId, PoolStatus.IDLE.getCode());
+        if (!dataPool.getStatus().equals(PoolStatus.WINING.getCode())) {
+            dataPoolService.updateDataPoolStatus(poolId, PoolStatus.IDLE.getCode());
+        }
 
         try {
             // 停止数据池的定时任务

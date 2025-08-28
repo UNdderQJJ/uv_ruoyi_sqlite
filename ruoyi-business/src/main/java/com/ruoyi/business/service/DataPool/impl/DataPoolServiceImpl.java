@@ -4,10 +4,12 @@ import com.ruoyi.business.domain.DataPool;
 import com.ruoyi.business.enums.ConnectionState;
 import com.ruoyi.business.enums.PoolStatus;
 import com.ruoyi.business.mapper.DataPool.DataPoolMapper;
+import com.ruoyi.business.service.DataPool.DataPoolSchedulerService;
 import com.ruoyi.business.service.DataPool.IDataPoolService;
 import com.ruoyi.business.service.notification.DataPoolStateChangeService;
 import com.ruoyi.common.utils.DateUtils;
 import jakarta.annotation.Resource;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -25,6 +27,10 @@ public class DataPoolServiceImpl implements IDataPoolService
     
     @Resource
     private DataPoolStateChangeService stateChangeService;
+    
+    @Resource
+    @Lazy
+    private DataPoolSchedulerService dataPoolSchedulerService;
 
     /**
      * 查询数据池列表
@@ -253,9 +259,9 @@ public class DataPoolServiceImpl implements IDataPoolService
         DataPool dataPool = new DataPool();
         dataPool.setId(id);
         dataPool.setConnectionState(connectionState);
-        if(connectionState.equals(ConnectionState.DISCONNECTED.getCode())){
-            dataPool.setStatus(PoolStatus.ERROR.getCode());
-        }
+//        if(connectionState.equals(ConnectionState.DISCONNECTED.getCode())){
+//            dataPool.setStatus(PoolStatus.ERROR.getCode());
+//        }
         dataPool.setUpdateTime(DateUtils.getNowDate());
         
         int result = dataPoolMapper.updateDataPool(dataPool);

@@ -17,7 +17,10 @@ public enum PoolStatus
     WARNING("WARNING", "警告"),
     
     /** 错误 */
-    ERROR("ERROR", "错误");
+    ERROR("ERROR", "错误"),
+
+    /**已完成*/
+    WINING("WINING", "已完成");
 
     private final String code;
     private final String info;

@@ -3,6 +3,7 @@ package com.ruoyi.business.service.DataPool.UDisk;
 import com.ruoyi.business.domain.DataPool;
 import com.ruoyi.business.domain.config.UDiskSourceConfig;
 import com.alibaba.fastjson2.JSON;
+import com.ruoyi.business.enums.PoolStatus;
 import com.ruoyi.business.service.DataPool.IDataPoolService;
 import com.ruoyi.business.service.DataPoolItem.IDataPoolItemService;
 import com.ruoyi.business.enums.ConnectionState;
@@ -341,6 +342,8 @@ public class UDiskFileReaderService {
      */
     private void updateFileReadCompleted(DataPool dataPool, boolean completed) {
         dataPool.setFileReadCompleted(completed ? "1" : "0");
+        dataPoolService.updateDataPoolStatus(dataPool.getId(),PoolStatus.WINING.getCode());
+        dataPool.setStatus(PoolStatus.WINING.getCode());
         dataPoolService.updateDataPool(dataPool);
         log.info("数据池 {} 的文件读取完成标志已更新为 {}", dataPool.getPoolName(), completed);
     }

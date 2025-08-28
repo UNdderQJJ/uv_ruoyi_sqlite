@@ -75,7 +75,7 @@ public class DataPoolSchedulerService implements ApplicationRunner {
         try {
             DataPool dataPool = dataPoolService.selectDataPoolById(poolId);
             if (dataPool == null) {
-                log.warn("[DataPoolScheduler] 数据池不存在: {}", poolId);
+                log.warn(" 数据池不存在: {}", poolId);
                 return;
             }
 
@@ -92,10 +92,29 @@ public class DataPoolSchedulerService implements ApplicationRunner {
             );
             
             scheduledTasks.put(poolId, task);
-            log.info("[DataPoolScheduler] 启动数据池定时任务: poolId={}, interval={}ms", poolId, interval);
+            log.info("启动数据池定时任务: poolId={}, interval={}ms", poolId, interval);
             
         } catch (Exception e) {
-            log.error("[DataPoolScheduler] 启动数据池定时任务失败: poolId={}", poolId, e);
+            log.error(" 启动数据池定时任务失败: poolId={}", poolId, e);
+        }
+    }
+
+    /**
+     * 启动数据池并启动定时任务
+     * 供外部调用，用于启动数据池时直接启动定时任务
+     */
+    public void startDataPoolWithScheduler(Long poolId) {
+        try {
+            log.info("启动数据池并启动定时任务: poolId={}", poolId);
+            
+            // 先启动定时任务
+            startDataPoolScheduler(poolId);
+            
+            // 记录启动日志
+            log.info("数据池启动完成: poolId={}", poolId);
+            
+        } catch (Exception e) {
+            log.error("启动数据池失败: poolId={}", poolId, e);
         }
     }
 
@@ -172,13 +191,13 @@ public class DataPoolSchedulerService implements ApplicationRunner {
             // 检查数据池是否仍然处于运行状态
             DataPool currentPool = dataPoolService.selectDataPoolById(pool.getId());
             if (currentPool == null || !PoolStatus.RUNNING.getCode().equals(currentPool.getStatus())) {
-                log.debug("[DataPoolScheduler] 数据池已停止或删除，停止定时任务: poolId={}", pool.getId());
+                log.debug(" 数据池已停止或删除，停止定时任务: poolId={}", pool.getId());
                 stopDataPoolScheduler(pool.getId());
                 return;
             }
 
             String sourceType = pool.getSourceType();
-            log.debug("[DataPoolScheduler] 执行数据池定时任务: poolId={}, sourceType={}", pool.getId(), sourceType);
+            log.debug(" 执行数据池定时任务: poolId={}, sourceType={}", pool.getId(), sourceType);
             
             switch (sourceType) {
                 case "U_DISK":
@@ -211,17 +230,18 @@ public class DataPoolSchedulerService implements ApplicationRunner {
      * 处理U盘数据池
      */
     private void processUDiskPool(DataPool pool) {
+        DataPool dataPool = dataPoolService.selectDataPoolById(pool.getId());
         // 检查文件是否已经读取完成
-        if ("1".equals(pool.getFileReadCompleted())) {
+        if ("1".equals(dataPool.getFileReadCompleted())) {
             return;
         }
-        
+
         // 获取触发配置
-        TriggerConfig trigger = parseTrigger(pool);
+        TriggerConfig trigger = parseTrigger(dataPool);
         int threshold = getThreshold(trigger);
         
         // 检查是否需要触发读取
-        if (pool.getPendingCount() < threshold) {
+        if (dataPool.getPendingCount() < threshold) {
             uDiskDataSchedulerService.manualTriggerDataReading(pool.getId(), null);
         }
     }
@@ -368,6 +388,31 @@ public class DataPoolSchedulerService implements ApplicationRunner {
      */
     public java.util.Set<Long> getActivePoolIds() {
         return scheduledTasks.keySet();
+    }
+    
+    /**
+     * 检查指定数据池的定时任务状态
+     */
+    public boolean isDataPoolSchedulerActive(Long poolId) {
+        ScheduledFuture<?> task = scheduledTasks.get(poolId);
+        return task != null && !task.isCancelled();
+    }
+    
+    /**
+     * 获取定时任务详细信息
+     */
+    public String getDataPoolSchedulerInfo(Long poolId) {
+        ScheduledFuture<?> task = scheduledTasks.get(poolId);
+        if (task == null) {
+            return "未启动";
+        }
+        if (task.isCancelled()) {
+            return "已取消";
+        }
+        if (task.isDone()) {
+            return "已完成";
+        }
+        return "运行中";
     }
 
     /**
