@@ -12,6 +12,7 @@ import com.ruoyi.tcp.system.UserManagementHandler;
 import com.ruoyi.tcp.business.DataPool.DataPoolManagementHandler;
 import com.ruoyi.tcp.business.DataPoolItem.DataPoolItemManagementHandler;
 import com.ruoyi.tcp.business.ArchivedDataPool.ArchivedDataPoolItemManagementHandler;
+import com.ruoyi.tcp.business.DataPoolTemplate.DataPoolTemplateManagementHandler;
 import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
@@ -65,6 +66,10 @@ public class NettyServerHandler extends SimpleChannelInboundHandler<String> {
     @Autowired
     private ArchivedDataPoolItemManagementHandler archivedDataPoolItemManagementHandler;
 
+    // 注入数据池模板管理处理器
+    @Autowired
+    private DataPoolTemplateManagementHandler dataPoolTemplateManagementHandler;
+
     /**
      * 当从客户端接收到消息时被调用
      *
@@ -117,6 +122,9 @@ public class NettyServerHandler extends SimpleChannelInboundHandler<String> {
             } else if (path.startsWith("/business/archivedDataPoolItem/")) {
                 // 归档数据池项目管理相关请求
                 response = archivedDataPoolItemManagementHandler.handleArchivedDataPoolItemRequest(path, body);
+            } else if (path.startsWith("/business/dataPoolTemplate/")) {
+                // 数据池模板管理相关请求
+                response = dataPoolTemplateManagementHandler.handleDataPoolTemplateRequest(path, body);
             } else {
                 log.warn("[Netty-Handler] 客户端 [{}] 请求了未知的路径: {}", clientAddress, path);
                 response = TcpResponse.error("请求的路径不存在: " + path);
