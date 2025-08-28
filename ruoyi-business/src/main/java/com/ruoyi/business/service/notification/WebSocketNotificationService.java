@@ -58,6 +58,9 @@ public class WebSocketNotificationService {
             ServerBootstrap bootstrap = new ServerBootstrap();
             bootstrap.group(bossGroup, workerGroup)
                     .channel(NioServerSocketChannel.class)
+                    .option(ChannelOption.SO_BACKLOG, 1024)
+                    .childOption(ChannelOption.SO_KEEPALIVE, true)
+                    .childOption(ChannelOption.TCP_NODELAY, true)
                     .childHandler(new ChannelInitializer<SocketChannel>() {
                         @Override
                         protected void initChannel(SocketChannel ch) throws Exception {
@@ -89,13 +92,10 @@ public class WebSocketNotificationService {
                             // 自定义处理器
                             pipeline.addLast(new WebSocketNotificationHandler());
                         }
-                    })
-                    // 增加更多服务器配置
-                    .option(ChannelOption.SO_BACKLOG, 1024)  // 增加连接等待队列
-                    .childOption(ChannelOption.SO_KEEPALIVE, true)  // 启用TCP保活机制
-                    .childOption(ChannelOption.TCP_NODELAY, true);  // 禁用Nagle算法
+                    });
             
-            ChannelFuture future = bootstrap.bind(new InetSocketAddress(port)).sync();
+            // 绑定到所有网络接口
+            ChannelFuture future = bootstrap.bind(new InetSocketAddress("0.0.0.0", port)).sync();
             serverChannel = future.channel();
             log.info("WebSocket通知服务启动成功: port={}, path={}, localAddress={}", 
                      port, path, serverChannel.localAddress());
@@ -210,7 +210,7 @@ public class WebSocketNotificationService {
                 
                 // 这里可以处理前端发送的消息，比如订阅特定数据池的状态变更
                 // 目前简单回复确认消息
-                String response = createConnectionMessage("消息已收到: " + message);
+                String response = createConnectionMessage(message);
                 ctx.channel().writeAndFlush(new TextWebSocketFrame(response));
             }
         }

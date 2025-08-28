@@ -19,6 +19,11 @@ websocket:
       # 重连间隔（毫秒）
       reconnect-interval: 3000
     
+    # 网络配置
+    network:
+      # 绑定地址，0.0.0.0 表示监听所有网络接口
+      bind-address: 0.0.0.0
+    
     # 性能调优
     performance:
       # 工作线程数，默认为CPU核心数
@@ -36,3 +41,4 @@ websocket:
       allowed-origins:
         - "http://localhost:8080"
         - "http://127.0.0.1:8080"
+        - "http://172.20.0.9:8761"
