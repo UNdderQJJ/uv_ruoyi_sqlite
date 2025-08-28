@@ -34,7 +34,7 @@ public class TcpClientDataSchedulerService {
 
     private static final int DEFAULT_THRESHOLD = 100;
 
-    @Scheduled(fixedDelay = 5000)
+//    @Scheduled(fixedDelay = 5000)
     public void scheduledCheckDataPools() {
         try {
             DataPool query = new DataPool();

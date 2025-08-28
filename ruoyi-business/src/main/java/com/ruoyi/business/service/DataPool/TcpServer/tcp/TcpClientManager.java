@@ -4,6 +4,7 @@ import com.ruoyi.business.service.DataPool.DataPoolConfigFactory;
 import com.ruoyi.business.service.DataPool.IDataPoolService;
 import com.ruoyi.business.service.common.DataIngestionService;
 import com.ruoyi.business.service.common.ParsingRuleEngineService;
+import org.springframework.context.ApplicationEventPublisher;
 import jakarta.annotation.Resource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -28,13 +29,19 @@ public class TcpClientManager {
     private DataIngestionService ingestionService;
     @Resource
     private ParsingRuleEngineService parsingRuleEngineService;
+    @Resource
+    private ApplicationEventPublisher eventPublisher;
 
     private final Map<Long, TcpClientProvider> providers = new ConcurrentHashMap<>();
 
     public TcpClientProvider getOrCreateProvider(Long poolId) {
         return providers.computeIfAbsent(poolId, id -> {
-            TcpClientProvider provider = new TcpClientProvider(id, dataPoolService, configFactory, ingestionService, parsingRuleEngineService);
+            TcpClientProvider provider = new TcpClientProvider(id, dataPoolService, configFactory, ingestionService, parsingRuleEngineService, eventPublisher);
             provider.ensureConnected();
+            if (!provider.isConnected()) {
+                // 未连接成功不缓存
+                throw new IllegalStateException("TCP客户端连接失败");
+            }
             return provider;
         });
     }

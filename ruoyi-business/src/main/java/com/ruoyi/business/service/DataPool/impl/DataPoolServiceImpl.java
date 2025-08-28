@@ -1,6 +1,7 @@
 package com.ruoyi.business.service.DataPool.impl;
 
 import com.ruoyi.business.domain.DataPool;
+import com.ruoyi.business.enums.ConnectionState;
 import com.ruoyi.business.enums.PoolStatus;
 import com.ruoyi.business.mapper.DataPool.DataPoolMapper;
 import com.ruoyi.business.service.DataPool.IDataPoolService;
@@ -179,6 +180,9 @@ public class DataPoolServiceImpl implements IDataPoolService
         DataPool dataPool = new DataPool();
         dataPool.setId(id);
         dataPool.setConnectionState(connectionState);
+        if(connectionState.equals(ConnectionState.DISCONNECTED.getCode())){
+            dataPool.setStatus(PoolStatus.ERROR.getCode());
+        }
         dataPool.setUpdateTime(DateUtils.getNowDate());
         return dataPoolMapper.updateDataPool(dataPool);
     }

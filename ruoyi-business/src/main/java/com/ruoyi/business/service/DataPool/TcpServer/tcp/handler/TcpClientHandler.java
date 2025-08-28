@@ -22,12 +22,13 @@ public class TcpClientHandler extends SimpleChannelInboundHandler<String> {
 
     @Override
     protected void channelRead0(ChannelHandlerContext ctx, String msg) {
-        provider.onMessage(msg);
+        provider.onDataReceived(msg);
     }
 
     @Override
     public void channelInactive(ChannelHandlerContext ctx) {
-        provider.onChannelInactive();
+        log.info("[TcpClientHandler] 通道断开连接");
+        // 连接断开时，Provider会自动处理状态更新
     }
 
     @Override

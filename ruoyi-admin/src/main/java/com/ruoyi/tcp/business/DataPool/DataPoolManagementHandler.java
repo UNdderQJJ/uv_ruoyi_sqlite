@@ -8,7 +8,11 @@ import com.ruoyi.business.domain.DataPool;
 import com.ruoyi.business.domain.DataPoolItem;
 import com.ruoyi.business.domain.config.UDiskSourceConfig;
 import com.ruoyi.business.enums.SourceType;
+import com.ruoyi.business.enums.PoolStatus;
+import com.ruoyi.business.enums.ConnectionState;
 import com.ruoyi.business.service.DataPool.DataPoolConfigValidationService;
+import com.ruoyi.business.service.DataPool.DataPoolSchedulerService;
+import org.springframework.context.annotation.Lazy;
 import com.ruoyi.business.service.DataPool.IDataPoolService;
 import com.ruoyi.business.service.DataPool.TcpClient.tcp.TcpServerManager;
 import com.ruoyi.business.service.DataPool.WebSocket.WebSocketManager;
@@ -76,6 +80,9 @@ public class DataPoolManagementHandler
     
     @Resource
     private WebSocketManager webSocketManager;
+    
+    @Resource
+    private DataPoolSchedulerService dataPoolSchedulerService;
 
 
 
@@ -109,10 +116,12 @@ public class DataPoolManagementHandler
                     return updateDataPoolStatus(body);
                 case "/business/dataPool/updateCount":
                     return updateDataPoolCount(body);
-                case "/business/dataPool/connect":
-                    return connectDataPool(body);
-                case "/business/dataPool/disconnect":
-                    return disconnectDataPool(body);
+                case "/business/dataPool/startDataSource":
+                    return startDataSource(body);
+                case "/business/dataPool/stopDataSource":
+                    return stopDataSource(body);
+                case "/business/dataPool/schedulerStatus":
+                    return getSchedulerStatus(body);
                 default:
                     log.warn("[DataPoolManagement] 未知的数据池操作路径: {}", path);
                     return TcpResponse.error("未知的数据池操作: " + path);
@@ -182,12 +191,10 @@ public class DataPoolManagementHandler
                 dataPoolConfigValidationService.validateDataPoolConfig(dataPool.getSourceType(),
                 dataPool.getSourceConfigJson(),
                 dataPool.getParsingRuleJson(),
-                dataPool.getTriggerConfigJson());
-        if (validationResult.isValid()) {
-            // 只有在文件未读取完成时才拉取数据
-            if (!"1".equals(dataPool.getFileReadCompleted())) {
-                uDiskDataSchedulerService.manualTriggerDataReading(dataPool.getId(), null);
-            }
+                dataPool.getTriggerConfigJson(),
+                dataPool.getDataFetchInterval());
+        if (!validationResult.isValid()) {
+            return TcpResponse.error("数据源配置无效: " + validationResult.getErrorMessage());
         }
         
         if (result > 0) {
@@ -209,12 +216,26 @@ public class DataPoolManagementHandler
             return TcpResponse.error("缺少数据池ID参数");
         }
 
+        // 检查数据池当前状态
+        DataPool currentDataPool = dataPoolService.selectDataPoolById(dataPool.getId());
+        if (currentDataPool == null) {
+            return TcpResponse.error("数据池不存在");
+        }
+
+        // 如果数据池正在运行，不允许修改时间配置
+        if (PoolStatus.RUNNING.getCode().equals(currentDataPool.getStatus()) && 
+            dataPool.getDataFetchInterval() != null && 
+            !dataPool.getDataFetchInterval().equals(currentDataPool.getDataFetchInterval())) {
+            return TcpResponse.error("数据池正在运行中，不允许修改数据获取间隔时间");
+        }
+
         //判断数据源是否填写正确
         DataPoolConfigValidationService.ValidationResult validationResult =
                 dataPoolConfigValidationService.validateDataPoolConfig(dataPool.getSourceType(),
                 dataPool.getSourceConfigJson(),
                 dataPool.getParsingRuleJson(),
-                dataPool.getTriggerConfigJson());
+                dataPool.getTriggerConfigJson(),
+                dataPool.getDataFetchInterval());
         if (!validationResult.isValid()) {
             return TcpResponse.error("数据源配置无效: " + validationResult.getErrorMessage());
         }
@@ -223,10 +244,6 @@ public class DataPoolManagementHandler
         // 更新数据池配置后，刷新相关Provider的配置
         refreshProviderConfig(dataPool.getId(), dataPool.getSourceType());
 
-        // 只有在文件未读取完成时才拉取数据
-        if (!"1".equals(dataPool.getFileReadCompleted())) {
-            uDiskDataSchedulerService.manualTriggerDataReading(dataPool.getId(), null);
-        }
         
         if (result > 0) {
             return TcpResponse.success("更新数据池成功");
@@ -282,7 +299,8 @@ public class DataPoolManagementHandler
                 dataPoolConfigValidationService.validateDataPoolConfig(dataPool.getSourceType(),
                 dataPool.getSourceConfigJson(),
                 dataPool.getParsingRuleJson(),
-                dataPool.getTriggerConfigJson());
+                dataPool.getTriggerConfigJson(),
+                dataPool.getDataFetchInterval());
         if (!validationResult.isValid()) {
             return TcpResponse.error("数据源配置无效: " + validationResult.getErrorMessage());
         }
@@ -315,6 +333,8 @@ public class DataPoolManagementHandler
         int result = dataPoolService.deleteDataPoolById(id);
         
         if (result > 0) {
+            // 清理调度器中的定时任务
+            dataPoolSchedulerService.cleanupExecuteTimeRecord(id);
             //将数据池中的数据删除，移动至归档表
             try {
                 // 1. 查询该数据池下的所有热数据项
@@ -379,6 +399,7 @@ public class DataPoolManagementHandler
         int result = dataPoolService.startDataPool(id);
         
         if (result > 0) {
+            // 不直接启动定时任务，等待连接成功事件触发
             return TcpResponse.success("启动数据池成功");
         } else {
             return TcpResponse.error("启动数据池失败");
@@ -395,6 +416,8 @@ public class DataPoolManagementHandler
         int result = dataPoolService.stopDataPool(id);
         
         if (result > 0) {
+            // 停止数据池的定时任务
+            dataPoolSchedulerService.stopDataPoolScheduler(id);
             return TcpResponse.success("停止数据池成功");
         } else {
             return TcpResponse.error("停止数据池失败");
@@ -437,45 +460,158 @@ public class DataPoolManagementHandler
     }
 
     /**
-     * 手动连接TCP_CLIENT类型数据池
+     * 启动数据源
+     * 根据数据源类型启动对应的Provider或服务
      */
-    private TcpResponse connectDataPool(String body) throws JsonProcessingException {
-        DataPool dataPool = objectMapper.readValue(body, DataPool.class);
+    private TcpResponse startDataSource(String body) throws JsonProcessingException {
+        DataPool dataPoolRtsp = objectMapper.readValue(body, DataPool.class);
+        Long poolId = dataPoolRtsp.getId();
+        String sourceType = dataPoolRtsp.getSourceType();
 
-        DataPool pool = dataPoolService.selectDataPoolById(dataPool.getId());
-        if (pool == null) {
+        DataPool dataPool = dataPoolService.selectDataPoolById(poolId);
+        if (dataPool == null) {
             return TcpResponse.error("数据池不存在");
         }
-        if (!SourceType.TCP_SERVER.getCode().equals(pool.getSourceType())) {
-            return TcpResponse.error("数据池类型不是TCP_SERVER");
-        }
-//        // 仅在运行状态下允许连接
-//        if (!"RUNNING".equals(pool.getStatus())) {
-//            return TcpResponse.error("数据池不在运行状态，无法连接");
-//        }
 
-        tcpClientManager.getOrCreateProvider(dataPool.getId()).ensureConnected();
-        return TcpResponse.success("已触发连接");
+        // 检查数据池状态
+        if (PoolStatus.RUNNING.getCode().equals(dataPool.getStatus())) {
+            return TcpResponse.error("数据池已处于运行状态，无法重新启动数据源");
+        }
+
+        //更新数据池状态
+        dataPoolService.updateDataPoolStatus(poolId, PoolStatus.RUNNING.getCode());
+
+        try {
+            // 不直接启动定时任务，等待连接成功事件触发
+            
+            switch (sourceType) {
+                case "U_DISK":
+                    // U盘类型：触发文件读取
+                    int readCount = uDiskDataSchedulerService.manualTriggerDataReading(poolId, null);
+                    log.info("[DataPoolManagement] U盘数据源启动成功，读取数据量: {}", readCount);
+                    return TcpResponse.success("U盘数据源启动成功，读取数据量: " + readCount);
+                    
+                case "TCP_SERVER":
+                    // TCP服务端：建立连接
+                    tcpClientManager.getOrCreateProvider(poolId).ensureConnected();
+                    log.info("[DataPoolManagement] TCP服务端数据源启动成功");
+                    return TcpResponse.success("TCP服务端数据源启动成功");
+                    
+                case "TCP_CLIENT":
+                    // TCP客户端：启动监听
+                    tcpServerManager.getOrCreateProvider(poolId);
+                    log.info("[DataPoolManagement] TCP客户端数据源启动成功");
+                    return TcpResponse.success("TCP客户端数据源启动成功");
+                    
+                case "HTTP":
+                    // HTTP：创建Provider（HTTP是请求驱动的，无需特殊启动）
+                    httpManager.getOrCreateProvider(poolId);
+                    log.info("[DataPoolManagement] HTTP数据源启动成功");
+                    return TcpResponse.success("HTTP数据源启动成功");
+                    
+                case "MQTT":
+                    // MQTT：建立连接
+                    mqttManager.getOrCreateProvider(poolId);
+                    log.info("[DataPoolManagement] MQTT数据源启动成功");
+                    return TcpResponse.success("MQTT数据源启动成功");
+                    
+                case "WEBSOCKET":
+                    // WebSocket：建立连接
+                    webSocketManager.getOrCreateProvider(poolId);
+                    log.info("[DataPoolManagement] WebSocket数据源启动成功");
+                    return TcpResponse.success("WebSocket数据源启动成功");
+                    
+                default:
+                    return TcpResponse.error("不支持的数据源类型: " + sourceType);
+            }
+        } catch (Exception e) {
+            log.error("[DataPoolManagement] 启动数据源失败: poolId={}, sourceType={}", poolId, sourceType, e);
+            //更新数据池状态
+            dataPoolService.updateDataPoolStatus(poolId, PoolStatus.ERROR.getCode());
+            return TcpResponse.error("启动数据源失败: " + e.getMessage());
+        }
     }
 
     /**
-     * 手动断开TCP_CLIENT类型数据池
+     * 停止数据源
+     * 根据数据源类型停止对应的Provider或服务
      */
-    private TcpResponse disconnectDataPool(String body) throws JsonProcessingException {
-        DataPool dataPool = objectMapper.readValue(body, DataPool.class);
-        DataPool pool = dataPoolService.selectDataPoolById(dataPool.getId());
-        if (pool == null) {
+    private TcpResponse stopDataSource(String body) throws JsonProcessingException {
+        DataPool dataPoolRtsp = objectMapper.readValue(body, DataPool.class);
+        Long poolId = dataPoolRtsp.getId();
+        String sourceType = dataPoolRtsp.getSourceType();
+
+        DataPool dataPool = dataPoolService.selectDataPoolById(poolId);
+        if (dataPool == null) {
             return TcpResponse.error("数据池不存在");
         }
-        if (!SourceType.TCP_SERVER.getCode().equals(pool.getSourceType())) {
-            return TcpResponse.error("数据池类型不是TCP_SERVER");
+
+         //更新数据池状态
+        dataPoolService.updateDataPoolStatus(poolId, PoolStatus.IDLE.getCode());
+
+        try {
+            // 停止数据池的定时任务
+            dataPoolSchedulerService.stopDataPoolScheduler(poolId);
+            
+            switch (sourceType) {
+                case "U_DISK":
+                    // U盘类型：更新连接状态为断开
+                    dataPoolService.updateConnectionState(poolId, ConnectionState.DISCONNECTED.getCode());
+                    log.info("[DataPoolManagement] U盘数据源已停止");
+                    return TcpResponse.success("U盘数据源已停止");
+                    
+                case "TCP_SERVER":
+                    // TCP服务端：断开连接
+                    tcpClientManager.removeProvider(poolId);
+                    log.info("[DataPoolManagement] TCP服务端数据源停止成功");
+                    return TcpResponse.success("TCP服务端数据源停止成功");
+                    
+                case "TCP_CLIENT":
+                    // TCP客户端：停止监听
+                    tcpServerManager.removeProvider(poolId);
+                    log.info("[DataPoolManagement] TCP客户端数据源停止成功");
+                    return TcpResponse.success("TCP客户端数据源停止成功");
+                    
+                case "HTTP":
+                    // HTTP：移除Provider
+                    httpManager.removeProvider(poolId);
+                    log.info("[DataPoolManagement] HTTP数据源停止成功");
+                    return TcpResponse.success("HTTP数据源停止成功");
+                    
+                case "MQTT":
+                    // MQTT：断开连接
+                    mqttManager.removeProvider(poolId);
+                    log.info("[DataPoolManagement] MQTT数据源停止成功");
+                    return TcpResponse.success("MQTT数据源停止成功");
+                    
+                case "WEBSOCKET":
+                    // WebSocket：断开连接
+                    webSocketManager.removeProvider(poolId);
+                    log.info("[DataPoolManagement] WebSocket数据源停止成功");
+                    return TcpResponse.success("WebSocket数据源停止成功");
+                    
+                default:
+                    return TcpResponse.error("不支持的数据源类型: " + sourceType);
+            }
+        } catch (Exception e) {
+            log.error("[DataPoolManagement] 停止数据源失败: poolId={}, sourceType={}", poolId, sourceType, e);
+            return TcpResponse.error("停止数据源失败: " + e.getMessage());
         }
+    }
 
-        // 移除并关闭客户端连接
-        tcpClientManager.removeProvider(dataPool.getId());
-        // 写回连接状态
-        dataPoolService.updateConnectionState(dataPool.getId(), "DISCONNECTED");
-
-        return TcpResponse.success("已断开连接");
+    /**
+     * 获取调度器状态
+     */
+    private TcpResponse getSchedulerStatus(String body) throws JsonProcessingException {
+        try {
+            var result = new HashMap<String, Object>();
+            result.put("activeTaskCount", dataPoolSchedulerService.getActiveTaskCount());
+            result.put("activePoolIds", dataPoolSchedulerService.getActivePoolIds());
+            
+            return TcpResponse.success("获取调度器状态成功", result);
+        } catch (Exception e) {
+            log.error("[DataPoolManagement] 获取调度器状态失败", e);
+            return TcpResponse.error("获取调度器状态失败: " + e.getMessage());
+        }
     }
 }

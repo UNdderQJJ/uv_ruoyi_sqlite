@@ -12,6 +12,7 @@ import jakarta.annotation.PreDestroy;
 import jakarta.annotation.Resource;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import org.springframework.context.ApplicationEventPublisher;
 
 /**
  * HTTP 管理器
@@ -33,6 +34,8 @@ public class HttpManager {
     
     @Resource
     private DataIngestionService dataIngestionService;
+    @Resource
+    private ApplicationEventPublisher eventPublisher;
     
     // 缓存 HTTP 提供者实例
     private final Map<Long, HttpProvider> providers = new ConcurrentHashMap<>();
@@ -43,7 +46,7 @@ public class HttpManager {
     public HttpProvider getOrCreateProvider(Long poolId) {
         return providers.computeIfAbsent(poolId, id -> {
             log.info("创建新的 HTTP 提供者，数据池ID: {}", id);
-            HttpProvider provider = new HttpProvider(id, dataPoolService, configFactory, dataIngestionService, parsingRuleEngineService);
+            HttpProvider provider = new HttpProvider(id, dataPoolService, configFactory, dataIngestionService, parsingRuleEngineService, eventPublisher);
             return provider;
         });
     }

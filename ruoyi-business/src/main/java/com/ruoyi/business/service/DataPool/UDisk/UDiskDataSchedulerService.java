@@ -6,6 +6,7 @@ import com.ruoyi.business.domain.config.TriggerConfig;
 import com.ruoyi.business.enums.PoolStatus;
 import com.ruoyi.business.enums.SourceType;
 import com.ruoyi.business.enums.TriggerType;
+import com.ruoyi.business.enums.ConnectionState;
 import com.ruoyi.business.service.DataPool.IDataPoolService;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
@@ -78,15 +79,22 @@ public class UDiskDataSchedulerService {
         log.info("手动触发数据池 {} 读取数据, 批次大小: {}", dataPool.getPoolName(), actualBatchSize);
         System.out.println("手动触发数据池"+dataPool.getPoolName()+"读取数据, 批次大小: "+actualBatchSize);
         
+        // 更新连接状态为正在读取
+        dataPoolService.updateConnectionState(poolId, ConnectionState.CONNECTING.getCode());
+        
         // 调用文件读取服务，阈值设为0确保一定会读取
         int readCount = uDiskFileReaderService.readDataIfBelowThreshold(dataPool, threshold, actualBatchSize);
         
         if (readCount > 0) {
             log.info("数据池 {} 成功读取 {} 条数据", dataPool.getPoolName(), readCount);
             System.out.println("数据池"+dataPool.getPoolName()+"成功读取"+readCount+"条数据");
+            // 更新连接状态为已连接（文件可读）
+            dataPoolService.updateConnectionState(poolId, ConnectionState.CONNECTED.getCode());
         } else {
             log.info("数据池 {} 没有新数据可读取", dataPool.getPoolName());
             System.out.println("数据池"+dataPool.getPoolName()+"没有新数据可读取");
+            // 如果没有数据可读，可能是文件不存在或已读完，更新状态为断开
+            dataPoolService.updateConnectionState(poolId, ConnectionState.DISCONNECTED.getCode());
         }
         
         return readCount;
@@ -95,7 +103,7 @@ public class UDiskDataSchedulerService {
     /**
      * 定时任务：每5秒检查一次所有U盘类型的数据池
      */
-    @Scheduled(fixedDelay = 5000)
+//    @Scheduled(fixedDelay = 5000)
     public void scheduledCheckDataPools() {
         try {
             // 查询所有运行中的U盘类型数据池

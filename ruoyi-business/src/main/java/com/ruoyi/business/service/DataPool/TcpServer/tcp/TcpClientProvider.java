@@ -9,7 +9,10 @@ import com.ruoyi.business.service.DataPool.IDataPoolService;
 import com.ruoyi.business.service.DataPool.TcpServer.tcp.handler.TcpClientHandler;
 import com.ruoyi.business.service.common.DataIngestionService;
 import com.ruoyi.business.service.common.ParsingRuleEngineService;
+import org.springframework.context.ApplicationEventPublisher;
+import com.ruoyi.business.events.ConnectionStateChangedEvent;
 import com.ruoyi.business.enums.PoolStatus;
+import com.ruoyi.business.enums.ConnectionState;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.*;
@@ -26,16 +29,14 @@ import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.Map;
+import org.apache.commons.lang3.StringUtils;
 
 /**
  * 针对单个数据池的 TCP 客户端提供者
  * 负责连接管理、发送请求、接收响应与回调入库
  */
 public class TcpClientProvider {
-
-    public enum ConnectionState {
-        DISCONNECTED, CONNECTING, CONNECTED
-    }
 
     private static final Logger log = LoggerFactory.getLogger(TcpClientProvider.class);
 
@@ -44,6 +45,7 @@ public class TcpClientProvider {
     private final DataPoolConfigFactory configFactory;
     private final DataIngestionService ingestionService;
     private final ParsingRuleEngineService parsingRuleEngineService;
+    private final ApplicationEventPublisher eventPublisher;
 
     private volatile TcpServerSourceConfig sourceConfig;
     private volatile TriggerConfig triggerConfig;
@@ -59,12 +61,14 @@ public class TcpClientProvider {
                              IDataPoolService dataPoolService,
                              DataPoolConfigFactory configFactory,
                              DataIngestionService ingestionService,
-                             ParsingRuleEngineService parsingRuleEngineService) {
+                             ParsingRuleEngineService parsingRuleEngineService,
+                             ApplicationEventPublisher eventPublisher) {
         this.poolId = poolId;
         this.dataPoolService = dataPoolService;
         this.configFactory = configFactory;
         this.ingestionService = ingestionService;
         this.parsingRuleEngineService = parsingRuleEngineService;
+        this.eventPublisher = eventPublisher;
         reloadConfigs();
         initBootstrap();
     }
@@ -99,142 +103,153 @@ public class TcpClientProvider {
         this.bootstrap = new Bootstrap();
         bootstrap.group(eventLoopGroup)
                 .channel(NioSocketChannel.class)
+                .option(ChannelOption.TCP_NODELAY, true)
                 .option(ChannelOption.SO_KEEPALIVE, true)
                 .handler(new ChannelInitializer<Channel>() {
                     @Override
                     protected void initChannel(Channel ch) {
-                        ChannelPipeline pipeline = ch.pipeline();
-                        // 基于换行符的消息边界处理，避免粘包/拆包
-                        pipeline.addLast(new DelimiterBasedFrameDecoder(1024 * 1024, Delimiters.lineDelimiter()));
-                        pipeline.addLast(new StringDecoder(StandardCharsets.UTF_8));
-                        pipeline.addLast(new StringEncoder(StandardCharsets.UTF_8));
-                        pipeline.addLast(new TcpClientHandler(TcpClientProvider.this));
+                        ch.pipeline()
+                                .addLast(new DelimiterBasedFrameDecoder(8192, Delimiters.lineDelimiter()))
+                                .addLast(new StringDecoder(StandardCharsets.UTF_8))
+                                .addLast(new StringEncoder(StandardCharsets.UTF_8))
+                                .addLast(new TcpClientHandler(TcpClientProvider.this));
                     }
                 });
     }
 
     /**
-     * 确保建立连接（自动重连）
+     * 确保连接建立
      */
-    public synchronized void ensureConnected() {
+    public void ensureConnected() {
+        if (connectionState == ConnectionState.CONNECTED && channel != null && channel.isActive()) {
+            return;
+        }
 
-        if (connectionState == ConnectionState.CONNECTED || connectionState == ConnectionState.CONNECTING) {
+        if (connectionState == ConnectionState.CONNECTING) {
+            log.debug("[TcpClientProvider] 正在连接中，跳过重复连接请求");
             return;
         }
-        // 仅在数据池状态为 RUNNING 时才尝试连接
-        DataPool latest = dataPoolService.selectDataPoolById(poolId);
-        if (latest == null || !PoolStatus.RUNNING.getCode().equals(latest.getStatus())) {
-            log.info("[TcpClientProvider] 数据池非运行状态，跳过连接: poolId={}", poolId);
-            return;
-        }
-        if (sourceConfig == null || sourceConfig.getIpAddress() == null || sourceConfig.getPort() == null) {
-            log.error("[TcpClientProvider] 配置不完整，无法连接: poolId={}", poolId);
-            return;
-        }
-        // 写回连接状态
-        dataPoolService.updateConnectionState(poolId, ConnectionState.CONNECTING.name());
-        doConnect(1);
-    }
 
-    private void doConnect(int attempt) {
-        connectionState = ConnectionState.CONNECTING;
-        final String host = sourceConfig.getIpAddress();
-        final int port = sourceConfig.getPort();
-        log.info("[TcpClientProvider] 尝试连接到 {}:{} (attempt={})", host, port, attempt);
-        bootstrap.connect(host, port).addListener((ChannelFutureListener) future -> {
-            if (future.isSuccess()) {
-                channel = future.channel();
-                connectionState = ConnectionState.CONNECTED;
-                log.info("[TcpClientProvider] 连接成功: {}:{}", host, port);
-                dataPoolService.updateConnectionState(poolId, ConnectionState.CONNECTED.name());
-                // 监听关闭事件，仅更新状态，不再重连
-                channel.closeFuture().addListener(cf -> {
-                    log.warn("[TcpClientProvider] 通道关闭，准备重连 {}:{}", host, port);
-                    onChannelInactive();
-                });
-            } else {
-                connectionState = ConnectionState.DISCONNECTED;
-                int nextDelay = Math.min(30, attempt <= 3 ? 5 * attempt : 10 * (attempt - 2));
-                log.warn("[TcpClientProvider] 连接失败: {}", future.cause().getMessage());
-                dataPoolService.updateConnectionState(poolId, ConnectionState.DISCONNECTED.name());
-                // 不再自动重连
-            }
-        });
+        if (sourceConfig == null) {
+            log.warn("[TcpClientProvider] 源配置为空，无法建立连接");
+            return;
+        }
+
+        updateConnectionState(ConnectionState.CONNECTING);
+        
+        try {
+            ChannelFuture future = bootstrap.connect(sourceConfig.getIpAddress(), sourceConfig.getPort());
+            future.addListener((ChannelFutureListener) channelFuture -> {
+                if (channelFuture.isSuccess()) {
+                    this.channel = channelFuture.channel();
+                    updateConnectionState(ConnectionState.CONNECTED);
+                    log.info("[TcpClientProvider] 连接成功: {}:{}", sourceConfig.getIpAddress(), sourceConfig.getPort());
+                } else {
+                    updateConnectionState(ConnectionState.DISCONNECTED);
+                    log.error("[TcpClientProvider] 连接失败: {}:{}", sourceConfig.getIpAddress(), sourceConfig.getPort(), channelFuture.cause());
+                }
+            });
+        } catch (Exception e) {
+            updateConnectionState(ConnectionState.DISCONNECTED);
+            log.error("[TcpClientProvider] 连接异常: {}:{}", sourceConfig.getIpAddress(), sourceConfig.getPort(), e);
+        }
     }
 
     /**
-     * 发送取数指令（带并发保护）
+     * 如果已连接则发送数据请求
      */
     public void requestDataIfConnected() {
         if (connectionState != ConnectionState.CONNECTED || channel == null || !channel.isActive()) {
+            log.debug("[TcpClientProvider] 连接未建立，跳过数据请求");
             return;
         }
-        if (!requestInProgress.compareAndSet(false, true)) {
-            // 上一次请求尚未完成
+
+        if (requestInProgress.get()) {
+            log.debug("[TcpClientProvider] 请求进行中，跳过重复请求");
             return;
         }
+
+        if (triggerConfig == null || StringUtils.isEmpty(triggerConfig.getRequestCommand())) {
+            log.warn("[TcpClientProvider] 触发配置或请求指令为空");
+            return;
+        }
+
+        requestInProgress.set(true);
         try {
-            String command = triggerConfig != null && triggerConfig.getRequestCommand() != null
-                    ? triggerConfig.getRequestCommand()
-                    : "";
-            if (Objects.equals(command, "")) {
-                // 无命令则直接释放繁忙标志，避免阻塞
-                requestInProgress.set(false);
-                return;
-            }
-            // 以换行结尾，配合解码器
-            String payload = command.endsWith("\n") ? command : (command + "\n");
-            channel.writeAndFlush(Unpooled.copiedBuffer(payload, StandardCharsets.UTF_8));
+            String command = triggerConfig.getRequestCommand() + "\n";
+            channel.writeAndFlush(Unpooled.copiedBuffer(command, StandardCharsets.UTF_8));
+            log.debug("[TcpClientProvider] 发送请求指令: {}", triggerConfig.getRequestCommand());
         } catch (Exception e) {
-            log.error("[TcpClientProvider] 发送请求失败: {}", e.getMessage(), e);
             requestInProgress.set(false);
+            log.error("[TcpClientProvider] 发送请求指令失败", e);
         }
     }
 
     /**
-     * 收到一条完整消息
+     * 处理接收到的数据
      */
-    public void onMessage(String message) {
+    public void onDataReceived(String data) {
+        log.debug("[TcpClientProvider] 收到数据: {}", data);
+        
         try {
-            List<String> items = parsingRuleEngineService.extractItems(message, parsingRuleConfig);
-            if (items == null || items.isEmpty()) {
-                requestInProgress.set(false);
-                return;
+            // 解析数据
+            List<String> items = parsingRuleEngineService.extractItems(data, parsingRuleConfig);
+            
+            if (items != null && !items.isEmpty()) {
+                // 入库
+                ingestionService.ingestItems(poolId, items);
+                log.info("[TcpClientProvider] 成功处理 {} 条数据", items.size());
+            } else {
+                log.debug("[TcpClientProvider] 解析结果为空");
             }
-            ingestionService.ingestItems(poolId, items);
         } catch (Exception e) {
-            log.error("[TcpClientProvider] 处理消息失败: {}", e.getMessage(), e);
+            log.error("[TcpClientProvider] 处理数据失败", e);
         } finally {
+            // 重置请求状态
             requestInProgress.set(false);
         }
     }
 
     /**
-     * 断线回调
+     * 关闭连接
      */
-    public void onChannelInactive() {
-        connectionState = ConnectionState.DISCONNECTED;
-        dataPoolService.updateConnectionState(poolId, ConnectionState.DISCONNECTED.name());
-        // 不再自动重连
-    }
-
-    public boolean isRequestInProgress() {
-        return requestInProgress.get();
-    }
-
-    public ConnectionState getConnectionState() {
-        return connectionState;
-    }
-
     public void close() {
-        try {
-            if (channel != null) {
-                channel.close();
-            }
-        } finally {
-            eventLoopGroup.shutdownGracefully();
-            connectionState = ConnectionState.DISCONNECTED;
+        updateConnectionState(ConnectionState.DISCONNECTED);
+        
+        if (channel != null) {
+            channel.close();
+            channel = null;
         }
+        
+        if (eventLoopGroup != null) {
+            eventLoopGroup.shutdownGracefully();
+        }
+        
+        log.info("[TcpClientProvider] 连接已关闭");
+    }
+
+    /**
+     * 更新连接状态
+     */
+    private void updateConnectionState(ConnectionState state) {
+        this.connectionState = state;
+        try {
+            dataPoolService.updateConnectionState(poolId, state.getCode());
+            // 发布事件，交由调度器监听
+            if (eventPublisher != null) {
+                eventPublisher.publishEvent(new ConnectionStateChangedEvent(poolId, state));
+            }
+            log.debug("[TcpClientProvider] 连接状态更新为: {}", state.getInfo());
+        } catch (Exception e) {
+            log.error("[TcpClientProvider] 更新连接状态失败", e);
+        }
+    }
+
+    /**
+     * 是否已连接
+     */
+    public boolean isConnected() {
+        return connectionState == ConnectionState.CONNECTED && channel != null && channel.isActive();
     }
 }
 

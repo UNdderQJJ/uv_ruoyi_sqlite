@@ -8,6 +8,8 @@ import com.ruoyi.business.service.DataPool.DataPoolConfigFactory;
 import com.ruoyi.business.service.DataPool.IDataPoolService;
 import com.ruoyi.business.service.common.DataIngestionService;
 import com.ruoyi.business.service.common.ParsingRuleEngineService;
+import org.springframework.context.ApplicationEventPublisher;
+import com.ruoyi.business.events.ConnectionStateChangedEvent;
 import com.ruoyi.business.enums.ConnectionState;
 import com.ruoyi.business.enums.PoolStatus;
 import org.slf4j.Logger;
@@ -33,6 +35,7 @@ public class WebSocketProvider {
     private final DataPoolConfigFactory configFactory;
     private final DataIngestionService dataIngestionService;
     private final ParsingRuleEngineService parsingRuleEngineService;
+    private final ApplicationEventPublisher eventPublisher;
     
     private volatile WebSocketSourceConfig sourceConfig;
     private volatile TriggerConfig triggerConfig;
@@ -51,12 +54,14 @@ public class WebSocketProvider {
                             IDataPoolService dataPoolService,
                             DataPoolConfigFactory configFactory,
                             DataIngestionService dataIngestionService,
-                            ParsingRuleEngineService parsingRuleEngineService) {
+                            ParsingRuleEngineService parsingRuleEngineService,
+                            ApplicationEventPublisher eventPublisher) {
         this.poolId = poolId;
         this.dataPoolService = dataPoolService;
         this.configFactory = configFactory;
         this.dataIngestionService = dataIngestionService;
         this.parsingRuleEngineService = parsingRuleEngineService;
+        this.eventPublisher = eventPublisher;
         
         reloadConfigs();
     }
@@ -130,7 +135,7 @@ public class WebSocketProvider {
         
         try {
             // 更新连接状态
-            dataPoolService.updateConnectionState(poolId, ConnectionState.CONNECTING.getCode());
+            updateConnectionState(ConnectionState.CONNECTING);
             
             // 创建WebSocket客户端
             WebSocketClient client = new WebSocketClient(new URI(sourceConfig.getServerUrl()));
@@ -152,15 +157,13 @@ public class WebSocketProvider {
             webSocketClient.set(client);
             
             // 更新连接状态
-            connectionState = ConnectionState.CONNECTED;
-            dataPoolService.updateConnectionState(poolId, ConnectionState.CONNECTED.getCode());
+            updateConnectionState(ConnectionState.CONNECTED);
             
             log.info("[WebSocketProvider] WebSocket连接成功: poolId={}", poolId);
             
         } catch (Exception e) {
             log.error("[WebSocketProvider] WebSocket连接失败: poolId={}", poolId, e);
-            connectionState = ConnectionState.ERROR;
-            dataPoolService.updateConnectionState(poolId, ConnectionState.ERROR.getCode());
+            updateConnectionState(ConnectionState.ERROR);
         } finally {
             connecting.set(false);
         }
@@ -188,6 +191,9 @@ public class WebSocketProvider {
         log.info("[WebSocketProvider] WebSocket连接状态变化: poolId={}, newState={}", poolId, newState);
         this.connectionState = newState;
         dataPoolService.updateConnectionState(poolId, newState.getCode());
+        if (eventPublisher != null) {
+            eventPublisher.publishEvent(new ConnectionStateChangedEvent(poolId, newState));
+        }
         
         if (newState == ConnectionState.DISCONNECTED) {
             connecting.set(false);
@@ -276,9 +282,20 @@ public class WebSocketProvider {
         } catch (Exception e) {
             log.error("[WebSocketProvider] 关闭WebSocket连接失败: poolId={}", poolId, e);
         } finally {
-            connectionState = ConnectionState.DISCONNECTED;
-            dataPoolService.updateConnectionState(poolId, ConnectionState.DISCONNECTED.getCode());
+            updateConnectionState(ConnectionState.DISCONNECTED);
             connecting.set(false);
+        }
+    }
+
+    private void updateConnectionState(ConnectionState state) {
+        this.connectionState = state;
+        try {
+            dataPoolService.updateConnectionState(poolId, state.getCode());
+            if (eventPublisher != null) {
+                eventPublisher.publishEvent(new ConnectionStateChangedEvent(poolId, state));
+            }
+        } catch (Exception e) {
+            log.error("[WebSocketProvider] 更新连接状态失败: poolId={}", poolId, e);
         }
     }
     

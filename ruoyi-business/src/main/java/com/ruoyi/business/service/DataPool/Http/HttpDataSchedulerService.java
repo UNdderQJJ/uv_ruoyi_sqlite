@@ -34,7 +34,7 @@ public class HttpDataSchedulerService {
      * 定时检查 HTTP 数据池
      * 每5秒执行一次
      */
-    @Scheduled(fixedRate = 5000)
+//    @Scheduled(fixedRate = 5000)
     public void scheduledCheckDataPools() {
         try {
             

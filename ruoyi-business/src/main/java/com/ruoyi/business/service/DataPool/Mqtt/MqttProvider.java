@@ -8,6 +8,7 @@ import com.ruoyi.business.service.DataPool.DataPoolConfigFactory;
 import com.ruoyi.business.service.DataPool.IDataPoolService;
 import com.ruoyi.business.service.common.DataIngestionService;
 import com.ruoyi.business.service.common.ParsingRuleEngineService;
+import com.ruoyi.business.events.ConnectionStateChangedEvent;
 import com.ruoyi.business.enums.ConnectionState;
 import com.ruoyi.business.enums.PoolStatus;
 import com.hivemq.client.mqtt.mqtt5.Mqtt5AsyncClient;
@@ -18,6 +19,7 @@ import com.hivemq.client.mqtt.mqtt5.message.subscribe.suback.Mqtt5SubAck;
 import com.hivemq.client.mqtt.MqttGlobalPublishFilter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.ApplicationEventPublisher;
 
 import java.nio.charset.StandardCharsets;
 import java.util.List;
@@ -37,6 +39,7 @@ public class MqttProvider {
     private final DataPoolConfigFactory configFactory;
     private final DataIngestionService dataIngestionService;
     private final ParsingRuleEngineService parsingRuleEngineService;
+    private final ApplicationEventPublisher eventPublisher;
     
     private volatile MqttSourceConfig sourceConfig;
     private volatile TriggerConfig triggerConfig;
@@ -55,12 +58,14 @@ public class MqttProvider {
                         IDataPoolService dataPoolService,
                         DataPoolConfigFactory configFactory,
                         DataIngestionService dataIngestionService,
-                        ParsingRuleEngineService parsingRuleEngineService) {
+                        ParsingRuleEngineService parsingRuleEngineService,
+                        ApplicationEventPublisher eventPublisher) {
         this.poolId = poolId;
         this.dataPoolService = dataPoolService;
         this.configFactory = configFactory;
         this.dataIngestionService = dataIngestionService;
         this.parsingRuleEngineService = parsingRuleEngineService;
+        this.eventPublisher = eventPublisher;
         
         reloadConfigs();
     }
@@ -116,7 +121,7 @@ public class MqttProvider {
         
         try {
             // 更新连接状态
-            dataPoolService.updateConnectionState(poolId, ConnectionState.CONNECTING.getCode());
+            updateConnectionState(ConnectionState.CONNECTING);
             
             // 构建连接地址
             String brokerUrl = sourceConfig.getBrokerAddress() + ":" + sourceConfig.getPort();
@@ -179,15 +184,13 @@ public class MqttProvider {
             }
             
             // 更新连接状态
-            connectionState = ConnectionState.CONNECTED;
-            dataPoolService.updateConnectionState(poolId, ConnectionState.CONNECTED.getCode());
+            updateConnectionState(ConnectionState.CONNECTED);
             
             log.info("[MqttProvider] MQTT连接成功: poolId={}", poolId);
             
         } catch (Exception e) {
             log.error("[MqttProvider] MQTT连接失败: poolId={}", poolId, e);
-            connectionState = ConnectionState.ERROR;
-            dataPoolService.updateConnectionState(poolId, ConnectionState.ERROR.getCode());
+            updateConnectionState(ConnectionState.DISCONNECTED);
         } finally {
             connecting.set(false);
         }
@@ -299,9 +302,23 @@ public class MqttProvider {
         } catch (Exception e) {
             log.error("[MqttProvider] 关闭MQTT连接失败: poolId={}", poolId, e);
         } finally {
-            connectionState = ConnectionState.DISCONNECTED;
-            dataPoolService.updateConnectionState(poolId, ConnectionState.DISCONNECTED.getCode());
+            updateConnectionState(ConnectionState.DISCONNECTED);
             connecting.set(false);
+        }
+    }
+
+    /**
+     * 统一更新连接状态并联动调度器
+     */
+    private void updateConnectionState(ConnectionState newState) {
+        this.connectionState = newState;
+        try {
+            dataPoolService.updateConnectionState(poolId, newState.getCode());
+            if (eventPublisher != null) {
+                eventPublisher.publishEvent(new ConnectionStateChangedEvent(poolId, newState));
+            }
+        } catch (Exception e) {
+            log.error("[MqttProvider] 更新连接状态失败: poolId={}", poolId, e);
         }
     }
     

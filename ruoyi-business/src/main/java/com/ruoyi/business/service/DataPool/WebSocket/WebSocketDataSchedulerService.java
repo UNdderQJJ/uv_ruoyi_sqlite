@@ -33,7 +33,7 @@ public class WebSocketDataSchedulerService {
      * 定时检查WebSocket数据池
      * 每30秒执行一次
      */
-    @Scheduled(fixedRate = 5000)
+//    @Scheduled(fixedRate = 5000)
     public void scheduleWebSocketDataCheck() {
         try {
             

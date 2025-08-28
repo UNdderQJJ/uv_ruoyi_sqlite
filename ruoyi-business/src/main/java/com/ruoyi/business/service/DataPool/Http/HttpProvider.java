@@ -10,6 +10,8 @@ import com.ruoyi.business.service.DataPool.DataPoolConfigFactory;
 import com.ruoyi.business.service.DataPool.IDataPoolService;
 import com.ruoyi.business.service.common.DataIngestionService;
 import com.ruoyi.business.service.common.ParsingRuleEngineService;
+import org.springframework.context.ApplicationEventPublisher;
+import com.ruoyi.business.events.ConnectionStateChangedEvent;
 import com.ruoyi.business.enums.ConnectionState;
 import com.ruoyi.business.enums.PoolStatus;
 import okhttp3.*;
@@ -35,6 +37,7 @@ public class HttpProvider {
     private final DataPoolConfigFactory configFactory;
     private final DataIngestionService dataIngestionService;
     private final ParsingRuleEngineService parsingRuleEngineService;
+    private final ApplicationEventPublisher eventPublisher;
     
     private volatile HttpSourceConfig sourceConfig;
     private volatile TriggerConfig triggerConfig;
@@ -50,12 +53,14 @@ public class HttpProvider {
                         IDataPoolService dataPoolService,
                         DataPoolConfigFactory configFactory,
                         DataIngestionService dataIngestionService,
-                        ParsingRuleEngineService parsingRuleEngineService) {
+                        ParsingRuleEngineService parsingRuleEngineService,
+                        ApplicationEventPublisher eventPublisher) {
         this.poolId = poolId;
         this.dataPoolService = dataPoolService;
         this.configFactory = configFactory;
         this.dataIngestionService = dataIngestionService;
         this.parsingRuleEngineService = parsingRuleEngineService;
+        this.eventPublisher = eventPublisher;
         
         // 初始化HTTP客户端
         this.httpClient = new OkHttpClient.Builder()
@@ -118,7 +123,7 @@ public class HttpProvider {
         
         try {
             // 更新连接状态
-            dataPoolService.updateConnectionState(poolId, ConnectionState.CONNECTING.getCode());
+            updateConnectionState(ConnectionState.CONNECTING);
             
             // 构建HTTP请求
             Request request = buildHttpRequest();
@@ -135,7 +140,7 @@ public class HttpProvider {
                 @Override
                 public void onFailure(Call call, IOException e) {
                     log.error("[HttpProvider] HTTP请求失败: poolId={}, error={}", poolId, e.getMessage());
-                    dataPoolService.updateConnectionState(poolId, ConnectionState.ERROR.getCode());
+                    updateConnectionState(ConnectionState.ERROR);
                     requestInProgress.set(false);
                 }
                 
@@ -151,15 +156,15 @@ public class HttpProvider {
                             processResponse(responseBody);
                             
                             // 更新连接状态
-                            dataPoolService.updateConnectionState(poolId, ConnectionState.CONNECTED.getCode());
+                            updateConnectionState(ConnectionState.CONNECTED);
                         } else {
                             log.error("[HttpProvider] HTTP请求失败: poolId={}, status={}", 
                                     poolId, response.code());
-                            dataPoolService.updateConnectionState(poolId, ConnectionState.ERROR.getCode());
+                            updateConnectionState(ConnectionState.ERROR);
                         }
                     } catch (Exception e) {
                         log.error("[HttpProvider] 处理HTTP响应失败: poolId={}", poolId, e);
-                        dataPoolService.updateConnectionState(poolId, ConnectionState.ERROR.getCode());
+                        updateConnectionState(ConnectionState.ERROR);
                     } finally {
                         response.close();
                         requestInProgress.set(false);
@@ -169,8 +174,19 @@ public class HttpProvider {
             
         } catch (Exception e) {
             log.error("[HttpProvider] 发送HTTP请求异常: poolId={}", poolId, e);
-            dataPoolService.updateConnectionState(poolId, ConnectionState.ERROR.getCode());
+            updateConnectionState(ConnectionState.ERROR);
             requestInProgress.set(false);
+        }
+    }
+
+    private void updateConnectionState(ConnectionState state) {
+        try {
+            dataPoolService.updateConnectionState(poolId, state.getCode());
+            // 发布事件，交由调度器监听处理
+            if (eventPublisher != null) {
+                eventPublisher.publishEvent(new ConnectionStateChangedEvent(poolId, state));
+            }
+        } catch (Exception ignore) {
         }
     }
     

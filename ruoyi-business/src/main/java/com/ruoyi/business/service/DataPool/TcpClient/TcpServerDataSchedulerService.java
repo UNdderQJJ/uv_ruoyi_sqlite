@@ -40,7 +40,7 @@ public class TcpServerDataSchedulerService {
      * 定时检查数据池状态
      * 每5秒执行一次
      */
-    @Scheduled(fixedDelay = 5000)
+//    @Scheduled(fixedDelay = 5000)
     public void scheduledCheckDataPools() {
         try {
             DataPool query = new DataPool();

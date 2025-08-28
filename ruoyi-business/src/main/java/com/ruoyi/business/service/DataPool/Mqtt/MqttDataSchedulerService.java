@@ -30,7 +30,7 @@ public class MqttDataSchedulerService {
      * 定时检查 MQTT 数据池
      * 每5秒执行一次
      */
-    @Scheduled(fixedRate = 5000)
+//    @Scheduled(fixedRate = 5000)
     public void scheduledCheckDataPools() {
         try {
             // 查询所有运行中的 MQTT 数据池

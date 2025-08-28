@@ -4,6 +4,7 @@ import com.ruoyi.business.service.DataPool.IDataPoolService;
 import com.ruoyi.business.service.DataPool.DataPoolConfigFactory;
 import com.ruoyi.business.service.common.ParsingRuleEngineService;
 import com.ruoyi.business.service.common.DataIngestionService;
+import org.springframework.context.ApplicationEventPublisher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
@@ -33,6 +34,8 @@ public class TcpServerManager {
     
     @Resource
     private DataPoolConfigFactory configFactory;
+    @Resource
+    private ApplicationEventPublisher eventPublisher;
     
     // 缓存 TCP 服务端提供者实例
     private final Map<Long, TcpServerProvider> providers = new ConcurrentHashMap<>();
@@ -43,8 +46,12 @@ public class TcpServerManager {
     public TcpServerProvider getOrCreateProvider(Long poolId) {
         return providers.computeIfAbsent(poolId, id -> {
             log.info("创建新的 TCP 服务端提供者，数据池ID: {}", id);
-            TcpServerProvider provider = new TcpServerProvider(id, dataPoolService, configFactory, dataIngestionService, parsingRuleEngineService);
+            TcpServerProvider provider = new TcpServerProvider(id, dataPoolService, configFactory, dataIngestionService, parsingRuleEngineService, eventPublisher);
             provider.initialize();
+            if (!provider.isConnected()) {
+                // 未有客户端接入不缓存，让调用方决定重试时机
+                throw new IllegalStateException("TCP服务端未有客户端接入");
+            }
             return provider;
         });
     }

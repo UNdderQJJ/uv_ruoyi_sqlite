@@ -27,6 +27,14 @@ public class DataPoolConfigValidationService {
      */
     public ValidationResult validateDataPoolConfig(String sourceType, String sourceConfigJson,
                                                  String parsingRuleJson, String triggerConfigJson) {
+        return validateDataPoolConfig(sourceType, sourceConfigJson, parsingRuleJson, triggerConfigJson, null);
+    }
+
+    /**
+     * 验证数据池配置（包含时间间隔）
+     */
+    public ValidationResult validateDataPoolConfig(String sourceType, String sourceConfigJson,
+                                                 String parsingRuleJson, String triggerConfigJson, Long dataFetchInterval) {
         ValidationResult result = new ValidationResult();
         
         try {
@@ -62,6 +70,15 @@ public class DataPoolConfigValidationService {
                 }
             } else if (needsTriggerConfig(sourceType)) {
                 result.addError("该数据源类型需要触发条件配置");
+            }
+
+            // 验证时间间隔配置
+            if (dataFetchInterval != null) {
+                if (dataFetchInterval < 1000) {
+                    result.addError("数据获取间隔时间不能少于1000毫秒（1秒）");
+                } else if (dataFetchInterval > 3600000) {
+                    result.addError("数据获取间隔时间不能超过3600000毫秒（1小时）");
+                }
             }
 
         } catch (Exception e) {

@@ -5,6 +5,7 @@ import com.ruoyi.business.domain.config.UDiskSourceConfig;
 import com.alibaba.fastjson2.JSON;
 import com.ruoyi.business.service.DataPool.IDataPoolService;
 import com.ruoyi.business.service.DataPoolItem.IDataPoolItemService;
+import com.ruoyi.business.enums.ConnectionState;
 import com.ruoyi.common.utils.DateUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.poi.ss.usermodel.*;
@@ -82,6 +83,8 @@ public class UDiskFileReaderService {
         File file = new File(filePath);
         if (!file.exists() || !file.isFile()) {
             log.error("文件不存在或不是一个文件: {}", filePath);
+            // 更新连接状态为断开
+            dataPoolService.updateConnectionState(dataPool.getId(), ConnectionState.DISCONNECTED.getCode());
             return 0;
         }
         

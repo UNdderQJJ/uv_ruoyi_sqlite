@@ -51,6 +51,9 @@ public class DataPool extends BaseEntity
     /** 文件读取完成标志（0代表未完成 1代表已完成） */
     private String fileReadCompleted;
 
+    /** 数据获取间隔时间（毫秒） */
+    private Long dataFetchInterval;
+
     @Override
     public String toString() {
         return new ToStringBuilder(this, ToStringStyle.MULTI_LINE_STYLE)
@@ -65,6 +68,8 @@ public class DataPool extends BaseEntity
             .append("parsingRuleJson", getParsingRuleJson())
             .append("triggerConfigJson", getTriggerConfigJson())
             .append("delFlag", getDelFlag())
+            .append("fileReadCompleted", getFileReadCompleted())
+            .append("dataFetchInterval", getDataFetchInterval())
             .append("createTime", getCreateTime())
             .append("updateTime", getUpdateTime())
             .append("remark", getRemark())

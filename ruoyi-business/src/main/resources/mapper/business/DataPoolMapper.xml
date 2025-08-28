@@ -17,6 +17,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         <result property="triggerConfigJson" column="trigger_config_json"/>
         <result property="delFlag"           column="del_flag"          />
         <result property="fileReadCompleted" column="file_read_completed"/>
+        <result property="dataFetchInterval" column="data_fetch_interval"/>
         <result property="createBy"          column="create_by"         />
         <result property="createTime"        column="create_time"       />
         <result property="updateBy"          column="update_by"         />
@@ -25,7 +26,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
     </resultMap>
 
     <sql id="selectDataPoolVo">
-        select id, pool_name, source_type, total_count, pending_count, status, connection_state, source_config_json, parsing_rule_json, trigger_config_json, del_flag, file_read_completed, create_by, create_time, update_by, update_time, remark from data_pool
+        select id, pool_name, source_type, total_count, pending_count, status, connection_state, source_config_json, parsing_rule_json, trigger_config_json, del_flag, file_read_completed, data_fetch_interval, create_by, create_time, update_by, update_time, remark from data_pool
     </sql>
 
     <select id="selectDataPoolList" parameterType="DataPool" resultMap="DataPoolResult">
@@ -59,6 +60,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="triggerConfigJson != null">trigger_config_json,</if>
             <if test="delFlag != null">del_flag,</if>
             <if test="fileReadCompleted != null">file_read_completed,</if>
+            <if test="dataFetchInterval != null">data_fetch_interval,</if>
             <if test="createBy != null">create_by,</if>
             <if test="createTime != null">create_time,</if>
             <if test="updateBy != null">update_by,</if>
@@ -77,6 +79,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="triggerConfigJson != null">#{triggerConfigJson},</if>
             <if test="delFlag != null">#{delFlag},</if>
             <if test="fileReadCompleted != null">#{fileReadCompleted},</if>
+            <if test="dataFetchInterval != null">#{dataFetchInterval},</if>
             <if test="createBy != null">#{createBy},</if>
             <if test="createTime != null">#{createTime},</if>
             <if test="updateBy != null">#{updateBy},</if>
@@ -99,6 +102,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="triggerConfigJson != null">trigger_config_json = #{triggerConfigJson},</if>
             <if test="delFlag != null">del_flag = #{delFlag},</if>
             <if test="fileReadCompleted != null">file_read_completed = #{fileReadCompleted},</if>
+            <if test="dataFetchInterval != null">data_fetch_interval = #{dataFetchInterval},</if>
             <if test="createBy != null">create_by = #{createBy},</if>
             <if test="createTime != null">create_time = #{createTime},</if>
             <if test="updateBy != null">update_by = #{updateBy},</if>

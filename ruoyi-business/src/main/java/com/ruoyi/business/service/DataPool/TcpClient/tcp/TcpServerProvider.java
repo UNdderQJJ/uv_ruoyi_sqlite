@@ -9,6 +9,8 @@ import com.ruoyi.business.service.DataPool.IDataPoolService;
 import com.ruoyi.business.service.DataPool.TcpClient.tcp.handler.TcpServerHandler;
 import com.ruoyi.business.service.common.ParsingRuleEngineService;
 import com.ruoyi.business.service.common.DataIngestionService;
+import org.springframework.context.ApplicationEventPublisher;
+import com.ruoyi.business.events.ConnectionStateChangedEvent;
 import com.ruoyi.business.enums.ConnectionState;
 import com.ruoyi.business.enums.PoolStatus;
 import io.netty.bootstrap.ServerBootstrap;
@@ -42,6 +44,7 @@ public class TcpServerProvider {
     private final DataPoolConfigFactory configFactory;
     private final DataIngestionService dataIngestionService;
     private final ParsingRuleEngineService parsingRuleEngineService;
+    private final ApplicationEventPublisher eventPublisher;
     
     private volatile TcpClientSourceConfig sourceConfig;
     private volatile TriggerConfig triggerConfig;
@@ -61,12 +64,14 @@ public class TcpServerProvider {
                              IDataPoolService dataPoolService,
                              DataPoolConfigFactory configFactory,
                              DataIngestionService dataIngestionService,
-                             ParsingRuleEngineService parsingRuleEngineService) {
+                             ParsingRuleEngineService parsingRuleEngineService,
+                             ApplicationEventPublisher eventPublisher) {
         this.poolId = poolId;
         this.dataPoolService = dataPoolService;
         this.configFactory = configFactory;
         this.dataIngestionService = dataIngestionService;
         this.parsingRuleEngineService = parsingRuleEngineService;
+        this.eventPublisher = eventPublisher;
         reloadConfigs();
     }
 
@@ -287,6 +292,9 @@ public class TcpServerProvider {
     private void updateConnectionState(ConnectionState state) {
         try {
             dataPoolService.updateConnectionState(poolId, state.getCode());
+            if (eventPublisher != null) {
+                eventPublisher.publishEvent(new ConnectionStateChangedEvent(poolId, state));
+            }
         } catch (Exception e) {
             log.error("更新连接状态失败，数据池ID: {}, 状态: {}", poolId, state, e);
         }
@@ -335,6 +343,13 @@ public class TcpServerProvider {
      */
     public Channel getActiveClientChannel() {
         return activeClientChannel;
+    }
+    
+    /**
+     * 是否已建立专线（有活动客户端）
+     */
+    public boolean isConnected() {
+        return activeClientChannel != null && activeClientChannel.isActive();
     }
     
     /**

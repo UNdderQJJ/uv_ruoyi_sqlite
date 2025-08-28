@@ -5,6 +5,7 @@ import com.ruoyi.business.service.DataPool.DataPoolConfigFactory;
 import com.ruoyi.business.service.DataPool.Mqtt.MqttProvider;
 import com.ruoyi.business.service.common.DataIngestionService;
 import com.ruoyi.business.service.common.ParsingRuleEngineService;
+import org.springframework.context.ApplicationEventPublisher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
@@ -33,6 +34,8 @@ public class WebSocketManager {
     
     @Resource
     private ParsingRuleEngineService parsingRuleEngineService;
+    @Resource
+    private ApplicationEventPublisher eventPublisher;
     
     // 缓存Provider实例
     private final Map<Long, WebSocketProvider> providerCache = new ConcurrentHashMap<>();
@@ -43,7 +46,13 @@ public class WebSocketManager {
     public WebSocketProvider getOrCreateProvider(Long poolId) {
         return providerCache.computeIfAbsent(poolId, id -> {
             log.info("创建新的 WebSocket 提供者，数据池ID: {}", id);
-            return new WebSocketProvider(id, dataPoolService, configFactory, dataIngestionService, parsingRuleEngineService);
+            WebSocketProvider provider = new WebSocketProvider(id, dataPoolService, configFactory, dataIngestionService, parsingRuleEngineService, eventPublisher);
+            provider.connect();
+            if (!provider.isConnected()) {
+                log.warn("[WebSocketManager] 初始化连接失败，不缓存Provider: poolId={}", id);
+                throw new IllegalStateException("WebSocket连接失败");
+            }
+            return provider;
         });
     }
 
