@@ -5,7 +5,7 @@ import com.ruoyi.business.domain.config.UDiskSourceConfig;
 import com.alibaba.fastjson2.JSON;
 import com.ruoyi.business.enums.PoolStatus;
 import com.ruoyi.business.service.DataPool.IDataPoolService;
-import com.ruoyi.business.service.DataPoolItem.IDataPoolItemService;
+import com.ruoyi.business.service.common.DataIngestionService;
 import com.ruoyi.business.enums.ConnectionState;
 import com.ruoyi.common.utils.DateUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -34,7 +34,7 @@ public class UDiskFileReaderService {
     private IDataPoolService dataPoolService;
     
     @Autowired
-    private IDataPoolItemService dataPoolItemService;
+    private DataIngestionService dataIngestionService;
     
     /**
      * 根据阈值读取U盘文件数据
@@ -102,11 +102,8 @@ public class UDiskFileReaderService {
             return 0;
         }
         
-        // 更新数据池信息
+        // 统一入库服务已在内部处理计数更新，这里只记录日志
         if (readCount > 0) {
-            long newPendingCount = dataPool.getPendingCount() + readCount;
-            long newTotalCount = dataPool.getTotalCount() + readCount;
-            dataPoolService.updateDataPoolCount(dataPool.getId(), newTotalCount, newPendingCount);
             log.info("数据池 {} 成功读取 {} 条数据", dataPool.getPoolName(), readCount);
         }
         
@@ -174,7 +171,9 @@ public class UDiskFileReaderService {
             
             // 保存数据到数据池
             if (!dataList.isEmpty()) {
-                int insertCount = dataPoolItemService.batchAddDataItems(dataPool.getId(), dataList);
+                // 统一走数据入库服务，内部负责统计更新
+                dataIngestionService.ingestItems(dataPool.getId(), dataList);
+                int insertCount = dataList.size();
                 
                 // 更新最后读取位置
                 updateLastReadPosition(dataPool, currentRow);
@@ -241,7 +240,9 @@ public class UDiskFileReaderService {
             
             // 保存数据到数据池
             if (!dataList.isEmpty()) {
-                int insertCount = dataPoolItemService.batchAddDataItems(dataPool.getId(), dataList);
+                // 统一走数据入库服务，内部负责统计更新
+                dataIngestionService.ingestItems(dataPool.getId(), dataList);
+                int insertCount = dataList.size();
                 
                 // 更新最后读取位置
                 updateLastReadPosition(dataPool, currentRow - 1);
@@ -330,8 +331,10 @@ public class UDiskFileReaderService {
      * @param position 当前读取位置
      */
     private void updateLastReadPosition(DataPool dataPool, int position) {
-        dataPool.setRemark(String.valueOf(position));
-        dataPoolService.updateDataPool(dataPool);
+        DataPool dataPoolNew = new DataPool();
+        dataPoolNew.setId(dataPool.getId());
+        dataPoolNew.setRemark(String.valueOf(position));
+        dataPoolService.updateDataPool(dataPoolNew);
     }
     
     /**

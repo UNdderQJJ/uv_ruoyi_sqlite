@@ -1,6 +1,7 @@
 package com.ruoyi.business.listener;
 
 import com.ruoyi.business.events.DataPoolStateChangedEvent;
+import com.ruoyi.business.events.DataPoolCountChangedEvent;
 import com.ruoyi.business.service.notification.WebSocketNotificationService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -54,6 +55,21 @@ public class DataPoolStateChangeListener {
         } catch (Exception e) {
             log.error("处理数据池状态变更事件失败: poolId={}, 异常信息: {}", 
                     event.getPoolId(), e.getMessage(), e);
+        }
+    }
+
+    /**
+     * 监听数量变更，转发通知前端
+     */
+    @EventListener
+    public void onDataPoolCountChanged(DataPoolCountChangedEvent event) {
+        try {
+            log.info("监听到数据池数量变更事件: poolId={}, pending: {} -> {}, total: {} -> {}",
+                    event.getPoolId(), event.getOldPendingCount(), event.getNewPendingCount(),
+                    event.getOldTotalCount(), event.getNewTotalCount());
+            webSocketNotificationService.notifyCountChanged(event);
+        } catch (Exception e) {
+            log.error("处理数据池数量变更事件失败: poolId={}", event.getPoolId(), e);
         }
     }
 }

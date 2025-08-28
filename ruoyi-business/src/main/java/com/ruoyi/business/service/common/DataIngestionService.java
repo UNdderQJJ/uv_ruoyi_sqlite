@@ -1,9 +1,11 @@
 package com.ruoyi.business.service.common;
 
+import com.ruoyi.business.events.DataPoolCountChangedEvent;
 import com.ruoyi.business.service.DataPoolItem.IDataPoolItemService;
 import com.ruoyi.business.service.DataPool.IDataPoolService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -27,6 +29,9 @@ public class DataIngestionService {
     @Resource
     private IDataPoolService dataPoolService;
 
+    @Resource
+    private ApplicationEventPublisher eventPublisher;
+
     /**
      * 批量入库数据项（使用 ParsingRuleConfig）
      */
@@ -35,13 +40,37 @@ public class DataIngestionService {
         if (items == null || items.isEmpty()) {
             return;
         }
+        // 入库前统计旧值
+        var before = dataPoolItemService.getDataPoolStatistics(poolId);
+        Long oldTotal = ((Integer) before.getOrDefault("totalCount", 0)).longValue();
+        Long oldPending = ((Integer) before.getOrDefault("pendingCount", 0)).longValue();
+
         int inserted = dataPoolItemService.batchAddDataItems(poolId, items);
-        // 读取最新统计后，更新计数
-        var stat = dataPoolItemService.getDataPoolStatistics(poolId);
-        Long total = ((Integer) stat.getOrDefault("totalCount", 0)).longValue();
-        Long pending = ((Integer) stat.getOrDefault("pendingCount", 0)).longValue();
-        dataPoolService.updateDataPoolCount(poolId, total, pending);
-        log.info("[DataIngestion] poolId={} 批量入库 {} 条，pending={} total={}", poolId, inserted, pending, total);
+
+        // 入库后统计新值
+        var after = dataPoolItemService.getDataPoolStatistics(poolId);
+        Long newTotal = ((Integer) after.getOrDefault("totalCount", 0)).longValue();
+        Long newPending = ((Integer) after.getOrDefault("pendingCount", 0)).longValue();
+
+        dataPoolService.updateDataPoolCount(poolId, newTotal, newPending);
+        log.info("[DataIngestion] poolId={} 批量入库 {} 条，pending: {} -> {}, total: {} -> {}",
+                poolId, inserted, oldPending, newPending, oldTotal, newTotal);
+
+        // 发布数量变更事件
+        try {
+            var pool = dataPoolService.selectDataPoolById(poolId);
+            eventPublisher.publishEvent(
+                    new DataPoolCountChangedEvent(
+                            poolId,
+                            pool != null ? pool.getPoolName() : null,
+                            pool != null ? pool.getSourceType() : null,
+                            oldTotal, newTotal,
+                            oldPending, newPending
+                    )
+            );
+        } catch (Exception e) {
+            log.warn("[DataIngestion] 发布数量变更事件失败: poolId={}", poolId, e);
+        }
     }
     
     /**

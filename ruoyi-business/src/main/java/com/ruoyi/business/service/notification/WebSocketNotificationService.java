@@ -2,6 +2,7 @@ package com.ruoyi.business.service.notification;
 
 import com.alibaba.fastjson2.JSON;
 import com.ruoyi.business.events.DataPoolStateChangedEvent;
+import com.ruoyi.business.events.DataPoolCountChangedEvent;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.*;
 import io.netty.channel.nio.NioEventLoopGroup;
@@ -147,6 +148,35 @@ public class WebSocketNotificationService {
         sessions.values().forEach(channel -> {
             if (channel.isActive()) {
                 channel.writeAndFlush(new TextWebSocketFrame(message));
+            }
+        });
+    }
+
+    /**
+     * 向所有连接的客户端推送数量变更消息
+     */
+    public void notifyCountChanged(DataPoolCountChangedEvent event) {
+        if (event == null) {
+            return;
+        }
+        Map<String, Object> message = new java.util.HashMap<>();
+        message.put("type", "countChange");
+        message.put("poolId", event.getPoolId());
+        message.put("poolName", event.getPoolName());
+        message.put("sourceType", event.getSourceType());
+        Map<String, Object> counts = new java.util.HashMap<>();
+        counts.put("totalOld", event.getOldTotalCount());
+        counts.put("totalNew", event.getNewTotalCount());
+        counts.put("pendingOld", event.getOldPendingCount());
+        counts.put("pendingNew", event.getNewPendingCount());
+        message.put("counts", counts);
+        message.put("timestamp", event.getTimestamp());
+
+        String json = JSON.toJSONString(message);
+        log.info("推送数量变更消息: poolId={}, message={}", event.getPoolId(), json);
+        sessions.values().forEach(channel -> {
+            if (channel.isActive()) {
+                channel.writeAndFlush(new TextWebSocketFrame(json));
             }
         });
     }

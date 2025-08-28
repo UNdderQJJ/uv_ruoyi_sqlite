@@ -108,6 +108,8 @@ public class DataPoolSchedulerService implements ApplicationRunner {
             log.info("启动数据池并启动定时任务: poolId={}", poolId);
             
             // 先启动定时任务
+            //睡眠五秒
+            Thread.sleep(5000);
             startDataPoolScheduler(poolId);
             
             // 记录启动日志
