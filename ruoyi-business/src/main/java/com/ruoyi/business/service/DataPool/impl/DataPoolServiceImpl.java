@@ -5,6 +5,7 @@ import com.ruoyi.business.enums.ConnectionState;
 import com.ruoyi.business.enums.PoolStatus;
 import com.ruoyi.business.mapper.DataPool.DataPoolMapper;
 import com.ruoyi.business.service.DataPool.IDataPoolService;
+import com.ruoyi.business.service.notification.DataPoolStateChangeService;
 import com.ruoyi.common.utils.DateUtils;
 import jakarta.annotation.Resource;
 import org.springframework.stereotype.Service;
@@ -21,6 +22,9 @@ public class DataPoolServiceImpl implements IDataPoolService
 {
     @Resource
     private DataPoolMapper dataPoolMapper;
+    
+    @Resource
+    private DataPoolStateChangeService stateChangeService;
 
     /**
      * 查询数据池列表
@@ -112,11 +116,31 @@ public class DataPoolServiceImpl implements IDataPoolService
     @Override
     public int startDataPool(Long id)
     {
+        // 获取当前状态
+        DataPool currentPool = selectDataPoolById(id);
+        if (currentPool == null) {
+            return 0;
+        }
+        
+        PoolStatus oldStatus = PoolStatus.fromCode(currentPool.getStatus());
+        PoolStatus newStatus = PoolStatus.RUNNING;
+        
         DataPool dataPool = new DataPool();
         dataPool.setId(id);
-        dataPool.setStatus(PoolStatus.RUNNING.getCode());
+        dataPool.setStatus(newStatus.getCode());
         dataPool.setUpdateTime(DateUtils.getNowDate());
-        return dataPoolMapper.updateDataPool(dataPool);
+        
+        int result = dataPoolMapper.updateDataPool(dataPool);
+        
+        // 发布状态变更事件
+        if (result > 0) {
+            stateChangeService.publishPoolStatusChanged(
+                    id, currentPool.getPoolName(), currentPool.getSourceType(),
+                    oldStatus, newStatus
+            );
+        }
+        
+        return result;
     }
 
     /**
@@ -128,11 +152,31 @@ public class DataPoolServiceImpl implements IDataPoolService
     @Override
     public int stopDataPool(Long id)
     {
+        // 获取当前状态
+        DataPool currentPool = selectDataPoolById(id);
+        if (currentPool == null) {
+            return 0;
+        }
+        
+        PoolStatus oldStatus = PoolStatus.fromCode(currentPool.getStatus());
+        PoolStatus newStatus = PoolStatus.IDLE;
+        
         DataPool dataPool = new DataPool();
         dataPool.setId(id);
-        dataPool.setStatus(PoolStatus.IDLE.getCode());
+        dataPool.setStatus(newStatus.getCode());
         dataPool.setUpdateTime(DateUtils.getNowDate());
-        return dataPoolMapper.updateDataPool(dataPool);
+        
+        int result = dataPoolMapper.updateDataPool(dataPool);
+        
+        // 发布状态变更事件
+        if (result > 0) {
+            stateChangeService.publishPoolStatusChanged(
+                    id, currentPool.getPoolName(), currentPool.getSourceType(),
+                    oldStatus, newStatus
+            );
+        }
+        
+        return result;
     }
 
     /**
@@ -145,11 +189,31 @@ public class DataPoolServiceImpl implements IDataPoolService
     @Override
     public int updateDataPoolStatus(Long id, String status)
     {
+        // 获取当前状态
+        DataPool currentPool = selectDataPoolById(id);
+        if (currentPool == null) {
+            return 0;
+        }
+        
+        PoolStatus oldStatus = PoolStatus.fromCode(currentPool.getStatus());
+        PoolStatus newStatus = PoolStatus.fromCode(status);
+        
         DataPool dataPool = new DataPool();
         dataPool.setId(id);
         dataPool.setStatus(status);
         dataPool.setUpdateTime(DateUtils.getNowDate());
-        return dataPoolMapper.updateDataPool(dataPool);
+        
+        int result = dataPoolMapper.updateDataPool(dataPool);
+        
+        // 发布状态变更事件
+        if (result > 0 && newStatus != null) {
+            stateChangeService.publishPoolStatusChanged(
+                    id, currentPool.getPoolName(), currentPool.getSourceType(),
+                    oldStatus, newStatus
+            );
+        }
+        
+        return result;
     }
 
     /**
@@ -177,6 +241,15 @@ public class DataPoolServiceImpl implements IDataPoolService
     @Override
     public int updateConnectionState(Long id, String connectionState)
     {
+        // 获取当前状态
+        DataPool currentPool = selectDataPoolById(id);
+        if (currentPool == null) {
+            return 0;
+        }
+        
+        ConnectionState oldState = ConnectionState.fromCode(currentPool.getConnectionState());
+        ConnectionState newState = ConnectionState.fromCode(connectionState);
+        
         DataPool dataPool = new DataPool();
         dataPool.setId(id);
         dataPool.setConnectionState(connectionState);
@@ -184,6 +257,17 @@ public class DataPoolServiceImpl implements IDataPoolService
             dataPool.setStatus(PoolStatus.ERROR.getCode());
         }
         dataPool.setUpdateTime(DateUtils.getNowDate());
-        return dataPoolMapper.updateDataPool(dataPool);
+        
+        int result = dataPoolMapper.updateDataPool(dataPool);
+        
+        // 发布状态变更事件
+        if (result > 0 && newState != null) {
+            stateChangeService.publishConnectionStateChanged(
+                    id, currentPool.getPoolName(), currentPool.getSourceType(),
+                    oldState, newState
+            );
+        }
+        
+        return result;
     }
 }

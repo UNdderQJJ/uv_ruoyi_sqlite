@@ -37,4 +37,16 @@ public enum PoolStatus
     {
         return info;
     }
+
+    /**
+     * 根据状态码获取枚举值
+     */
+    public static PoolStatus fromCode(String code) {
+        for (PoolStatus status : values()) {
+            if (status.getCode().equals(code)) {
+                return status;
+            }
+        }
+        return null;
+    }
 }

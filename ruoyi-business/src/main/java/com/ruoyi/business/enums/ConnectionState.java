@@ -22,6 +22,17 @@ public enum ConnectionState {
         this.info = info;
     }
 
+    /**
+     * 根据状态码获取枚举值
+     */
+    public static ConnectionState fromCode(String code) {
+        for (ConnectionState state : values()) {
+            if (state.getCode().equals(code)) {
+                return state;
+            }
+        }
+        return null;
+    }
 }
 
 
