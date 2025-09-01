@@ -24,6 +24,9 @@ import org.springframework.context.ApplicationEventPublisher;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
@@ -160,12 +163,22 @@ public class MqttProvider {
             log.info("[MqttProvider] 连接MQTT代理: {}, poolId={}", brokerUrl, poolId);
             CompletableFuture<Mqtt5ConnAck> connectFuture = connectBuilder.send();
             
-            // 等待连接完成
-            Mqtt5ConnAck connAck = connectFuture.get();
-            if (connAck.getReasonCode().isError()) {
+            // 等待连接完成，设置12秒超时
+            Mqtt5ConnAck connAck = null;
+            try {
+                connAck = connectFuture.get(12, TimeUnit.SECONDS);
+            } catch (InterruptedException | ExecutionException | TimeoutException e) {
+                if (e instanceof TimeoutException) {
+                    log.error("[MqttProvider] MQTT连接超时: poolId={}", poolId);
+                } else {
+                    log.error("[MqttProvider] MQTT连接异常: poolId={}, error={}", poolId, e.getMessage());
+                }
+                throw new RuntimeException("MQTT连接失败: " + e.getMessage(), e);
+            }
+            if (connAck != null && connAck.getReasonCode().isError()) {
                 throw new Exception("MQTT连接失败: " + connAck.getReasonCode());
             }
-            
+
             // 订阅主题
             if (triggerConfig != null && triggerConfig.getSubscribeTopic() != null) {
                 String topic = triggerConfig.getSubscribeTopic();
@@ -173,10 +186,21 @@ public class MqttProvider {
                         .topicFilter(topic)
                         .send();
                 
-                Mqtt5SubAck subAck = subscribeFuture.get();
-                if (subAck.getReasonCodes().get(0).isError()) {
+                Mqtt5SubAck subAck = null;
+                try {
+                    subAck = subscribeFuture.get(5, TimeUnit.SECONDS);
+                } catch (InterruptedException | ExecutionException | TimeoutException e) {
+                    if (e instanceof TimeoutException) {
+                        log.warn("[MqttProvider] 订阅主题超时: {}, poolId={}", topic, poolId);
+                    } else {
+                        log.warn("[MqttProvider] 订阅主题异常: {}, poolId={}, error={}", topic, poolId, e.getMessage());
+                    }
+                    // 订阅失败不影响连接，继续执行
+                }
+                
+                if (subAck != null && subAck.getReasonCodes().get(0).isError()) {
                     log.warn("[MqttProvider] 订阅主题失败: {}, poolId={}", topic, poolId);
-                } else {
+                } else if (subAck != null) {
                     log.info("[MqttProvider] 订阅主题成功: {}, poolId={}", topic, poolId);
                 }
             } else {
@@ -190,7 +214,7 @@ public class MqttProvider {
             
         } catch (Exception e) {
             log.error("[MqttProvider] MQTT连接失败: poolId={}", poolId, e);
-            updateConnectionState(ConnectionState.DISCONNECTED);
+            updateConnectionState(ConnectionState.ERROR);
         } finally {
             connecting.set(false);
         }
@@ -238,12 +262,17 @@ public class MqttProvider {
                     .payload(payload.getBytes(StandardCharsets.UTF_8))
                     .send();
             
-            publishFuture.get(); // 等待发布完成
+            // 设置5秒超时，避免无限等待
+            publishFuture.get(5, TimeUnit.SECONDS);
             log.debug("[MqttProvider] 发布消息成功: topic={}, payload={}, poolId={}", 
                     topic, payload, poolId);
             
         } catch (Exception e) {
-            log.error("[MqttProvider] 发布消息失败: poolId={}", poolId, e);
+            if (e instanceof TimeoutException) {
+                log.error("[MqttProvider] 发布消息超时: poolId={}", poolId);
+            } else {
+                log.error("[MqttProvider] 发布消息失败: poolId={}", poolId, e);
+            }
         }
     }
     
@@ -294,13 +323,20 @@ public class MqttProvider {
     public void close() {
         try {
             if (mqttClient != null && mqttClient.getState().isConnected()) {
+                log.debug("[MqttProvider] 开始关闭MQTT连接: poolId={}", poolId);
+                // 设置5秒超时，避免无限等待
                 mqttClient.disconnectWith()
                         .reasonString("正常关闭")
                         .send()
-                        .get();
+                        .get(5, TimeUnit.SECONDS);
+                log.debug("[MqttProvider] MQTT连接关闭成功: poolId={}", poolId);
             }
         } catch (Exception e) {
-            log.error("[MqttProvider] 关闭MQTT连接失败: poolId={}", poolId, e);
+            if (e instanceof TimeoutException) {
+                log.warn("[MqttProvider] 关闭MQTT连接超时: poolId={}", poolId);
+            } else {
+                log.error("[MqttProvider] 关闭MQTT连接失败: poolId={}", poolId, e);
+            }
         } finally {
             updateConnectionState(ConnectionState.DISCONNECTED);
             connecting.set(false);

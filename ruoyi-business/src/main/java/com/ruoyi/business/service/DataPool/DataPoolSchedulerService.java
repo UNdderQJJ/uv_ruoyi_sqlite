@@ -85,10 +85,15 @@ public class DataPoolSchedulerService implements ApplicationRunner {
             // 获取配置的时间间隔
             long interval = getDataFetchInterval(dataPool);
             
-            // 创建定时任务
+            // 创建定时任务，使用匿名内部类避免Lambda序列化问题
             ScheduledFuture<?> task = taskScheduler.scheduleWithFixedDelay(
-                () -> processDataPool(dataPool),
-                interval
+                    new Runnable() {
+                        @Override
+                        public void run() {
+                            processDataPool(dataPool);
+                        }
+                    },
+                    interval
             );
             
             scheduledTasks.put(poolId, task);
@@ -108,8 +113,8 @@ public class DataPoolSchedulerService implements ApplicationRunner {
             log.info("启动数据池并启动定时任务: poolId={}", poolId);
             
             // 先启动定时任务
-            //睡眠五秒
-            Thread.sleep(5000);
+            //睡眠2秒
+            Thread.sleep(2000);
             startDataPoolScheduler(poolId);
             
             // 记录启动日志
@@ -252,15 +257,16 @@ public class DataPoolSchedulerService implements ApplicationRunner {
      * 处理TCP服务端数据池
      */
     private void processTcpServerPool(DataPool pool) {
-        TriggerConfig trigger = parseTrigger(pool);
+        DataPool dataPool = dataPoolService.selectDataPoolById(pool.getId());
+        TriggerConfig trigger = parseTrigger(dataPool);
         int threshold = getThreshold(trigger);
         
         // 连接保障
-        tcpClientManager.getOrCreateProvider(pool.getId()).ensureConnected();
+        tcpClientManager.getOrCreateProvider(dataPool.getId()).ensureConnected();
         
         // 判断是否触发请求
-        if (shouldTrigger(pool, trigger, threshold)) {
-            tcpClientManager.getOrCreateProvider(pool.getId()).requestDataIfConnected();
+        if (shouldTrigger(dataPool, trigger, threshold)) {
+            tcpClientManager.getOrCreateProvider(dataPool.getId()).requestDataIfConnected();
         }
     }
 
@@ -268,15 +274,16 @@ public class DataPoolSchedulerService implements ApplicationRunner {
      * 处理TCP客户端数据池
      */
     private void processTcpClientPool(DataPool pool) {
-        TriggerConfig trigger = parseTrigger(pool);
+        DataPool dataPool = dataPoolService.selectDataPoolById(pool.getId());
+        TriggerConfig trigger = parseTrigger(dataPool);
         int threshold = getThreshold(trigger);
         
         // 确保监听已启动
-        tcpServerManager.getOrCreateProvider(pool.getId());
+        tcpServerManager.getOrCreateProvider(dataPool.getId());
         
         // 判断是否触发请求
-        if (shouldTrigger(pool, trigger, threshold)) {
-            tcpServerManager.getOrCreateProvider(pool.getId()).requestData();
+        if (shouldTrigger(dataPool, trigger, threshold)) {
+            tcpServerManager.getOrCreateProvider(dataPool.getId()).requestData();
         }
     }
 
@@ -284,12 +291,13 @@ public class DataPoolSchedulerService implements ApplicationRunner {
      * 处理HTTP数据池
      */
     private void processHttpPool(DataPool pool) {
-        TriggerConfig trigger = parseTrigger(pool);
+        DataPool dataPool = dataPoolService.selectDataPoolById(pool.getId());
+        TriggerConfig trigger = parseTrigger(dataPool);
         int threshold = getThreshold(trigger);
         
         // 判断是否触发请求
-        if (shouldTrigger(pool, trigger, threshold)) {
-            httpManager.getOrCreateProvider(pool.getId()).requestData();
+        if (shouldTrigger(dataPool, trigger, threshold)) {
+            httpManager.getOrCreateProvider(dataPool.getId()).requestData();
         }
     }
 
@@ -297,15 +305,16 @@ public class DataPoolSchedulerService implements ApplicationRunner {
      * 处理MQTT数据池
      */
     private void processMqttPool(DataPool pool) {
-        TriggerConfig trigger = parseTrigger(pool);
+        DataPool dataPool = dataPoolService.selectDataPoolById(pool.getId());
+        TriggerConfig trigger = parseTrigger(dataPool);
         int threshold = getThreshold(trigger);
         
         // 确保连接已建立
-        mqttManager.getOrCreateProvider(pool.getId());
+        mqttManager.getOrCreateProvider(dataPool.getId());
         
         // 判断是否触发请求
-        if (shouldTrigger(pool, trigger, threshold)) {
-            mqttManager.getOrCreateProvider(pool.getId()).publishMessage();
+        if (shouldTrigger(dataPool, trigger, threshold)) {
+            mqttManager.getOrCreateProvider(dataPool.getId()).publishMessage();
         }
     }
 
@@ -313,15 +322,16 @@ public class DataPoolSchedulerService implements ApplicationRunner {
      * 处理WebSocket数据池
      */
     private void processWebSocketPool(DataPool pool) {
-        TriggerConfig trigger = parseTrigger(pool);
+        DataPool dataPool = dataPoolService.selectDataPoolById(pool.getId());
+        TriggerConfig trigger = parseTrigger(dataPool);
         int threshold = getThreshold(trigger);
         
         // 确保连接已建立
-        webSocketManager.getOrCreateProvider(pool.getId());
+        webSocketManager.getOrCreateProvider(dataPool.getId());
         
         // 判断是否触发请求
-        if (shouldTrigger(pool, trigger, threshold)) {
-            webSocketManager.getOrCreateProvider(pool.getId()).sendMessage();
+        if (shouldTrigger(dataPool, trigger, threshold)) {
+            webSocketManager.getOrCreateProvider(dataPool.getId()).sendMessage();
         }
     }
 

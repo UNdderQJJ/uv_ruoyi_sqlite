@@ -1,9 +1,11 @@
 package com.ruoyi.business.service.DataPool.TcpClient.tcp;
 
+import com.ruoyi.business.enums.PoolStatus;
 import com.ruoyi.business.service.DataPool.IDataPoolService;
 import com.ruoyi.business.service.DataPool.DataPoolConfigFactory;
 import com.ruoyi.business.service.common.ParsingRuleEngineService;
 import com.ruoyi.business.service.common.DataIngestionService;
+import com.ruoyi.business.enums.ConnectionState;
 import org.springframework.context.ApplicationEventPublisher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -48,9 +50,30 @@ public class TcpServerManager {
             log.info("创建新的 TCP 服务端提供者，数据池ID: {}", id);
             TcpServerProvider provider = new TcpServerProvider(id, dataPoolService, configFactory, dataIngestionService, parsingRuleEngineService, eventPublisher);
             provider.initialize();
-            if (!provider.isConnected()) {
-                // 未有客户端接入不缓存，让调用方决定重试时机
-                throw new IllegalStateException("TCP服务端未有客户端接入");
+            
+            // 等待初始化完成，最多等待2秒
+            int maxWaitTime = 2000; // 2秒
+            int waitInterval = 100; // 100毫秒检查一次
+            int totalWaitTime = 0;
+
+
+            
+            while (!provider.isConnected() && provider.getConnectionState() != ConnectionState.LISTENING && totalWaitTime < maxWaitTime) {
+                try {
+                    Thread.sleep(waitInterval);
+                    totalWaitTime += waitInterval;
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    break;
+                }
+            }
+            
+            if (!provider.isConnected() && provider.getConnectionState() != ConnectionState.LISTENING) {
+
+                dataPoolService.updateDataPoolStatus(id, PoolStatus.ERROR.getCode());
+                dataPoolService.updateConnectionState(id,ConnectionState.ERROR.getCode());
+                // 服务端启动失败或未有客户端接入不缓存
+                throw new IllegalStateException("TCP服务端启动失败或未有客户端接入");
             }
             return provider;
         });

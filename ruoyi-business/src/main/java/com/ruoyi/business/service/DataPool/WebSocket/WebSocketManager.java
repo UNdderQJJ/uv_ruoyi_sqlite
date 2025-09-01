@@ -1,5 +1,7 @@
 package com.ruoyi.business.service.DataPool.WebSocket;
 
+import com.ruoyi.business.enums.ConnectionState;
+import com.ruoyi.business.enums.PoolStatus;
 import com.ruoyi.business.service.DataPool.IDataPoolService;
 import com.ruoyi.business.service.DataPool.DataPoolConfigFactory;
 import com.ruoyi.business.service.DataPool.Mqtt.MqttProvider;
@@ -48,9 +50,27 @@ public class WebSocketManager {
             log.info("创建新的 WebSocket 提供者，数据池ID: {}", id);
             WebSocketProvider provider = new WebSocketProvider(id, dataPoolService, configFactory, dataIngestionService, parsingRuleEngineService, eventPublisher);
             provider.connect();
+            
+            // 等待连接完成，最多等待1秒
+            int maxWaitTime = 1000; // 1秒
+            int waitInterval = 100; // 100毫秒检查一次
+            int totalWaitTime = 0;
+            
+            while (!provider.isConnected() && totalWaitTime < maxWaitTime) {
+                try {
+                    Thread.sleep(waitInterval);
+                    totalWaitTime += waitInterval;
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    break;
+                }
+            }
+            
             if (!provider.isConnected()) {
+                dataPoolService.updateDataPoolStatus(id, PoolStatus.ERROR.getCode());
+                dataPoolService.updateConnectionState(id, ConnectionState.ERROR.getCode());
                 log.warn("[WebSocketManager] 初始化连接失败，不缓存Provider: poolId={}", id);
-                throw new IllegalStateException("WebSocket连接失败");
+                throw new IllegalStateException("WebSocket连接失败，等待超时");
             }
             return provider;
         });

@@ -1,5 +1,7 @@
 package com.ruoyi.business.service.DataPool.Http;
 
+import com.ruoyi.business.enums.ConnectionState;
+import com.ruoyi.business.enums.PoolStatus;
 import com.ruoyi.business.service.DataPool.IDataPoolService;
 import com.ruoyi.business.service.DataPool.DataPoolConfigFactory;
 import com.ruoyi.business.service.common.ParsingRuleEngineService;
@@ -47,6 +49,17 @@ public class HttpManager {
         return providers.computeIfAbsent(poolId, id -> {
             log.info("创建新的 HTTP 提供者，数据池ID: {}", id);
             HttpProvider provider = new HttpProvider(id, dataPoolService, configFactory, dataIngestionService, parsingRuleEngineService, eventPublisher);
+            boolean ok = false;
+            try {
+                ok = provider.testConnection();
+            } catch (Exception ignore) {
+            }
+            if (!ok) {
+                dataPoolService.updateDataPoolStatus(id, PoolStatus.ERROR.getCode());
+                dataPoolService.updateConnectionState(id, ConnectionState.ERROR.getCode());
+                // HTTP服务启动失败
+                throw new IllegalStateException("HTTP服务启动失败");
+            }
             return provider;
         });
     }

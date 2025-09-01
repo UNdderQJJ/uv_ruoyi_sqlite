@@ -1,5 +1,7 @@
 package com.ruoyi.business.service.DataPool.Mqtt;
 
+import com.ruoyi.business.enums.ConnectionState;
+import com.ruoyi.business.enums.PoolStatus;
 import com.ruoyi.business.service.DataPool.IDataPoolService;
 import com.ruoyi.business.service.DataPool.DataPoolConfigFactory;
 import com.ruoyi.business.service.common.ParsingRuleEngineService;
@@ -44,17 +46,38 @@ public class MqttManager {
      * 获取或创建 MQTT 提供者
      */
     public MqttProvider getOrCreateProvider(Long poolId) {
-        return providers.computeIfAbsent(poolId, id -> {
-            log.info("创建新的 MQTT 提供者，数据池ID: {}", id);
-            MqttProvider provider = new MqttProvider(id, dataPoolService, configFactory, dataIngestionService,
-                    parsingRuleEngineService, eventPublisher);
-            provider.connect();
-            if (!provider.isConnected()) {
-                // 未连接成功则不缓存，并抛出异常交由调用方处理
-                log.warn("[MqttManager] 初始化连接失败，不缓存Provider: poolId={}", id);
-                throw new IllegalStateException("MQTT连接失败");
+        return providers.computeIfAbsent(poolId, new java.util.function.Function<Long, MqttProvider>() {
+            @Override
+            public MqttProvider apply(Long id) {
+                log.info("创建新的 MQTT 提供者，数据池ID: {}", id);
+                MqttProvider provider = new MqttProvider(id, dataPoolService, configFactory, dataIngestionService,
+                        parsingRuleEngineService, eventPublisher);
+                provider.connect();
+                
+                // 等待连接完成，最多等待2秒
+                int maxWaitTime = 2000; // 2秒
+                int waitInterval = 100; // 100毫秒检查一次
+                int totalWaitTime = 0;
+                
+                while (!provider.isConnected() && totalWaitTime < maxWaitTime) {
+                    try {
+                        Thread.sleep(waitInterval);
+                        totalWaitTime += waitInterval;
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                        break;
+                    }
+                }
+                
+                if (!provider.isConnected()) {
+                    dataPoolService.updateDataPoolStatus(id, PoolStatus.ERROR.getCode());
+                    dataPoolService.updateConnectionState(id, ConnectionState.ERROR.getCode());
+                    // 未连接成功则不缓存，并抛出异常交由调用方处理
+                    log.warn("[MqttManager] 初始化连接失败，不缓存Provider: poolId={}", id);
+                    throw new IllegalStateException("MQTT连接失败，等待超时");
+                }
+                return provider;
             }
-            return provider;
         });
     }
 

@@ -123,16 +123,16 @@ public class HttpProvider {
         
         try {
             // 更新连接状态
-            updateConnectionState(ConnectionState.CONNECTING);
-            
+//            updateConnectionState(ConnectionState.CONNECTING);
+
             // 构建HTTP请求
             Request request = buildHttpRequest();
             if (request == null) {
                 log.error("[HttpProvider] 构建HTTP请求失败: poolId={}", poolId);
                 return;
             }
-            
-            log.info("[HttpProvider] 发送HTTP请求: {} {}, poolId={}", 
+
+            log.info("[HttpProvider] 发送HTTP请求: {} {}, poolId={}",
                     sourceConfig.getMethod(), sourceConfig.getUrl(), poolId);
             
             // 异步发送请求
@@ -140,30 +140,34 @@ public class HttpProvider {
                 @Override
                 public void onFailure(Call call, IOException e) {
                     log.error("[HttpProvider] HTTP请求失败: poolId={}, error={}", poolId, e.getMessage());
+                    dataPoolService.updateDataPoolStatus(poolId,PoolStatus.ERROR.getCode());
                     updateConnectionState(ConnectionState.ERROR);
                     requestInProgress.set(false);
                 }
-                
+
                 @Override
                 public void onResponse(Call call, Response response) throws IOException {
                     try {
                         if (response.isSuccessful()) {
                             String responseBody = response.body().string();
-                            log.debug("[HttpProvider] 收到HTTP响应: poolId={}, status={}, body={}", 
+                            log.debug("[HttpProvider] 收到HTTP响应: poolId={}, status={}, body={}",
                                     poolId, response.code(), responseBody);
-                            
+
                             // 处理响应数据
-                            processResponse(responseBody);
-                            
-                            // 更新连接状态
-                            updateConnectionState(ConnectionState.CONNECTED);
+                            boolean success = processResponse(responseBody);
+                            // 仅在成功处理时，置为 CONNECTED
+                            if (success) {
+                                updateConnectionState(ConnectionState.CONNECTED);
+                            }
                         } else {
-                            log.error("[HttpProvider] HTTP请求失败: poolId={}, status={}", 
+                            log.error("[HttpProvider] HTTP请求失败: poolId={}, status={}",
                                     poolId, response.code());
+                            dataPoolService.updateDataPoolStatus(poolId,PoolStatus.ERROR.getCode());
                             updateConnectionState(ConnectionState.ERROR);
                         }
                     } catch (Exception e) {
                         log.error("[HttpProvider] 处理HTTP响应失败: poolId={}", poolId, e);
+                        dataPoolService.updateDataPoolStatus(poolId,PoolStatus.ERROR.getCode());
                         updateConnectionState(ConnectionState.ERROR);
                     } finally {
                         response.close();
@@ -171,9 +175,10 @@ public class HttpProvider {
                     }
                 }
             });
-            
+
         } catch (Exception e) {
             log.error("[HttpProvider] 发送HTTP请求异常: poolId={}", poolId, e);
+            dataPoolService.updateDataPoolStatus(poolId,PoolStatus.ERROR.getCode());
             updateConnectionState(ConnectionState.ERROR);
             requestInProgress.set(false);
         }
@@ -327,28 +332,85 @@ public class HttpProvider {
     
     /**
      * 处理HTTP响应
+     * @return 是否处理成功（成功则可将连接状态置为 CONNECTED）
      */
-    private void processResponse(String responseBody) {
+    private boolean processResponse(String responseBody) {
         if (parsingRuleConfig == null) {
             log.error("[HttpProvider] 解析规则配置为空，无法处理响应: poolId={}", poolId);
-            return;
+            return false;
         }
         
         try {
-            // 解析数据
+            // 先检查响应内容，识别错误响应
+            if (responseBody != null && responseBody.contains("\"code\"")) {
+                try {
+                    // 尝试解析JSON响应，检查是否有错误码
+                    com.alibaba.fastjson2.JSONObject jsonResponse = com.alibaba.fastjson2.JSON.parseObject(responseBody);
+                    Integer code = jsonResponse.getInteger("code");
+                    String msg = jsonResponse.getString("msg");
+                    
+                    if (code != null && code != 200) {
+                        // 发现错误响应，记录详细日志
+                        String errorType = getErrorType(code);
+                        log.warn("[HttpProvider] HTTP请求返回错误响应: poolId={}, code={}, type={}, message={}, responseBody={}", 
+                                poolId, code, errorType, msg, responseBody);
+                        
+                        // 更新数据池连接状态为错误状态
+                        dataPoolService.updateDataPoolStatus(poolId, PoolStatus.ERROR.getCode());
+                        updateConnectionState(ConnectionState.ERROR);
+                        return false; // 不进行数据解析
+                    }
+                } catch (Exception jsonParseException) {
+                    // JSON解析失败，继续正常流程
+                    log.debug("[HttpProvider] 响应不是标准JSON格式，继续正常处理: poolId={}", poolId);
+                }
+            }
+            
+            // 检查其他常见的错误响应模式
+            if (responseBody != null) {
+                if (responseBody.contains("认证失败") || responseBody.contains("Unauthorized") || responseBody.contains("401")) {
+                    log.warn("[HttpProvider] 检测到认证失败响应: poolId={}, responseBody={}", poolId, responseBody);
+                     dataPoolService.updateDataPoolStatus(poolId, PoolStatus.ERROR.getCode());
+                    updateConnectionState(ConnectionState.ERROR);
+                    return false;
+                }
+                
+                if (responseBody.contains("权限不足") || responseBody.contains("Forbidden") || responseBody.contains("403")) {
+                    log.warn("[HttpProvider] 检测到权限不足响应: poolId={}, responseBody={}", poolId, responseBody);
+                     dataPoolService.updateDataPoolStatus(poolId, PoolStatus.ERROR.getCode());
+                    updateConnectionState(ConnectionState.ERROR);
+                    return false;
+                }
+                
+                if (responseBody.contains("资源不存在") || responseBody.contains("Not Found") || responseBody.contains("404")) {
+                    log.warn("[HttpProvider] 检测到资源不存在响应: poolId={}, responseBody={}", poolId, responseBody);
+                     dataPoolService.updateDataPoolStatus(poolId, PoolStatus.ERROR.getCode());
+                    updateConnectionState(ConnectionState.ERROR);
+                    return false;
+                }
+            }
+            
+            // 正常响应，进行数据解析
+            log.debug("[HttpProvider] 开始解析HTTP响应数据: poolId={}, responseLength={}", poolId, 
+                    responseBody != null ? responseBody.length() : 0);
+            
             List<String> items = parsingRuleEngineService.extractItems(responseBody, parsingRuleConfig);
             if (items == null || items.isEmpty()) {
                 log.debug("[HttpProvider] 解析结果为空: poolId={}", poolId);
-                return;
+                return true; // 空结果视为成功但无数据
             }
             
             // 数据入库
             dataIngestionService.ingestItems(poolId, items);
             
             log.info("[HttpProvider] 数据处理完成: poolId={}, 解析出 {} 条记录", poolId, items.size());
-            
+            return true;
         } catch (Exception e) {
             log.error("[HttpProvider] 处理响应数据失败: poolId={}", poolId, e);
+            // 解析失败时也更新连接状态为错误
+             dataPoolService.updateDataPoolStatus(poolId, PoolStatus.ERROR.getCode());
+            updateConnectionState(ConnectionState.ERROR);
+            return false;
         }
     }
     
@@ -357,6 +419,45 @@ public class HttpProvider {
      */
     public boolean isRequestInProgress() {
         return requestInProgress.get();
+    }
+    
+    /**
+     * 启动前的同步连通性校验（立即返回结果，不依赖调度器）
+     */
+    public boolean testConnection() {
+        try {
+            if (sourceConfig == null || sourceConfig.getUrl() == null || sourceConfig.getUrl().trim().isEmpty()) {
+                log.error("[HttpProvider] testConnection 配置不完整: poolId={}", poolId);
+                return false;
+            }
+            Request request = buildHttpRequest();
+            if (request == null) {
+                log.error("[HttpProvider] testConnection 构建请求失败: poolId={}", poolId);
+                return false;
+            }
+            try (Response response = httpClient.newCall(request).execute()) {
+                String body = response.body() != null ? response.body().string() : "";
+                log.debug("[HttpProvider] testConnection 响应: poolId={}, status={}, body={}", poolId, response.code(), body);
+                if (!response.isSuccessful()) {
+                    return false;
+                }
+                // 复用错误识别逻辑：若返回体中包含业务 code 且不为 200，则视为失败
+                if (body != null && body.contains("\"code\"")) {
+                    try {
+                        JSONObject json = JSON.parseObject(body);
+                        Integer code = json.getInteger("code");
+                        if (code != null && code != 200) {
+                            return false;
+                        }
+                    } catch (Exception ignore) {
+                    }
+                }
+                return true;
+            }
+        } catch (Exception ex) {
+            log.warn("[HttpProvider] testConnection 异常: poolId={}, err={}", poolId, ex.getMessage());
+            return false;
+        }
     }
     
     /**
@@ -375,5 +476,24 @@ public class HttpProvider {
      */
     public Long getPoolId() {
         return poolId;
+    }
+    
+    /**
+     * 根据HTTP状态码获取错误类型描述
+     */
+    private String getErrorType(Integer code) {
+        if (code == null) return "未知错误";
+        
+        switch (code) {
+            case 400: return "请求参数错误";
+            case 401: return "认证失败";
+            case 403: return "权限不足";
+            case 404: return "资源不存在";
+            case 500: return "服务器内部错误";
+            case 502: return "网关错误";
+            case 503: return "服务不可用";
+            case 504: return "网关超时";
+            default: return "其他错误";
+        }
     }
 }

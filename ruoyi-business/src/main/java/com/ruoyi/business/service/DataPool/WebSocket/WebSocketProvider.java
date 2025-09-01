@@ -277,7 +277,9 @@ public class WebSocketProvider {
         try {
             WebSocketClient client = webSocketClient.getAndSet(null);
             if (client != null && client.isConnected()) {
-                client.close();
+                log.info("[WebSocketProvider] 关闭WebSocket连接: poolId={}", poolId);
+                // 先取消连接，避免等待服务器响应
+                client.cancel();
             }
         } catch (Exception e) {
             log.error("[WebSocketProvider] 关闭WebSocket连接失败: poolId={}", poolId, e);

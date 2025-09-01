@@ -119,6 +119,12 @@ public class WebSocketClient {
 
                 @Override
                 public void onFailure(WebSocket webSocket, Throwable t, Response response) {
+                    // 检查连接是否已经被取消
+                    if (WebSocketClient.this.webSocket == null) {
+                        log.debug("[WebSocketClient] 连接已被取消，忽略onFailure回调: {}", serverUri);
+                        return;
+                    }
+                    
                     connected.set(false);
                     notifyConnectionStateChange(ConnectionState.ERROR);
                     log.error("[WebSocketClient] 连接失败: {}", serverUri, t);
@@ -170,6 +176,28 @@ public class WebSocketClient {
             }
         } catch (Exception e) {
             log.error("[WebSocketClient] 关闭WebSocket连接失败: {}", serverUri, e);
+        }
+    }
+
+    /**
+     * 强制取消连接（不等待服务器响应）
+     */
+    public void cancel() {
+        try {
+            WebSocket ws = this.webSocket;
+            if (ws != null) {
+                log.info("[WebSocketClient] 强制取消WebSocket连接: {}", serverUri);
+                // 先清空引用，避免后续回调
+                this.webSocket = null;
+                // 标记为已断开，避免重复处理
+                connected.set(false);
+                // 取消连接
+                ws.cancel();
+                // 通知状态变化
+                notifyConnectionStateChange(ConnectionState.DISCONNECTED);
+            }
+        } catch (Exception e) {
+            log.error("[WebSocketClient] 强制取消WebSocket连接失败: {}", serverUri, e);
         }
     }
 

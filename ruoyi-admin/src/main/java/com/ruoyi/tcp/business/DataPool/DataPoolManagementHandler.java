@@ -241,10 +241,12 @@ public class DataPoolManagementHandler
         }
          int result = dataPoolService.updateDataPool(dataPool);
 
-        // 更新数据池配置后，刷新相关Provider的配置
-        refreshProviderConfig(dataPool.getId(), dataPool.getSourceType());
+        if (currentDataPool.getStatus().equals(PoolStatus.RUNNING.getCode())) {
+            // 更新数据池配置后，刷新相关Provider的配置
+            refreshProviderConfig(dataPool.getId(), dataPool.getSourceType());
+        }
 
-        
+
         if (result > 0) {
             return TcpResponse.success("更新数据池成功");
         } else {
@@ -500,6 +502,7 @@ public class DataPoolManagementHandler
                     break;
                 case "HTTP":
                     // HTTP：创建Provider（HTTP是请求驱动的，无需特殊启动）
+                    dataPoolService.updateConnectionState(poolId,ConnectionState.CONNECTING.getCode());
                     httpManager.getOrCreateProvider(poolId);
                     log.info("[DataPoolManagement] HTTP数据源启动成功");
                     successMessage = "HTTP数据源启动成功";
@@ -544,6 +547,10 @@ public class DataPoolManagementHandler
         DataPool dataPool = dataPoolService.selectDataPoolById(poolId);
         if (dataPool == null) {
             return TcpResponse.error("数据池不存在");
+        }
+
+        if(dataPool.getConnectionState().equals(ConnectionState.CONNECTING.getCode())){
+            return TcpResponse.error("数据源正在连接中，请稍后再试");
         }
 
          //更新数据池状态

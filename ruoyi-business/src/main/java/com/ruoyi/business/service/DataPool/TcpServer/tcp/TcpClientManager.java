@@ -1,5 +1,7 @@
 package com.ruoyi.business.service.DataPool.TcpServer.tcp;
 
+import com.ruoyi.business.enums.ConnectionState;
+import com.ruoyi.business.enums.PoolStatus;
 import com.ruoyi.business.service.DataPool.DataPoolConfigFactory;
 import com.ruoyi.business.service.DataPool.IDataPoolService;
 import com.ruoyi.business.service.common.DataIngestionService;
@@ -38,10 +40,30 @@ public class TcpClientManager {
         return providers.computeIfAbsent(poolId, id -> {
             TcpClientProvider provider = new TcpClientProvider(id, dataPoolService, configFactory, ingestionService, parsingRuleEngineService, eventPublisher);
             provider.ensureConnected();
-            if (!provider.isConnected()) {
-                // 未连接成功不缓存
-                throw new IllegalStateException("TCP客户端连接失败");
+            
+            // 等待连接完成，最多等待2秒
+            int maxWaitTime = 2000; // 2秒
+            int waitInterval = 100; // 100毫秒检查一次
+            int totalWaitTime = 0;
+            
+            while (!provider.isConnected() && totalWaitTime < maxWaitTime) {
+                try {
+                    Thread.sleep(waitInterval);
+                    totalWaitTime += waitInterval;
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    break;
+                }
             }
+            
+            if (!provider.isConnected()) {
+
+                dataPoolService.updateDataPoolStatus(id, PoolStatus.ERROR.getCode());
+                dataPoolService.updateConnectionState(id, ConnectionState.ERROR.getCode());
+                // 未连接成功不缓存
+                throw new IllegalStateException("TCP客户端连接失败，等待超时");
+            }
+            
             return provider;
         });
     }

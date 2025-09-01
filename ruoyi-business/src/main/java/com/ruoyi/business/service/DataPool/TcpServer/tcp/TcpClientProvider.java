@@ -145,12 +145,12 @@ public class TcpClientProvider {
                     updateConnectionState(ConnectionState.CONNECTED);
                     log.info("[TcpClientProvider] 连接成功: {}:{}", sourceConfig.getIpAddress(), sourceConfig.getPort());
                 } else {
-                    updateConnectionState(ConnectionState.DISCONNECTED);
+//                    updateConnectionState(ConnectionState.DISCONNECTED);
                     log.error("[TcpClientProvider] 连接失败: {}:{}", sourceConfig.getIpAddress(), sourceConfig.getPort(), channelFuture.cause());
                 }
             });
         } catch (Exception e) {
-            updateConnectionState(ConnectionState.DISCONNECTED);
+//            updateConnectionState(ConnectionState.DISCONNECTED);
             log.error("[TcpClientProvider] 连接异常: {}:{}", sourceConfig.getIpAddress(), sourceConfig.getPort(), e);
         }
     }

@@ -212,7 +212,7 @@ public class DataPoolServiceImpl implements IDataPoolService
         int result = dataPoolMapper.updateDataPool(dataPool);
         
         // 发布状态变更事件
-        if (result > 0 && newStatus != null) {
+        if (result > 0 && newStatus != null && newStatus != oldStatus) {
             stateChangeService.publishPoolStatusChanged(
                     id, currentPool.getPoolName(), currentPool.getSourceType(),
                     oldStatus, newStatus
@@ -267,13 +267,13 @@ public class DataPoolServiceImpl implements IDataPoolService
         int result = dataPoolMapper.updateDataPool(dataPool);
         
         // 发布状态变更事件
-        if (result > 0 && newState != null) {
+        if (result > 0 && newState != null && newState != oldState) {
             stateChangeService.publishConnectionStateChanged(
                     id, currentPool.getPoolName(), currentPool.getSourceType(),
                     oldState, newState
             );
         }
-        
+
         return result;
     }
 }
