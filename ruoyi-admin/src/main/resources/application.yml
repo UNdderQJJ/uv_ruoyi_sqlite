@@ -30,6 +30,8 @@ netty:
   max-connections: 1000
   # 连接超时时间（秒）
   connection-timeout: 30
+  business-thread-pool-size: 20
+  business-queue-capacity: 1000
 
 # 日志配置
 logging:

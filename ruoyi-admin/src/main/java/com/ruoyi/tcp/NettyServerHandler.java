@@ -19,10 +19,12 @@ import io.netty.channel.SimpleChannelInboundHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.task.TaskExecutor;
 import org.springframework.stereotype.Component;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 
 /**
  * Netty TCP 业务处理器
@@ -70,6 +72,10 @@ public class NettyServerHandler extends SimpleChannelInboundHandler<String> {
     @Autowired
     private DataPoolTemplateManagementHandler dataPoolTemplateManagementHandler;
 
+    // 注入Spring的TaskExecutor，用于异步处理业务逻辑
+    @Autowired
+    private TaskExecutor taskExecutor;
+
     /**
      * 当从客户端接收到消息时被调用
      *
@@ -87,55 +93,85 @@ public class NettyServerHandler extends SimpleChannelInboundHandler<String> {
         String clientAddress = ctx.channel().remoteAddress().toString();
         log.debug("[Netty-Handler] 收到来自客户端 [{}] 的消息: {}", clientAddress, msg);
 
-        TcpResponse response;
-        String requestId = null;
         try {
             // 1. 解析请求
             TcpRequest request = objectMapper.readValue(msg, TcpRequest.class);
             String path = request.getPath();
             String body = request.getBody();
-            requestId = request.getId();
+            String requestId = request.getId();
 
             if (StringUtils.isEmpty(path)) {
                 throw new IllegalArgumentException("请求路径 [path] 不能为空");
             }
 
-            // 2. 根据 Path 路由到不同的业务逻辑
-            if (path.startsWith("/system/user/")) {
-                // 用户管理相关请求
-                response = userManagementHandler.handleUserRequest(path, body);
-            } else if (path.startsWith("/system/role/")) {
-                // 角色管理相关请求
-                response = roleManagementHandler.handleRoleRequest(path, body);
-            } else if (path.startsWith("/system/menu/")) {
-                // 菜单管理相关请求
-                response = menuManagementHandler.handleMenuRequest(path, body);
-            } else if (path.startsWith("/auth/")) {
-                // 权限控制相关请求
-                response = authManagementHandler.handleAuthRequest(path, body);
-            } else if (path.startsWith("/business/dataPool/")) {
-                // 数据池管理相关请求
-                response = dataPoolManagementHandler.handleDataPoolRequest(path, body);
-            } else if (path.startsWith("/business/dataPoolItem/")) {
-                // 数据池热数据管理相关请求
-                response = dataPoolItemManagementHandler.handleDataPoolItemRequest(path, body);
-            } else if (path.startsWith("/business/archivedDataPoolItem/")) {
-                // 归档数据池项目管理相关请求
-                response = archivedDataPoolItemManagementHandler.handleArchivedDataPoolItemRequest(path, body);
-            } else if (path.startsWith("/business/dataPoolTemplate/")) {
-                // 数据池模板管理相关请求
-                response = dataPoolTemplateManagementHandler.handleDataPoolTemplateRequest(path, body);
-            } else {
-                log.warn("[Netty-Handler] 客户端 [{}] 请求了未知的路径: {}", clientAddress, path);
-                response = TcpResponse.error("请求的路径不存在: " + path);
-            }
+            // 2. 异步处理业务逻辑，避免阻塞EventLoop线程
+            CompletableFuture.supplyAsync(() -> {
+                try {
+                    return processBusinessRequest(path, body, requestId, clientAddress);
+                } catch (Exception e) {
+                    log.error("[Netty-Handler] 处理客户端 [{}] 请求时发生异常", clientAddress, e);
+                    return TcpResponse.error("服务器内部错误: " + e.getMessage());
+                }
+            }, taskExecutor).thenAccept(response -> {
+                // 在EventLoop线程中发送响应
+                sendResponse(ctx, response, requestId, clientAddress);
+            }).exceptionally(throwable -> {
+                log.error("[Netty-Handler] 异步处理请求时发生异常", throwable);
+                TcpResponse errorResponse = TcpResponse.error("服务器内部错误: " + throwable.getMessage());
+                sendResponse(ctx, errorResponse, requestId, clientAddress);
+                return null;
+            });
 
         } catch (Exception e) {
-            log.error("[Netty-Handler] 处理客户端 [{}] 请求时发生异常", clientAddress, e);
-            response = TcpResponse.error("服务器内部错误: " + e.getMessage());
+            log.error("[Netty-Handler] 解析客户端 [{}] 请求时发生异常", clientAddress, e);
+            TcpResponse errorResponse = TcpResponse.error("请求格式错误: " + e.getMessage());
+            sendResponse(ctx, errorResponse, null, clientAddress);
         }
+    }
 
-        // 3. 将响应写回客户端
+    /**
+     * 处理业务请求（在业务线程池中执行）
+     */
+    private TcpResponse processBusinessRequest(String path, String body, String requestId, String clientAddress) {
+        TcpResponse response;
+        
+        // 根据 Path 路由到不同的业务逻辑
+        if (path.startsWith("/system/user/")) {
+            // 用户管理相关请求
+            response = userManagementHandler.handleUserRequest(path, body);
+        } else if (path.startsWith("/system/role/")) {
+            // 角色管理相关请求
+            response = roleManagementHandler.handleRoleRequest(path, body);
+        } else if (path.startsWith("/system/menu/")) {
+            // 菜单管理相关请求
+            response = menuManagementHandler.handleMenuRequest(path, body);
+        } else if (path.startsWith("/auth/")) {
+            // 权限控制相关请求
+            response = authManagementHandler.handleAuthRequest(path, body);
+        } else if (path.startsWith("/business/dataPool/")) {
+            // 数据池管理相关请求
+            response = dataPoolManagementHandler.handleDataPoolRequest(path, body);
+        } else if (path.startsWith("/business/dataPoolItem/")) {
+            // 数据池热数据管理相关请求
+            response = dataPoolItemManagementHandler.handleDataPoolItemRequest(path, body);
+        } else if (path.startsWith("/business/archivedDataPoolItem/")) {
+            // 归档数据池项目管理相关请求
+            response = archivedDataPoolItemManagementHandler.handleArchivedDataPoolItemRequest(path, body);
+        } else if (path.startsWith("/business/dataPoolTemplate/")) {
+            // 数据池模板管理相关请求
+            response = dataPoolTemplateManagementHandler.handleDataPoolTemplateRequest(path, body);
+        } else {
+            log.warn("[Netty-Handler] 客户端 [{}] 请求了未知的路径: {}", clientAddress, path);
+            response = TcpResponse.error("请求的路径不存在: " + path);
+        }
+        
+        return response;
+    }
+
+    /**
+     * 发送响应（在EventLoop线程中执行）
+     */
+    private void sendResponse(ChannelHandlerContext ctx, TcpResponse response, String requestId, String clientAddress) {
         try {
             // 构建响应数据
             Map<String, Object> responseData = new HashMap<>();
