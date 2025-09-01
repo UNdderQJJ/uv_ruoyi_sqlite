@@ -1,6 +1,6 @@
 package com.ruoyi.business.mapper.ArchivedDataPoolItem;
 
-import com.ruoyi.business.domain.ArchivedDataPoolItem;
+import com.ruoyi.business.domain.ArchivedDataPoolItem.ArchivedDataPoolItem;
 import org.apache.ibatis.annotations.Param;
 
 import java.util.Date;

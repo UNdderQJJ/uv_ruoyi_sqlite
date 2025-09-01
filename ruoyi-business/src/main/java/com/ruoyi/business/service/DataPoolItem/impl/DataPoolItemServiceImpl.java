@@ -1,6 +1,6 @@
 package com.ruoyi.business.service.DataPoolItem.impl;
 
-import com.ruoyi.business.domain.DataPoolItem;
+import com.ruoyi.business.domain.DataPoolItem.DataPoolItem;
 import com.ruoyi.business.enums.ItemStatus;
 import com.ruoyi.business.mapper.DataPoolItem.DataPoolItemMapper;
 import com.ruoyi.business.service.DataPoolItem.IDataPoolItemService;

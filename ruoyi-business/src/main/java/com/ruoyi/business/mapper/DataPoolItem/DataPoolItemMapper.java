@@ -1,6 +1,6 @@
 package com.ruoyi.business.mapper.DataPoolItem;
 
-import com.ruoyi.business.domain.DataPoolItem;
+import com.ruoyi.business.domain.DataPoolItem.DataPoolItem;
 import java.util.List;
 import java.util.Map;
 

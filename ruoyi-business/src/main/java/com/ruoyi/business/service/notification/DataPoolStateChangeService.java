@@ -1,6 +1,6 @@
 package com.ruoyi.business.service.notification;
 
-import com.ruoyi.business.domain.DataPool;
+import com.ruoyi.business.domain.DataPool.DataPool;
 import com.ruoyi.business.events.DataPoolStateChangedEvent;
 import com.ruoyi.business.enums.ConnectionState;
 import com.ruoyi.business.enums.PoolStatus;

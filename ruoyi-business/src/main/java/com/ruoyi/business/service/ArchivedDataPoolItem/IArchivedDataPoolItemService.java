@@ -1,7 +1,7 @@
 package com.ruoyi.business.service.ArchivedDataPoolItem;
 
-import com.ruoyi.business.domain.ArchivedDataPoolItem;
-import com.ruoyi.business.domain.DataPoolItem;
+import com.ruoyi.business.domain.ArchivedDataPoolItem.ArchivedDataPoolItem;
+import com.ruoyi.business.domain.DataPoolItem.DataPoolItem;
 
 import java.util.Date;
 import java.util.List;

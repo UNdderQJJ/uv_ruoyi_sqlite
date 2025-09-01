@@ -3,7 +3,7 @@ package com.ruoyi.tcp.business.DataPoolItem;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.ruoyi.business.domain.DataPoolItem;
+import com.ruoyi.business.domain.DataPoolItem.DataPoolItem;
 import com.ruoyi.business.service.DataPoolItem.IDataPoolItemService;
 import com.ruoyi.common.core.TcpResponse;
 import com.ruoyi.common.utils.StringUtils;

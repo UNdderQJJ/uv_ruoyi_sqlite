@@ -1,18 +1,17 @@
 package com.ruoyi.business.service.DataPool;
 
 import com.alibaba.fastjson2.JSON;
-import com.ruoyi.business.domain.DataPool;
+import com.ruoyi.business.domain.DataPool.DataPool;
 import com.ruoyi.business.domain.config.TriggerConfig;
 import com.ruoyi.business.enums.PoolStatus;
-import com.ruoyi.business.enums.SourceType;
 import com.ruoyi.business.enums.TriggerType;
 import com.ruoyi.business.enums.ConnectionState;
-import com.ruoyi.business.service.DataPool.Http.HttpManager;
-import com.ruoyi.business.service.DataPool.Mqtt.MqttManager;
-import com.ruoyi.business.service.DataPool.TcpClient.tcp.TcpServerManager;
-import com.ruoyi.business.service.DataPool.TcpServer.tcp.TcpClientManager;
-import com.ruoyi.business.service.DataPool.UDisk.UDiskDataSchedulerService;
-import com.ruoyi.business.service.DataPool.WebSocket.WebSocketManager;
+import com.ruoyi.business.service.DataPool.type.Http.HttpManager;
+import com.ruoyi.business.service.DataPool.type.Mqtt.MqttManager;
+import com.ruoyi.business.service.DataPool.type.TcpClient.tcp.TcpServerManager;
+import com.ruoyi.business.service.DataPool.type.TcpServer.tcp.TcpClientManager;
+import com.ruoyi.business.service.DataPool.type.UDisk.UDiskDataSchedulerService;
+import com.ruoyi.business.service.DataPool.type.WebSocket.WebSocketManager;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

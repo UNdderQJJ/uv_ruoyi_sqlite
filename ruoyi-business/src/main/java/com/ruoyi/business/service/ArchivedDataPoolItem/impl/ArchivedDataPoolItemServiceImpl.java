@@ -1,7 +1,7 @@
 package com.ruoyi.business.service.ArchivedDataPoolItem.impl;
 
-import com.ruoyi.business.domain.ArchivedDataPoolItem;
-import com.ruoyi.business.domain.DataPoolItem;
+import com.ruoyi.business.domain.ArchivedDataPoolItem.ArchivedDataPoolItem;
+import com.ruoyi.business.domain.DataPoolItem.DataPoolItem;
 import com.ruoyi.business.enums.ItemStatus;
 import com.ruoyi.business.enums.VerificationStatus;
 import com.ruoyi.business.mapper.ArchivedDataPoolItem.ArchivedDataPoolItemMapper;

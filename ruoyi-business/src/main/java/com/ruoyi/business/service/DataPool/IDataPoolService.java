@@ -1,6 +1,6 @@
 package com.ruoyi.business.service.DataPool;
 
-import com.ruoyi.business.domain.DataPool;
+import com.ruoyi.business.domain.DataPool.DataPool;
 import java.util.List;
 
 /**

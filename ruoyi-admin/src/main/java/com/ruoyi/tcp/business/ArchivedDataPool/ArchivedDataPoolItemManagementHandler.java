@@ -3,7 +3,7 @@ package com.ruoyi.tcp.business.ArchivedDataPool;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.ruoyi.business.domain.ArchivedDataPoolItem;
+import com.ruoyi.business.domain.ArchivedDataPoolItem.ArchivedDataPoolItem;
 import com.ruoyi.business.service.ArchivedDataPoolItem.IArchivedDataPoolItemService;
 import com.ruoyi.common.core.TcpResponse;
 import org.slf4j.Logger;

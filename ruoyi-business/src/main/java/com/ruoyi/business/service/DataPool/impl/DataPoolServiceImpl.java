@@ -1,6 +1,6 @@
 package com.ruoyi.business.service.DataPool.impl;
 
-import com.ruoyi.business.domain.DataPool;
+import com.ruoyi.business.domain.DataPool.DataPool;
 import com.ruoyi.business.enums.ConnectionState;
 import com.ruoyi.business.enums.PoolStatus;
 import com.ruoyi.business.mapper.DataPool.DataPoolMapper;
