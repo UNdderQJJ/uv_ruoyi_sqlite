@@ -13,12 +13,14 @@ import com.ruoyi.tcp.business.DataPool.DataPoolManagementHandler;
 import com.ruoyi.tcp.business.DataPoolItem.DataPoolItemManagementHandler;
 import com.ruoyi.tcp.business.ArchivedDataPool.ArchivedDataPoolItemManagementHandler;
 import com.ruoyi.tcp.business.DataPoolTemplate.DataPoolTemplateManagementHandler;
+import com.ruoyi.tcp.business.Device.DeviceManagementHandler;
 import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.core.task.TaskExecutor;
 import org.springframework.stereotype.Component;
 
@@ -71,6 +73,10 @@ public class NettyServerHandler extends SimpleChannelInboundHandler<String> {
     // 注入数据池模板管理处理器
     @Autowired
     private DataPoolTemplateManagementHandler dataPoolTemplateManagementHandler;
+
+    // 注入设备管理处理器
+    @Autowired
+    private DeviceManagementHandler deviceManagementHandler;
 
     // 注入Spring的TaskExecutor，用于异步处理业务逻辑
     @Autowired
@@ -160,6 +166,9 @@ public class NettyServerHandler extends SimpleChannelInboundHandler<String> {
         } else if (path.startsWith("/business/dataPoolTemplate/")) {
             // 数据池模板管理相关请求
             response = dataPoolTemplateManagementHandler.handleDataPoolTemplateRequest(path, body);
+        } else if (path.startsWith("/business/device/")) {
+            // 设备管理相关请求
+            response = deviceManagementHandler.handleDeviceRequest(path, body);
         } else {
             log.warn("[Netty-Handler] 客户端 [{}] 请求了未知的路径: {}", clientAddress, path);
             response = TcpResponse.error("请求的路径不存在: " + path);

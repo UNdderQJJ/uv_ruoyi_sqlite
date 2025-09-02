@@ -1,0 +1,230 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.business.mapper.DeviceInfo.DeviceInfoMapper">
+    
+    <resultMap type="DeviceInfo" id="DeviceInfoResult">
+        <result property="id"    column="id"    />
+        <result property="deviceUuid"    column="device_uuid"    />
+        <result property="name"    column="name"    />
+        <result property="deviceType"    column="device_type"    />
+        <result property="model"    column="model"    />
+        <result property="location"    column="location"    />
+        <result property="connectionType"    column="connection_type"    />
+        <result property="ipAddress"    column="ip_address"    />
+        <result property="port"    column="port"    />
+        <result property="serialPort"    column="serial_port"    />
+        <result property="baudRate"    column="baud_rate"    />
+        <result property="dataBits"    column="data_bits"    />
+        <result property="stopBits"    column="stop_bits"    />
+        <result property="parity"    column="parity"    />
+        <result property="status"    column="status"    />
+        <result property="currentTaskId"    column="current_task_id"    />
+        <result property="isEnabled"    column="is_enabled"    />
+        <result property="lastHeartbeatTime"    column="last_heartbeat_time"    />
+        <result property="parameters"    column="parameters"    />
+        <result property="description"    column="description"    />
+        <result property="createBy"    column="create_by"    />
+        <result property="createTime"    column="created_time"    />
+        <result property="updateBy"    column="update_by"    />
+        <result property="updateTime"    column="updated_time"    />
+        <result property="delFlag"    column="del_flag"    />
+    </resultMap>
+
+    <sql id="selectDeviceInfoVo">
+        select id, device_uuid, name, device_type, model, location, connection_type, ip_address, port, serial_port, baud_rate, data_bits, stop_bits, parity, status, current_task_id, is_enabled, last_heartbeat_time, parameters, description, create_by, created_time, update_by, updated_time, del_flag from device_info
+    </sql>
+
+    <select id="selectDeviceInfoList" parameterType="DeviceInfo" resultMap="DeviceInfoResult">
+        <include refid="selectDeviceInfoVo"/>
+        <where>  
+            <if test="deviceUuid != null  and deviceUuid != ''"> and device_uuid = #{deviceUuid}</if>
+            <if test="name != null  and name != ''"> and name like concat('%', #{name}, '%')</if>
+            <if test="deviceType != null  and deviceType != ''"> and device_type = #{deviceType}</if>
+            <if test="model != null  and model != ''"> and model like concat('%', #{model}, '%')</if>
+            <if test="location != null  and location != ''"> and location like concat('%', #{location}, '%')</if>
+            <if test="connectionType != null  and connectionType != ''"> and connection_type = #{connectionType}</if>
+            <if test="ipAddress != null  and ipAddress != ''"> and ip_address = #{ipAddress}</if>
+            <if test="port != null "> and port = #{port}</if>
+            <if test="serialPort != null  and serialPort != ''"> and serial_port = #{serialPort}</if>
+            <if test="baudRate != null "> and baud_rate = #{baudRate}</if>
+            <if test="dataBits != null "> and data_bits = #{dataBits}</if>
+            <if test="stopBits != null "> and stop_bits = #{stopBits}</if>
+            <if test="parity != null  and parity != ''"> and parity = #{parity}</if>
+            <if test="status != null  and status != ''"> and status = #{status}</if>
+            <if test="currentTaskId != null "> and current_task_id = #{currentTaskId}</if>
+            <if test="isEnabled != null "> and is_enabled = #{isEnabled}</if>
+            <if test="lastHeartbeatTime != null "> and last_heartbeat_time = #{lastHeartbeatTime}</if>
+            <if test="parameters != null  and parameters != ''"> and parameters = #{parameters}</if>
+            <if test="description != null  and description != ''"> and description like concat('%', #{description}, '%')</if>
+            and del_flag = 0
+        </where>
+        order by created_time desc
+    </select>
+    
+    <select id="selectDeviceInfoById" parameterType="Long" resultMap="DeviceInfoResult">
+        <include refid="selectDeviceInfoVo"/>
+        where id = #{id} and del_flag = 0
+    </select>
+
+    <select id="selectDeviceInfoByUuid" parameterType="String" resultMap="DeviceInfoResult">
+        <include refid="selectDeviceInfoVo"/>
+        where device_uuid = #{deviceUuid} and del_flag = 0
+    </select>
+
+    <select id="selectDeviceInfoListByType" parameterType="String" resultMap="DeviceInfoResult">
+        <include refid="selectDeviceInfoVo"/>
+        where device_type = #{deviceType} and del_flag = 0
+        order by created_time desc
+    </select>
+
+    <select id="selectDeviceInfoListByStatus" parameterType="String" resultMap="DeviceInfoResult">
+        <include refid="selectDeviceInfoVo"/>
+        where status = #{status} and del_flag = 0
+        order by created_time desc
+    </select>
+
+    <select id="selectEnabledDeviceInfoList" resultMap="DeviceInfoResult">
+        <include refid="selectDeviceInfoVo"/>
+        where is_enabled = 1 and del_flag = 0
+        order by created_time desc
+    </select>
+
+    <select id="selectOnlineDeviceInfoList" resultMap="DeviceInfoResult">
+        <include refid="selectDeviceInfoVo"/>
+        where status in ('ONLINE_IDLE', 'ONLINE_PRINTING', 'ONLINE_SCANNING') and del_flag = 0
+        order by created_time desc
+    </select>
+
+    <select id="selectDeviceInfoListByTaskId" parameterType="Long" resultMap="DeviceInfoResult">
+        <include refid="selectDeviceInfoVo"/>
+        where current_task_id = #{taskId} and del_flag = 0
+        order by created_time desc
+    </select>
+
+    <select id="checkDeviceUuidUnique" parameterType="String" resultType="int">
+        select count(1) from device_info where device_uuid = #{deviceUuid} and del_flag = 0
+    </select>
+
+    <select id="countDeviceInfo" parameterType="DeviceInfo" resultType="int">
+        select count(1) from device_info
+        <where>  
+            <if test="deviceType != null  and deviceType != ''"> and device_type = #{deviceType}</if>
+            <if test="status != null  and status != ''"> and status = #{status}</if>
+            <if test="isEnabled != null "> and is_enabled = #{isEnabled}</if>
+            and del_flag = 0
+        </where>
+    </select>
+
+    <select id="countDeviceInfoByType" resultMap="DeviceInfoResult">
+        select device_type, count(1) as id from device_info where del_flag = 0 group by device_type
+    </select>
+        
+    <insert id="insertDeviceInfo" parameterType="DeviceInfo" useGeneratedKeys="true" keyProperty="id">
+        insert into device_info
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="deviceUuid != null and deviceUuid != ''">device_uuid,</if>
+            <if test="name != null and name != ''">name,</if>
+            <if test="deviceType != null and deviceType != ''">device_type,</if>
+            <if test="model != null">model,</if>
+            <if test="location != null">location,</if>
+            <if test="connectionType != null and connectionType != ''">connection_type,</if>
+            <if test="ipAddress != null">ip_address,</if>
+            <if test="port != null">port,</if>
+            <if test="serialPort != null">serial_port,</if>
+            <if test="baudRate != null">baud_rate,</if>
+            <if test="dataBits != null">data_bits,</if>
+            <if test="stopBits != null">stop_bits,</if>
+            <if test="parity != null">parity,</if>
+            <if test="status != null">status,</if>
+            <if test="currentTaskId != null">current_task_id,</if>
+            <if test="isEnabled != null">is_enabled,</if>
+            <if test="lastHeartbeatTime != null">last_heartbeat_time,</if>
+            <if test="parameters != null">parameters,</if>
+            <if test="description != null">description,</if>
+            <if test="createBy != null">create_by,</if>
+            created_time,
+            <if test="updateBy != null">update_by,</if>
+            updated_time,
+            del_flag
+         </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="deviceUuid != null and deviceUuid != ''">#{deviceUuid},</if>
+            <if test="name != null and name != ''">#{name},</if>
+            <if test="deviceType != null and deviceType != ''">#{deviceType},</if>
+            <if test="model != null">#{model},</if>
+            <if test="location != null">#{location},</if>
+            <if test="connectionType != null and connectionType != ''">#{connectionType},</if>
+            <if test="ipAddress != null">#{ipAddress},</if>
+            <if test="port != null">#{port},</if>
+            <if test="serialPort != null">#{serialPort},</if>
+            <if test="baudRate != null">#{baudRate},</if>
+            <if test="dataBits != null">#{dataBits},</if>
+            <if test="stopBits != null">#{stopBits},</if>
+            <if test="parity != null">#{parity},</if>
+            <if test="status != null">#{status},</if>
+            <if test="currentTaskId != null">#{currentTaskId},</if>
+            <if test="isEnabled != null">#{isEnabled},</if>
+            <if test="lastHeartbeatTime != null">#{lastHeartbeatTime},</if>
+            <if test="parameters != null">#{parameters},</if>
+            <if test="description != null">#{description},</if>
+            <if test="createBy != null">#{createBy},</if>
+            datetime('now','localtime'),
+            <if test="updateBy != null">#{updateBy},</if>
+            datetime('now','localtime'),
+            0
+         </trim>
+    </insert>
+
+    <update id="updateDeviceInfo" parameterType="DeviceInfo">
+        update device_info
+        <trim prefix="SET" suffixOverrides=",">
+            <if test="deviceUuid != null and deviceUuid != ''">device_uuid = #{deviceUuid},</if>
+            <if test="name != null and name != ''">name = #{name},</if>
+            <if test="deviceType != null and deviceType != ''">device_type = #{deviceType},</if>
+            <if test="model != null">model = #{model},</if>
+            <if test="location != null">location = #{location},</if>
+            <if test="connectionType != null and connectionType != ''">connection_type = #{connectionType},</if>
+            <if test="ipAddress != null">ip_address = #{ipAddress},</if>
+            <if test="port != null">port = #{port},</if>
+            <if test="serialPort != null">serial_port = #{serialPort},</if>
+            <if test="baudRate != null">baud_rate = #{baudRate},</if>
+            <if test="dataBits != null">data_bits = #{dataBits},</if>
+            <if test="stopBits != null">stop_bits = #{stopBits},</if>
+            <if test="parity != null">parity = #{parity},</if>
+            <if test="status != null">status = #{status},</if>
+            <if test="currentTaskId != null">current_task_id = #{currentTaskId},</if>
+            <if test="isEnabled != null">is_enabled = #{isEnabled},</if>
+            <if test="lastHeartbeatTime != null">last_heartbeat_time = #{lastHeartbeatTime},</if>
+            <if test="parameters != null">parameters = #{parameters},</if>
+            <if test="description != null">description = #{description},</if>
+            <if test="updateBy != null">update_by = #{updateBy},</if>
+            updated_time = datetime('now','localtime')
+        </trim>
+        where id = #{id}
+    </update>
+
+    <update id="updateDeviceStatus" parameterType="DeviceInfo">
+        update device_info set status = #{status}, update_by = #{updateBy}, updated_time = datetime('now','localtime') where id = #{id}
+    </update>
+
+    <update id="updateDeviceHeartbeat" parameterType="DeviceInfo">
+        update device_info set last_heartbeat_time = #{lastHeartbeatTime}, updated_time = datetime('now','localtime') where id = #{id}
+    </update>
+
+    <update id="updateDeviceCurrentTask" parameterType="DeviceInfo">
+        update device_info set current_task_id = #{currentTaskId}, update_by = #{updateBy}, updated_time = datetime('now','localtime') where id = #{id}
+    </update>
+
+    <delete id="deleteDeviceInfoById" parameterType="Long">
+        update device_info set del_flag = 2, updated_time = datetime('now','localtime') where id = #{id}
+    </delete>
+
+    <delete id="deleteDeviceInfoByIds" parameterType="String">
+        update device_info set del_flag = 2, updated_time = datetime('now','localtime') where id in 
+        <foreach item="id" collection="array" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </delete>
+</mapper>
