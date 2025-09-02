@@ -1,0 +1,156 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.business.mapper.DeviceFileConfig.DeviceFileConfigMapper">
+    
+    <resultMap type="DeviceFileConfig" id="DeviceFileConfigResult">
+        <result property="id"    column="id"    />
+        <result property="deviceId"    column="device_id"    />
+        <result property="fileName"    column="file_name"    />
+        <result property="variableName"    column="variable_name"    />
+        <result property="variableType"    column="variable_type"    />
+        <result property="fixedContent"    column="fixed_content"    />
+        <result property="isDefault"    column="is_default"    />
+        <result property="description"    column="description"    />
+        <result property="createBy"    column="create_by"    />
+        <result property="createTime"    column="create_time"    />
+        <result property="updateBy"    column="update_by"    />
+        <result property="updateTime"    column="update_time"    />
+        <result property="delFlag"    column="del_flag"    />
+    </resultMap>
+
+    <sql id="selectDeviceFileConfigVo">
+        select id, device_id, file_name, variable_name, variable_type, fixed_content, is_default, description, create_by, create_time, update_by, update_time, del_flag from device_file_config
+    </sql>
+
+    <select id="selectDeviceFileConfigList" parameterType="DeviceFileConfig" resultMap="DeviceFileConfigResult">
+        <include refid="selectDeviceFileConfigVo"/>
+        <where>  
+            <if test="deviceId != null "> and device_id = #{deviceId}</if>
+            <if test="fileName != null  and fileName != ''"> and file_name like concat('%', #{fileName}, '%')</if>
+            <if test="variableName != null  and variableName != ''"> and variable_name like concat('%', #{variableName}, '%')</if>
+            <if test="variableType != null  and variableType != ''"> and variable_type = #{variableType}</if>
+            <if test="fixedContent != null  and fixedContent != ''"> and fixed_content like concat('%', #{fixedContent}, '%')</if>
+            <if test="isDefault != null "> and is_default = #{isDefault}</if>
+            <if test="description != null  and description != ''"> and description like concat('%', #{description}, '%')</if>
+            and del_flag = 0
+        </where>
+        order by create_time desc
+    </select>
+    
+    <select id="selectDeviceFileConfigById" parameterType="Long" resultMap="DeviceFileConfigResult">
+        <include refid="selectDeviceFileConfigVo"/>
+        where id = #{id} and del_flag = 0
+    </select>
+
+    <select id="selectDeviceFileConfigListByDeviceId" parameterType="Long" resultMap="DeviceFileConfigResult">
+        <include refid="selectDeviceFileConfigVo"/>
+        where device_id = #{deviceId} and del_flag = 0
+        order by create_time desc
+    </select>
+
+    <select id="selectDeviceFileConfigListByDeviceIdAndFileName" resultMap="DeviceFileConfigResult">
+        <include refid="selectDeviceFileConfigVo"/>
+        where device_id = #{deviceId} and file_name = #{fileName} and del_flag = 0
+        order by create_time desc
+    </select>
+
+    <select id="selectDefaultDeviceFileConfigListByDeviceId" parameterType="Long" resultMap="DeviceFileConfigResult">
+        <include refid="selectDeviceFileConfigVo"/>
+        where device_id = #{deviceId} and is_default = 1 and del_flag = 0
+        order by create_time desc
+    </select>
+
+    <select id="selectDeviceFileConfigListByVariableType" parameterType="String" resultMap="DeviceFileConfigResult">
+        <include refid="selectDeviceFileConfigVo"/>
+        where variable_type = #{variableType} and del_flag = 0
+        order by create_time desc
+    </select>
+
+    <select id="countDeviceFileConfig" parameterType="DeviceFileConfig" resultType="int">
+        select count(1) from device_file_config
+        <where>  
+            <if test="deviceId != null "> and device_id = #{deviceId}</if>
+            <if test="fileName != null  and fileName != ''"> and file_name like concat('%', #{fileName}, '%')</if>
+            <if test="variableType != null  and variableType != ''"> and variable_type = #{variableType}</if>
+            <if test="isDefault != null "> and is_default = #{isDefault}</if>
+            and del_flag = 0
+        </where>
+    </select>
+
+    <select id="countDeviceFileConfigByDevice" resultType="map">
+        select device_id, count(1) as count from device_file_config where del_flag = 0 group by device_id
+    </select>
+        
+    <insert id="insertDeviceFileConfig" parameterType="DeviceFileConfig" useGeneratedKeys="true" keyProperty="id">
+        insert into device_file_config
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="deviceId != null">device_id,</if>
+            <if test="fileName != null and fileName != ''">file_name,</if>
+            <if test="variableName != null and variableName != ''">variable_name,</if>
+            <if test="variableType != null">variable_type,</if>
+            <if test="fixedContent != null">fixed_content,</if>
+            <if test="isDefault != null">is_default,</if>
+            <if test="description != null">description,</if>
+            <if test="createBy != null">create_by,</if>
+            create_time,
+            <if test="updateBy != null">update_by,</if>
+            update_time,
+            del_flag
+         </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="deviceId != null">#{deviceId},</if>
+            <if test="fileName != null and fileName != ''">#{fileName},</if>
+            <if test="variableName != null and variableName != ''">#{variableName},</if>
+            <if test="variableType != null">#{variableType},</if>
+            <if test="fixedContent != null">#{fixedContent},</if>
+            <if test="isDefault != null">#{isDefault},</if>
+            <if test="description != null">#{description},</if>
+            <if test="createBy != null">#{createBy},</if>
+            datetime('now','localtime'),
+            <if test="updateBy != null">#{updateBy},</if>
+            datetime('now','localtime'),
+            0
+         </trim>
+    </insert>
+
+    <update id="updateDeviceFileConfig" parameterType="DeviceFileConfig">
+        update device_file_config
+        <trim prefix="SET" suffixOverrides=",">
+            <if test="deviceId != null">device_id = #{deviceId},</if>
+            <if test="fileName != null and fileName != ''">file_name = #{fileName},</if>
+            <if test="variableName != null and variableName != ''">variable_name = #{variableName},</if>
+            <if test="variableType != null">variable_type = #{variableType},</if>
+            <if test="fixedContent != null">fixed_content = #{fixedContent},</if>
+            <if test="isDefault != null">is_default = #{isDefault},</if>
+            <if test="description != null">description = #{description},</if>
+            <if test="updateBy != null">update_by = #{updateBy},</if>
+            update_time = datetime('now','localtime')
+        </trim>
+        where id = #{id}
+    </update>
+
+    <update id="deleteDeviceFileConfigById" parameterType="Long" >
+        update device_file_config set del_flag = 2 where id = #{id}
+    </update>
+
+    <update id="deleteDeviceFileConfigByIds" parameterType="String" >
+        update device_file_config set del_flag = 2 where id in
+        <foreach item="id" collection="array" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </update>
+
+    <update id="deleteDeviceFileConfigByDeviceId" parameterType="Long">
+        update device_file_config set del_flag = 2 where device_id = #{deviceId}
+    </update>
+
+    <update id="deleteDeviceFileConfigByDeviceIdAndFileName">
+        update device_file_config set del_flag = 2 where device_id = #{deviceId} and file_name = #{fileName}
+    </update>
+
+    <update id="setDeviceDefaultConfig">
+        update device_file_config set is_default = 1 where device_id = #{deviceId} and file_name = #{fileName} and del_flag = 0
+    </update>
+</mapper>
