@@ -190,8 +190,8 @@ public class DeviceTcpApiDocumentation {
      *
      * 请求路径: /business/device/create
      * 请求体: DeviceInfo 对象(无需 id、createTime、updateTime、delFlag)
+     * 注意：deviceUuid字段可选，如果不提供或为空，系统会自动生成唯一UUID
      * {
-     *   "deviceUuid": "UV-Printer-001",
      *   "name": "一号车间UV打印机A",
      *   "deviceType": "PRINTER",
      *   "model": "UV-3000",
@@ -205,13 +205,13 @@ public class DeviceTcpApiDocumentation {
      *   "description": "主要打印标签"
      * }
      *
-     * 响应数据: { "message": "创建设备成功" }
+     * 响应数据: { "message": "创建设备成功，设备UUID: DEV_xxxxxxxx" }
      *
      * 示例：
      * {
      *   "id": "req_dev_008",
      *   "path": "/business/device/create",
-     *   "body": "{\"deviceUuid\":\"UV-Printer-001\",\"name\":\"一号车间UV打印机A\",\"deviceType\":\"PRINTER\",\"model\":\"UV-3000\",\"location\":\"一号车间\",\"connectionType\":\"TCP\",\"ipAddress\":\"192.168.1.101\",\"port\":9100,\"status\":\"OFFLINE\",\"isEnabled\":1,\"parameters\":\"{\\\"printSpeed\\\":150,\\\"laserPower\\\":80,\\\"resolution\\\":600}\",\"description\":\"主要打印标签\"}"
+     *   "body": "{\"name\":\"一号车间UV打印机A\",\"deviceType\":\"PRINTER\",\"model\":\"UV-3000\",\"location\":\"一号车间\",\"connectionType\":\"TCP\",\"ipAddress\":\"192.168.1.101\",\"port\":9100,\"status\":\"OFFLINE\",\"isEnabled\":1,\"parameters\":\"{\\\"printSpeed\\\":150,\\\"laserPower\\\":80,\\\"resolution\\\":600}\",\"description\":\"主要打印标签\"}"
      * }
      */
 
@@ -407,6 +407,38 @@ public class DeviceTcpApiDocumentation {
      */
 
     /**
+     * 18) 获取设备树状图
+     *
+     * 请求路径: /business/device/tree
+     * 请求体: null (无需请求体)
+     *
+     * 响应数据: 按设备类型分组的树状结构
+     * [
+     *   {
+     *     "categoryName": "UV打印机",
+     *     "deviceType": "PRINTER",
+     *     "deviceCount": 5,
+     *     "devices": [
+     *       {
+     *         "id": 1,
+     *         "deviceUuid": "DEV_abc123",
+     *         "name": "一号车间UV打印机A",
+     *         "deviceType": "PRINTER",
+     *         "status": "ONLINE_IDLE"
+     *       }
+     *     ]
+     *   }
+     * ]
+     *
+     * 示例：
+     * {
+     *   "id": "req_dev_019",
+     *   "path": "/business/device/tree",
+     *   "body": null
+     * }
+     */
+
+    /**
      * 设备类型枚举值:
      * - PRINTER: 打印机
      * - CODER: 喷码机
@@ -434,10 +466,10 @@ public class DeviceTcpApiDocumentation {
 
     /**
      * 配置示例:
+     * 注意：deviceUuid字段会自动生成，无需手动指定
      * 
      * 1. TCP网络打印机配置:
      * {
-     *   "deviceUuid": "UV-Printer-001",
      *   "name": "一号车间UV打印机A",
      *   "deviceType": "PRINTER",
      *   "model": "UV-3000",
@@ -453,7 +485,6 @@ public class DeviceTcpApiDocumentation {
      * 
      * 2. 串口喷码机配置:
      * {
-     *   "deviceUuid": "CODER-001",
      *   "name": "二号车间喷码机",
      *   "deviceType": "CODER",
      *   "model": "Coder-2000",
@@ -472,7 +503,6 @@ public class DeviceTcpApiDocumentation {
      * 
      * 3. 扫码枪配置:
      * {
-     *   "deviceUuid": "SCANNER-001",
      *   "name": "质检扫码枪",
      *   "deviceType": "SCANNER",
      *   "model": "Scanner-1000",
@@ -495,7 +525,7 @@ public class DeviceTcpApiDocumentation {
      * {
      *   "id": "req_dev_001",
      *   "path": "/business/device/create",
-     *   "body": "{\"deviceUuid\":\"UV-Printer-001\",\"name\":\"一号车间UV打印机A\",\"deviceType\":\"PRINTER\",\"connectionType\":\"TCP\",\"ipAddress\":\"192.168.1.101\",\"port\":9100}"
+     *   "body": "{\"name\":\"一号车间UV打印机A\",\"deviceType\":\"PRINTER\",\"connectionType\":\"TCP\",\"ipAddress\":\"192.168.1.101\",\"port\":9100}"
      * }
      * 
      * 2. 查询打印机列表:
@@ -518,5 +548,44 @@ public class DeviceTcpApiDocumentation {
      *   "path": "/business/device/count",
      *   "body": "{\"status\":\"ONLINE_IDLE\"}"
      * }
+     * 
+     * 5. 获取设备树状图:
+     * {
+     *   "id": "req_dev_005",
+     *   "path": "/business/device/tree",
+     *   "body": null
+     * }
+     * 
+     * 响应数据示例:
+     * [
+     *   {
+     *     "categoryName": "UV打印机",
+     *     "deviceType": "PRINTER",
+     *     "deviceCount": 5,
+     *     "devices": [
+     *       {
+     *         "id": 1,
+     *         "deviceUuid": "DEV_abc123",
+     *         "name": "一号车间UV打印机A",
+     *         "deviceType": "PRINTER",
+     *         "status": "ONLINE_IDLE"
+     *       }
+     *     ]
+     *   },
+     *   {
+     *     "categoryName": "油墨喷码机",
+     *     "deviceType": "CODER",
+     *     "deviceCount": 1,
+     *     "devices": [
+     *       {
+     *         "id": 6,
+     *         "deviceUuid": "DEV_def456",
+     *         "name": "二号车间喷码机",
+     *         "deviceType": "CODER",
+     *         "status": "OFFLINE"
+     *       }
+     *     ]
+     *   }
+     * ]
      */
 }

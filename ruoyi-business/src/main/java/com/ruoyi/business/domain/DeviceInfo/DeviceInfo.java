@@ -3,6 +3,7 @@ package com.ruoyi.business.domain.DeviceInfo;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.ruoyi.common.annotation.Excel;
 import com.ruoyi.common.core.domain.BaseEntity;
+import com.ruoyi.common.utils.uuid.IdUtils;
 import lombok.Data;
 import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.apache.commons.lang3.builder.ToStringStyle;
@@ -105,5 +106,17 @@ public class DeviceInfo extends BaseEntity
 
     /** 批量操作时的ID数组 */
     private Long[] ids;
+
+    /**
+     * 设置设备UUID，如果为空则自动生成
+     */
+    public void setDeviceUuid(String deviceUuid) {
+        if (deviceUuid == null || deviceUuid.trim().isEmpty()) {
+            // 自动生成UUID，使用简化版本（去掉横线）
+            this.deviceUuid = IdUtils.fastSimpleUUID();
+        } else {
+            this.deviceUuid = deviceUuid;
+        }
+    }
 
 }

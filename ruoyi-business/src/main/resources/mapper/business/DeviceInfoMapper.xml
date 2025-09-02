@@ -26,14 +26,14 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         <result property="parameters"    column="parameters"    />
         <result property="description"    column="description"    />
         <result property="createBy"    column="create_by"    />
-        <result property="createTime"    column="created_time"    />
+        <result property="createTime"    column="create_time"    />
         <result property="updateBy"    column="update_by"    />
-        <result property="updateTime"    column="updated_time"    />
+        <result property="updateTime"    column="update_time"    />
         <result property="delFlag"    column="del_flag"    />
     </resultMap>
 
     <sql id="selectDeviceInfoVo">
-        select id, device_uuid, name, device_type, model, location, connection_type, ip_address, port, serial_port, baud_rate, data_bits, stop_bits, parity, status, current_task_id, is_enabled, last_heartbeat_time, parameters, description, create_by, created_time, update_by, updated_time, del_flag from device_info
+        select id, device_uuid, name, device_type, model, location, connection_type, ip_address, port, serial_port, baud_rate, data_bits, stop_bits, parity, status, current_task_id, is_enabled, last_heartbeat_time, parameters, description, create_by, create_time, update_by, update_time, del_flag from device_info
     </sql>
 
     <select id="selectDeviceInfoList" parameterType="DeviceInfo" resultMap="DeviceInfoResult">
@@ -60,7 +60,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="description != null  and description != ''"> and description like concat('%', #{description}, '%')</if>
             and del_flag = 0
         </where>
-        order by created_time desc
+        order by create_time desc
     </select>
     
     <select id="selectDeviceInfoById" parameterType="Long" resultMap="DeviceInfoResult">
@@ -76,31 +76,31 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
     <select id="selectDeviceInfoListByType" parameterType="String" resultMap="DeviceInfoResult">
         <include refid="selectDeviceInfoVo"/>
         where device_type = #{deviceType} and del_flag = 0
-        order by created_time desc
+        order by create_time desc
     </select>
 
     <select id="selectDeviceInfoListByStatus" parameterType="String" resultMap="DeviceInfoResult">
         <include refid="selectDeviceInfoVo"/>
         where status = #{status} and del_flag = 0
-        order by created_time desc
+        order by create_time desc
     </select>
 
     <select id="selectEnabledDeviceInfoList" resultMap="DeviceInfoResult">
         <include refid="selectDeviceInfoVo"/>
         where is_enabled = 1 and del_flag = 0
-        order by created_time desc
+        order by create_time desc
     </select>
 
     <select id="selectOnlineDeviceInfoList" resultMap="DeviceInfoResult">
         <include refid="selectDeviceInfoVo"/>
         where status in ('ONLINE_IDLE', 'ONLINE_PRINTING', 'ONLINE_SCANNING') and del_flag = 0
-        order by created_time desc
+        order by create_time desc
     </select>
 
     <select id="selectDeviceInfoListByTaskId" parameterType="Long" resultMap="DeviceInfoResult">
         <include refid="selectDeviceInfoVo"/>
         where current_task_id = #{taskId} and del_flag = 0
-        order by created_time desc
+        order by create_time desc
     </select>
 
     <select id="checkDeviceUuidUnique" parameterType="String" resultType="int">
@@ -144,9 +144,9 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="parameters != null">parameters,</if>
             <if test="description != null">description,</if>
             <if test="createBy != null">create_by,</if>
-            created_time,
+            create_time,
             <if test="updateBy != null">update_by,</if>
-            updated_time,
+            update_time,
             del_flag
          </trim>
         <trim prefix="values (" suffix=")" suffixOverrides=",">
@@ -200,31 +200,31 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="parameters != null">parameters = #{parameters},</if>
             <if test="description != null">description = #{description},</if>
             <if test="updateBy != null">update_by = #{updateBy},</if>
-            updated_time = datetime('now','localtime')
+            update_time = datetime('now','localtime')
         </trim>
         where id = #{id}
     </update>
 
     <update id="updateDeviceStatus" parameterType="DeviceInfo">
-        update device_info set status = #{status}, update_by = #{updateBy}, updated_time = datetime('now','localtime') where id = #{id}
+        update device_info set status = #{status}, update_by = #{updateBy}, update_time = datetime('now','localtime') where id = #{id}
     </update>
 
-    <update id="updateDeviceHeartbeat" parameterType="DeviceInfo">
-        update device_info set last_heartbeat_time = #{lastHeartbeatTime}, updated_time = datetime('now','localtime') where id = #{id}
+    <update id="updateDeviceHeartbeat" parameterType="DeviceInfo" >
+        update device_info set last_heartbeat_time = #{lastHeartbeatTime}, update_time = datetime('now','localtime') where id = #{id}
     </update>
 
-    <update id="updateDeviceCurrentTask" parameterType="DeviceInfo">
-        update device_info set current_task_id = #{currentTaskId}, update_by = #{updateBy}, updated_time = datetime('now','localtime') where id = #{id}
+    <update id="updateDeviceCurrentTask" parameterType="DeviceInfo" >
+        update device_info set current_task_id = #{currentTaskId}, update_by = #{updateBy}, update_time = datetime('now','localtime') where id = #{id}
     </update>
 
-    <delete id="deleteDeviceInfoById" parameterType="Long">
-        update device_info set del_flag = 2, updated_time = datetime('now','localtime') where id = #{id}
-    </delete>
+    <update id="deleteDeviceInfoById" parameterType="Long">
+        update device_info set del_flag = 2, update_time = datetime('now','localtime') where id = #{id}
+    </update>
 
-    <delete id="deleteDeviceInfoByIds" parameterType="String">
-        update device_info set del_flag = 2, updated_time = datetime('now','localtime') where id in 
+    <update id="deleteDeviceInfoByIds" parameterType="String">
+        update device_info set del_flag = 2, update_time = datetime('now','localtime') where id in 
         <foreach item="id" collection="array" open="(" separator="," close=")">
             #{id}
         </foreach>
-    </delete>
+    </update>
 </mapper>

@@ -13,6 +13,8 @@ import org.springframework.stereotype.Component;
 
 import java.util.List;
 import java.util.Map;
+import java.util.HashMap;
+import java.util.ArrayList;
 
 /**
  * 设备管理TCP处理器
@@ -74,6 +76,8 @@ public class DeviceManagementHandler {
                 return countDevices(body);
             } else if (path.equals("/business/device/countByType")) {
                 return countDevicesByType();
+            } else if (path.equals("/business/device/tree")) {
+                return getDeviceTree();
             } else {
                 return TcpResponse.error("未知的设备管理请求路径: " + path);
             }
@@ -88,7 +92,11 @@ public class DeviceManagementHandler {
      */
     private TcpResponse listDevices(String body) {
         try {
-            DeviceInfo deviceInfo = objectMapper.readValue(body, DeviceInfo.class);
+            DeviceInfo deviceInfo = null;
+            if (body != null && !body.trim().isEmpty()) {
+                // 如果有请求体，则解析查询条件
+                deviceInfo = objectMapper.readValue(body, DeviceInfo.class);
+            }
             List<DeviceInfo> list = deviceInfoService.selectDeviceInfoList(deviceInfo);
             return TcpResponse.success(list);
         } catch (Exception e) {
@@ -102,6 +110,9 @@ public class DeviceManagementHandler {
      */
     private TcpResponse listDevicesByType(String body) {
         try {
+            if (body == null || body.trim().isEmpty()) {
+                return TcpResponse.error("请求体不能为空，需要指定设备类型");
+            }
             DeviceInfo deviceInfo = objectMapper.readValue(body, DeviceInfo.class);
             String deviceType = deviceInfo.getDeviceType();
             if (StringUtils.isEmpty(deviceType)) {
@@ -120,6 +131,9 @@ public class DeviceManagementHandler {
      */
     private TcpResponse listDevicesByStatus(String body) {
         try {
+            if (body == null || body.trim().isEmpty()) {
+                return TcpResponse.error("请求体不能为空，需要指定设备状态");
+            }
             DeviceInfo deviceInfo = objectMapper.readValue(body, DeviceInfo.class);
             String status = deviceInfo.getStatus();
             if (StringUtils.isEmpty(status)) {
@@ -185,6 +199,9 @@ public class DeviceManagementHandler {
      */
     private TcpResponse getDeviceByUuid(String body) {
         try {
+            if (body == null || body.trim().isEmpty()) {
+                return TcpResponse.error("请求体不能为空，需要指定设备UUID");
+            }
             DeviceInfo deviceInfo = objectMapper.readValue(body, DeviceInfo.class);
             String deviceUuid = deviceInfo.getDeviceUuid();
             if (StringUtils.isEmpty(deviceUuid)) {
@@ -206,12 +223,12 @@ public class DeviceManagementHandler {
      */
     private TcpResponse createDevice(String body) {
         try {
+            if (body == null || body.trim().isEmpty()) {
+                return TcpResponse.error("请求体不能为空，需要提供设备信息");
+            }
             DeviceInfo deviceInfo = objectMapper.readValue(body, DeviceInfo.class);
             
             // 验证必填字段
-            if (StringUtils.isEmpty(deviceInfo.getDeviceUuid())) {
-                return TcpResponse.error("设备UUID不能为空");
-            }
             if (StringUtils.isEmpty(deviceInfo.getName())) {
                 return TcpResponse.error("设备名称不能为空");
             }
@@ -222,14 +239,12 @@ public class DeviceManagementHandler {
                 return TcpResponse.error("连接类型不能为空");
             }
 
-            // 检查设备UUID是否已存在
-            if (!deviceInfoService.checkDeviceUuidUnique(deviceInfo.getDeviceUuid())) {
-                return TcpResponse.error("设备UUID已存在");
-            }
+            // UUID由内部自动生成，无需验证
+            // 在setDeviceUuid方法中会自动生成UUID
 
             int result = deviceInfoService.insertDeviceInfo(deviceInfo);
             if (result > 0) {
-                return TcpResponse.success("创建设备成功");
+                return TcpResponse.success("创建设备成功，设备UUID: " + deviceInfo.getDeviceUuid());
             } else {
                 return TcpResponse.error("创建设备失败");
             }
@@ -244,6 +259,9 @@ public class DeviceManagementHandler {
      */
     private TcpResponse updateDevice(String body) {
         try {
+            if (body == null || body.trim().isEmpty()) {
+                return TcpResponse.error("请求体不能为空，需要提供设备信息");
+            }
             DeviceInfo deviceInfo = objectMapper.readValue(body, DeviceInfo.class);
             
             if (deviceInfo.getId() == null) {
@@ -267,6 +285,9 @@ public class DeviceManagementHandler {
      */
     private TcpResponse deleteDevice(String body) {
         try {
+            if (body == null || body.trim().isEmpty()) {
+                return TcpResponse.error("请求体不能为空，需要提供设备ID");
+            }
             DeviceInfo deviceInfo = objectMapper.readValue(body, DeviceInfo.class);
             
             if (deviceInfo.getIds() != null && deviceInfo.getIds().length > 0) {
@@ -301,6 +322,9 @@ public class DeviceManagementHandler {
      */
     private TcpResponse updateDeviceStatus(String body) {
         try {
+            if (body == null || body.trim().isEmpty()) {
+                return TcpResponse.error("请求体不能为空，需要提供设备ID和状态");
+            }
             DeviceInfo deviceInfo = objectMapper.readValue(body, DeviceInfo.class);
             Long id = deviceInfo.getId();
             String status = deviceInfo.getStatus();
@@ -329,6 +353,9 @@ public class DeviceManagementHandler {
      */
     private TcpResponse updateDeviceHeartbeat(String body) {
         try {
+            if (body == null || body.trim().isEmpty()) {
+                return TcpResponse.error("请求体不能为空，需要提供设备ID");
+            }
             DeviceInfo deviceInfo = objectMapper.readValue(body, DeviceInfo.class);
             Long id = deviceInfo.getId();
             
@@ -353,6 +380,9 @@ public class DeviceManagementHandler {
      */
     private TcpResponse updateDeviceCurrentTask(String body) {
         try {
+            if (body == null || body.trim().isEmpty()) {
+                return TcpResponse.error("请求体不能为空，需要提供设备ID和任务ID");
+            }
             DeviceInfo deviceInfo = objectMapper.readValue(body, DeviceInfo.class);
             Long id = deviceInfo.getId();
             Long taskId = deviceInfo.getCurrentTaskId();
@@ -378,6 +408,9 @@ public class DeviceManagementHandler {
      */
     private TcpResponse enableDevice(String body) {
         try {
+            if (body == null || body.trim().isEmpty()) {
+                return TcpResponse.error("请求体不能为空，需要提供设备ID和启用状态");
+            }
             DeviceInfo deviceInfo = objectMapper.readValue(body, DeviceInfo.class);
             Long id = deviceInfo.getId();
             Integer isEnabled = deviceInfo.getIsEnabled();
@@ -406,6 +439,9 @@ public class DeviceManagementHandler {
      */
     private TcpResponse batchEnableDevice(String body) {
         try {
+            if (body == null || body.trim().isEmpty()) {
+                return TcpResponse.error("请求体不能为空，需要提供设备ID列表和启用状态");
+            }
             DeviceInfo deviceInfo = objectMapper.readValue(body, DeviceInfo.class);
             Long[] ids = deviceInfo.getIds();
             Integer isEnabled = deviceInfo.getIsEnabled();
@@ -434,7 +470,11 @@ public class DeviceManagementHandler {
      */
     private TcpResponse countDevices(String body) {
         try {
-            DeviceInfo deviceInfo = objectMapper.readValue(body, DeviceInfo.class);
+            DeviceInfo deviceInfo = null;
+            if (body != null && !body.trim().isEmpty()) {
+                // 如果有请求体，则解析查询条件
+                deviceInfo = objectMapper.readValue(body, DeviceInfo.class);
+            }
             int count = deviceInfoService.countDeviceInfo(deviceInfo);
             return TcpResponse.success(count);
         } catch (Exception e) {
@@ -452,7 +492,67 @@ public class DeviceManagementHandler {
             return TcpResponse.success(list);
         } catch (Exception e) {
             log.error("统计各类型设备数量异常", e);
-            return TcpResponse.error("统计各类型设备数量异常: " + e.getMessage());
+            return TcpResponse.error("统计设备数量异常: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 获取设备树状图
+     * 按设备类型分组，返回树状结构
+     */
+    private TcpResponse getDeviceTree() {
+        try {
+            // 获取所有启用的设备
+            List<DeviceInfo> allDevices = deviceInfoService.selectEnabledDeviceInfoList();
+            
+            // 按设备类型分组
+            Map<String, List<DeviceInfo>> deviceTypeMap = new HashMap<>();
+            for (DeviceInfo device : allDevices) {
+                String deviceType = device.getDeviceType();
+                if (deviceType != null) {
+                    deviceTypeMap.computeIfAbsent(deviceType, k -> new ArrayList<>()).add(device);
+                }
+            }
+            
+            // 构建树状结构
+            List<Map<String, Object>> deviceTree = new ArrayList<>();
+            for (Map.Entry<String, List<DeviceInfo>> entry : deviceTypeMap.entrySet()) {
+                String deviceType = entry.getKey();
+                List<DeviceInfo> devices = entry.getValue();
+                
+                Map<String, Object> categoryNode = new HashMap<>();
+                categoryNode.put("categoryName", getDeviceTypeDisplayName(deviceType));
+                categoryNode.put("deviceType", deviceType);
+                categoryNode.put("deviceCount", devices.size());
+                categoryNode.put("devices", devices);
+                
+                deviceTree.add(categoryNode);
+            }
+            
+            return TcpResponse.success(deviceTree);
+        } catch (Exception e) {
+            log.error("获取设备树状图异常", e);
+            return TcpResponse.error("获取设备树状图异常: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 获取设备类型的中文显示名称
+     */
+    private String getDeviceTypeDisplayName(String deviceType) {
+        if (deviceType == null) {
+            return "未知类型";
+        }
+        
+        switch (deviceType.toUpperCase()) {
+            case "PRINTER":
+                return "UV打印机";
+            case "CODER":
+                return "油墨喷码机";
+            case "SCANNER":
+                return "扫码枪";
+            default:
+                return deviceType;
         }
     }
 }
