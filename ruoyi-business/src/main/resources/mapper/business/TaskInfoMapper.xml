@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.business.mapper.TaskInfo.TaskInfoMapper">
+
+    <!-- 任务结果映射 -->
+    <resultMap id="TaskInfoResult" type="com.ruoyi.business.domain.TaskInfo.TaskInfo">
+        <id     property="id"                column="id" />
+        <result property="name"              column="name" />
+        <result property="status"            column="status" />
+        <result property="poolId"            column="pool_id" />
+        <result property="poolName"          column="pool_name" />
+        <result property="plannedQuantity"   column="planned_quantity" />
+        <result property="completedQuantity" column="completed_quantity" />
+        <result property="preloadDataCount"  column="preload_data_count" />
+        <result property="description"       column="description" />
+        <result property="delFlag"           column="del_flag" />
+        <result property="createTime"        column="create_time" />
+        <result property="updateTime"        column="update_time" />
+    </resultMap>
+
+    <!-- 根据ID查询任务 -->
+    <select id="selectTaskInfoById" parameterType="long" resultMap="TaskInfoResult">
+        SELECT * FROM task_info WHERE id = #{id} AND del_flag = 0
+    </select>
+
+    <!-- 查询任务列表（按条件） -->
+    <select id="selectTaskInfoList" parameterType="com.ruoyi.business.domain.TaskInfo.TaskInfo" resultMap="TaskInfoResult">
+        SELECT *
+        FROM task_info
+        <where>
+            del_flag = 0
+            <if test="name != null and name != ''">
+                AND name LIKE '%' || #{name} || '%'
+            </if>
+            <if test="status != null">
+                AND status = #{status}
+            </if>
+            <if test="poolId != null">
+                AND pool_id = #{poolId}
+            </if>
+        </where>
+        ORDER BY update_time DESC
+    </select>
+
+    <!-- 统计任务数量（按条件） -->
+    <select id="countTaskInfo" parameterType="com.ruoyi.business.domain.TaskInfo.TaskInfo" resultType="int">
+        SELECT COUNT(1)
+        FROM task_info
+        <where>
+            del_flag = 0
+            <if test="name != null and name != ''">
+                AND name LIKE '%' || #{name} || '%'
+            </if>
+            <if test="status != null">
+                AND status = #{status}
+            </if>
+            <if test="poolId != null">
+                AND pool_id = #{poolId}
+            </if>
+        </where>
+    </select>
+
+    <!-- 新增任务 -->
+    <insert id="insertTaskInfo" parameterType="com.ruoyi.business.domain.TaskInfo.TaskInfo" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO task_info (
+            name, status, pool_id, pool_name, planned_quantity, completed_quantity, preload_data_count, description, del_flag, create_time, update_time
+        ) VALUES (
+            #{name}, #{status}, #{poolId}, #{poolName}, #{plannedQuantity}, #{completedQuantity}, #{preloadDataCount}, #{description},
+            COALESCE(#{delFlag}, 0), COALESCE(#{createTime}, datetime('now','localtime')), COALESCE(#{updateTime}, datetime('now','localtime'))
+        )
+    </insert>
+
+    <!-- 更新任务 -->
+    <update id="updateTaskInfo" parameterType="com.ruoyi.business.domain.TaskInfo.TaskInfo" resultType="int">
+        UPDATE task_info
+        <set>
+            <if test="name != null">name = #{name},</if>
+            <if test="status != null">status = #{status},</if>
+            <if test="poolId != null">pool_id = #{poolId},</if>
+            <if test="poolName != null">pool_name = #{poolName},</if>
+            <if test="plannedQuantity != null">planned_quantity = #{plannedQuantity},</if>
+            <if test="completedQuantity != null">completed_quantity = #{completedQuantity},</if>
+            <if test="preloadDataCount != null">preload_data_count = #{preloadDataCount},</if>
+            <if test="description != null">description = #{description},</if>
+            update_time = COALESCE(#{updateTime}, datetime('now','localtime'))
+        </set>
+        WHERE id = #{id} AND del_flag = 0
+    </update>
+
+    <!-- 批量软删除（del_flag=2） -->
+    <update id="deleteTaskInfoByIds" parameterType="map" resultType="int">
+        UPDATE task_info SET del_flag = 2, update_time = datetime('now','localtime')
+        WHERE id IN
+        <foreach collection="ids" item="id" open="(" close=")" separator=",">
+            #{id}
+        </foreach>
+        AND del_flag = 0
+    </update>
+
+    <!-- 更新任务状态 -->
+    <update id="updateTaskStatus" parameterType="map" resultType="int">
+        UPDATE task_info SET status = #{status}, update_time = datetime('now','localtime')
+        WHERE id = #{id} AND del_flag = 0
+    </update>
+
+</mapper>
+
+
