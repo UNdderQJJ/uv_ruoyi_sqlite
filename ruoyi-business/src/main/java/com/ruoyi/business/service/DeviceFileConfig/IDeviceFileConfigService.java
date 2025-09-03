@@ -36,13 +36,13 @@ public interface IDeviceFileConfigService
     public List<DeviceFileConfig> selectDeviceFileConfigListByDeviceId(Long deviceId);
 
     /**
-     * 根据设备ID和文件名查询文件配置列表
+     * 根据设备ID和变量名查询文件配置列表
      * 
      * @param deviceId 设备ID
-     * @param fileName 文件名
+     * @param  variableName 变量名
      * @return 设备文件配置集合
      */
-    public List<DeviceFileConfig> selectDeviceFileConfigListByDeviceIdAndFileName(Long deviceId, String fileName);
+    public List<DeviceFileConfig> selectDeviceFileConfigListByDeviceIdAndFileName(Long deviceId, String variableName);
 
     /**
      * 根据设备ID查询默认配置列表
@@ -113,10 +113,18 @@ public interface IDeviceFileConfigService
      * 设置设备默认配置
      * 
      * @param deviceId 设备ID
-     * @param fileName 文件名
+     * @param id 文件id
      * @return 结果
      */
-    public int setDeviceDefaultConfig(Long deviceId, String fileName);
+    public int setDeviceDefaultConfig(Long deviceId, Long id);
+
+    /**
+     * 根据设备ID清除默认配置
+     *
+     * @param deviceId 设备ID
+     * @return 结果
+     */
+    public void clearDefaultByDeviceId(Long deviceId);
 
     /**
      * 统计设备文件配置数量

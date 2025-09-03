@@ -66,9 +66,7 @@ public class DeviceFileConfigManagementHandler {
                 return countDeviceFileConfigs(body);
             } else if (path.equals("/business/deviceFileConfig/countByDevice")) {
                 return countDeviceFileConfigsByDevice();
-            } else if (path.equals("/business/deviceFileConfig/batchCreate")) {
-                return batchCreateDeviceFileConfig(body);
-            } else if (path.equals("/business/deviceFileConfig/copyToDevice")) {
+            }  else if (path.equals("/business/deviceFileConfig/copyToDevice")) {
                 return copyDeviceFileConfigToDevice(body);
             } else {
                 return TcpResponse.error("未知的设备文件配置请求路径: " + path);
@@ -118,18 +116,18 @@ public class DeviceFileConfigManagementHandler {
         try {
             DeviceFileConfig deviceFileConfig = objectMapper.readValue(body, DeviceFileConfig.class);
             Long deviceId = deviceFileConfig.getDeviceId();
-            String fileName = deviceFileConfig.getFileName();
+            String variableName = deviceFileConfig.getVariableName();
             if (deviceId == null) {
                 return TcpResponse.error("设备ID不能为空");
             }
-            if (StringUtils.isEmpty(fileName)) {
-                return TcpResponse.error("文件名不能为空");
+            if (StringUtils.isEmpty(variableName)) {
+                return TcpResponse.error("变量名不能为空");
             }
-            List<DeviceFileConfig> list = deviceFileConfigService.selectDeviceFileConfigListByDeviceIdAndFileName(deviceId, fileName);
+            List<DeviceFileConfig> list = deviceFileConfigService.selectDeviceFileConfigListByDeviceIdAndFileName(deviceId, variableName);
             return TcpResponse.success(list);
         } catch (Exception e) {
-            log.error("根据设备ID和文件名查询文件配置列表异常", e);
-            return TcpResponse.error("根据设备ID和文件名查询文件配置列表异常: " + e.getMessage());
+            log.error("根据设备ID和变量名查询文件配置列表异常", e);
+            return TcpResponse.error("根据设备ID和变量名查询文件配置列表异常: " + e.getMessage());
         }
     }
 
@@ -207,6 +205,16 @@ public class DeviceFileConfigManagementHandler {
             if (StringUtils.isEmpty(deviceFileConfig.getVariableName())) {
                 return TcpResponse.error("变量名不能为空");
             }
+            //变量名不能重复
+            if(!deviceFileConfigService.selectDeviceFileConfigListByDeviceIdAndFileName(deviceFileConfig.getDeviceId(), deviceFileConfig.getVariableName()).isEmpty()){
+                return TcpResponse.error("变量名不能重复");
+            }
+
+            //如果设为默认
+            if (deviceFileConfig.getIsDefault() == 1) {
+                //清空该设备下的所有默认配置
+                deviceFileConfigService.clearDefaultByDeviceId(deviceFileConfig.getDeviceId());
+            }
 
             int result = deviceFileConfigService.insertDeviceFileConfig(deviceFileConfig);
             if (result > 0) {
@@ -229,6 +237,16 @@ public class DeviceFileConfigManagementHandler {
             
             if (deviceFileConfig.getId() == null) {
                 return TcpResponse.error("配置ID不能为空");
+            }
+
+            //变量名不能重复
+            if(!deviceFileConfigService.selectDeviceFileConfigListByDeviceIdAndFileName(deviceFileConfig.getDeviceId(), deviceFileConfig.getFileName()).isEmpty()){
+                return TcpResponse.error("变量名不能重复");
+            }
+
+            //如果设为默认
+            if (deviceFileConfig.getIsDefault() == 1) {
+                deviceFileConfigService.setDeviceDefaultConfig(deviceFileConfig.getDeviceId(), deviceFileConfig.getId());
             }
 
             int result = deviceFileConfigService.updateDeviceFileConfig(deviceFileConfig);
@@ -336,16 +354,12 @@ public class DeviceFileConfigManagementHandler {
         try {
             DeviceFileConfig deviceFileConfig = objectMapper.readValue(body, DeviceFileConfig.class);
             Long deviceId = deviceFileConfig.getDeviceId();
-            String fileName = deviceFileConfig.getFileName();
-            
+
             if (deviceId == null) {
                 return TcpResponse.error("设备ID不能为空");
             }
-            if (StringUtils.isEmpty(fileName)) {
-                return TcpResponse.error("文件名不能为空");
-            }
 
-            int result = deviceFileConfigService.setDeviceDefaultConfig(deviceId, fileName);
+            int result = deviceFileConfigService.setDeviceDefaultConfig(deviceId, deviceFileConfig.getId());
             if (result > 0) {
                 return TcpResponse.success("设置设备默认配置成功");
             } else {
@@ -381,20 +395,6 @@ public class DeviceFileConfigManagementHandler {
         } catch (Exception e) {
             log.error("统计各设备文件配置数量异常", e);
             return TcpResponse.error("统计各设备文件配置数量异常: " + e.getMessage());
-        }
-    }
-
-    /**
-     * 批量创建设备文件配置
-     */
-    private TcpResponse batchCreateDeviceFileConfig(String body) {
-        try {
-            // 这里需要解析JSON数组，暂时使用字符串处理
-            // 实际使用时可能需要更复杂的JSON解析
-            return TcpResponse.error("批量创建设备文件配置功能暂未实现");
-        } catch (Exception e) {
-            log.error("批量创建设备文件配置异常", e);
-            return TcpResponse.error("批量创建设备文件配置异常: " + e.getMessage());
         }
     }
 

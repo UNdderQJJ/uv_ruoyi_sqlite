@@ -1,8 +1,9 @@
-package com.ruoyi.business.service.impl.DeviceFileConfig;
+package com.ruoyi.business.service.DeviceFileConfig.impl;
 
 import java.util.List;
 import com.ruoyi.common.utils.DateUtils;
 import com.ruoyi.common.utils.StringUtils;
+import jakarta.annotation.Resource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import com.ruoyi.business.mapper.DeviceFileConfig.DeviceFileConfigMapper;
@@ -18,7 +19,7 @@ import com.ruoyi.business.service.DeviceFileConfig.IDeviceFileConfigService;
 @Service
 public class DeviceFileConfigServiceImpl implements IDeviceFileConfigService 
 {
-    @Autowired
+    @Resource
     private DeviceFileConfigMapper deviceFileConfigMapper;
 
     /**
@@ -58,16 +59,16 @@ public class DeviceFileConfigServiceImpl implements IDeviceFileConfigService
     }
 
     /**
-     * 根据设备ID和文件名查询文件配置列表
+     * 根据设备ID和变量名查询文件配置列表
      * 
      * @param deviceId 设备ID
-     * @param fileName 文件名
+     * @param variableName 变量名
      * @return 设备文件配置集合
      */
     @Override
-    public List<DeviceFileConfig> selectDeviceFileConfigListByDeviceIdAndFileName(Long deviceId, String fileName)
+    public List<DeviceFileConfig> selectDeviceFileConfigListByDeviceIdAndFileName(Long deviceId, String variableName)
     {
-        return deviceFileConfigMapper.selectDeviceFileConfigListByDeviceIdAndFileName(deviceId, fileName);
+        return deviceFileConfigMapper.selectDeviceFileConfigListByDeviceIdAndFileName(deviceId, variableName);
     }
 
     /**
@@ -181,13 +182,25 @@ public class DeviceFileConfigServiceImpl implements IDeviceFileConfigService
      * 设置设备默认配置
      * 
      * @param deviceId 设备ID
-     * @param fileName 文件名
+     * @param id 文件id
      * @return 结果
      */
     @Override
-    public int setDeviceDefaultConfig(Long deviceId, String fileName)
+    public int setDeviceDefaultConfig(Long deviceId, Long id)
     {
-        return deviceFileConfigMapper.setDeviceDefaultConfig(deviceId, fileName);
+        // 先清除该设备下所有默认标记，再将目标文件名设置为默认
+        deviceFileConfigMapper.clearDefaultByDeviceId(deviceId);
+        return deviceFileConfigMapper.setDeviceDefaultConfig(deviceId, id);
+    }
+
+    /**
+     *清除该设备下所有默认标记
+     * @param deviceId 设备ID
+     */
+    @Override
+    public void clearDefaultByDeviceId(Long deviceId)
+        {
+        deviceFileConfigMapper.clearDefaultByDeviceId(deviceId);
     }
 
     /**
