@@ -2,19 +2,24 @@ package com.ruoyi.tcp.business.Device;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ruoyi.business.domain.DeviceInfo.DeviceInfo;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.ruoyi.business.enums.DeviceConfigKey;
+import com.ruoyi.business.enums.DeviceStatus;
+import com.ruoyi.business.service.DeviceInfo.DeviceConnectionService;
+import com.ruoyi.business.service.DeviceInfo.DeviceCommandService;
+import com.ruoyi.business.service.DeviceInfo.DeviceConfigService;
 import com.ruoyi.business.service.DeviceInfo.IDeviceInfoService;
 import com.ruoyi.common.core.TcpResponse;
 import com.ruoyi.common.utils.StringUtils;
 
+import io.netty.util.internal.ObjectUtil;
+import org.apache.commons.lang3.ObjectUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
-import java.util.List;
-import java.util.Map;
-import java.util.HashMap;
-import java.util.ArrayList;
+import java.util.*;
 
 /**
  * 设备管理TCP处理器
@@ -28,6 +33,15 @@ public class DeviceManagementHandler {
 
     @Autowired
     private IDeviceInfoService deviceInfoService;
+
+    @Autowired
+    private DeviceConfigService deviceConfigService;
+
+    @Autowired
+    private DeviceCommandService deviceCommandService;
+
+    @Autowired
+    private DeviceConnectionService deviceConnectionService;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -78,6 +92,20 @@ public class DeviceManagementHandler {
                 return countDevicesByType();
             } else if (path.equals("/business/device/tree")) {
                 return getDeviceTree();
+            } else if (path.equals("/business/device/saveParameters")) {
+                return saveDeviceParameters(body);
+            } else if (path.equals("/business/device/applyParameters")) {
+                return applyDeviceParameters(body);
+            } else if (path.equals("/business/device/applyParameter")) {
+                return applySingleDeviceParameter(body);
+            } else if (path.equals("/business/device/connect")) {
+                return connectDevice(body);
+            } else if (path.equals("/business/device/disconnect")) {
+                return disconnectDevice(body);
+            } else if (path.equals("/business/device/ping")) {
+                return pingDevice(body);
+            } else if (path.equals("/business/device/getCurrentFile")) {
+                return getCurrentFile(body);
             } else {
                 return TcpResponse.error("未知的设备管理请求路径: " + path);
             }
@@ -242,9 +270,14 @@ public class DeviceManagementHandler {
             // UUID由内部自动生成，无需验证
             // 在setDeviceUuid方法中会自动生成UUID
 
+            // 解析与基础校验
+            if (ObjectUtils.isNotEmpty(deviceInfo.getParameters())) {
+                deviceConfigService.parseAndValidate(deviceInfo.getParameters());
+            }
+
             int result = deviceInfoService.insertDeviceInfo(deviceInfo);
             if (result > 0) {
-                return TcpResponse.success("创建设备成功，设备UUID: " + deviceInfo.getDeviceUuid());
+                return TcpResponse.success("创建设备成功");
             } else {
                 return TcpResponse.error("创建设备失败");
             }
@@ -263,14 +296,42 @@ public class DeviceManagementHandler {
                 return TcpResponse.error("请求体不能为空，需要提供设备信息");
             }
             DeviceInfo deviceInfo = objectMapper.readValue(body, DeviceInfo.class);
+            //设备运行时不允许更新设备信息
+            if (deviceInfo.getStatus() != null && deviceInfo.getStatus().equals(DeviceStatus.ONLINE_PRINTING.getCode())) {
+                return TcpResponse.error("设备运行时不允许更新设备信息");
+            }
             
             if (deviceInfo.getId() == null) {
                 return TcpResponse.error("设备ID不能为空");
             }
 
+            // 获取原设备信息，用于比较参数变化
+            DeviceInfo originalDevice = deviceInfoService.selectDeviceInfoById(deviceInfo.getId());
+            if (originalDevice == null) {
+                return TcpResponse.error("设备不存在");
+            }
+
+            // 解析与基础校验
+            if (ObjectUtils.isNotEmpty(deviceInfo.getParameters())) {
+                deviceConfigService.parseAndValidate(deviceInfo.getParameters());
+            }
+
             int result = deviceInfoService.updateDeviceInfo(deviceInfo);
             if (result > 0) {
-                return TcpResponse.success("更新设备成功");
+                // 检查设备是否在线且参数有变化，如果是则自动下发配置
+                if (isDeviceOnline(originalDevice.getStatus()) && hasParametersChanged(originalDevice.getParameters(), deviceInfo.getParameters())) {
+                    try {
+                        log.info("设备 {} 在线且参数有变化，自动下发配置", deviceInfo.getId());
+                        Map<DeviceConfigKey, Object> parsed = deviceConfigService.parseAndValidate(deviceInfo.getParameters());
+                        deviceCommandService.applyParameters(deviceInfo.getId(), parsed);
+                        return TcpResponse.success("更新设备成功，配置已自动下发");
+                    } catch (Exception e) {
+                        log.warn("设备 {} 配置下发失败: {}", deviceInfo.getId(), e.getMessage());
+                        return TcpResponse.success("更新设备成功，但配置下发失败: " + e.getMessage());
+                    }
+                } else {
+                    return TcpResponse.success("更新设备成功");
+                }
             } else {
                 return TcpResponse.error("更新设备失败");
             }
@@ -288,7 +349,13 @@ public class DeviceManagementHandler {
             if (body == null || body.trim().isEmpty()) {
                 return TcpResponse.error("请求体不能为空，需要提供设备ID");
             }
-            DeviceInfo deviceInfo = objectMapper.readValue(body, DeviceInfo.class);
+            DeviceInfo deviceInfo11 = objectMapper.readValue(body, DeviceInfo.class);
+
+            DeviceInfo deviceInfo = deviceInfoService.selectDeviceInfoById(deviceInfo11.getId());
+            // 设备运行时不允许删除设备
+            if (deviceInfo.getStatus() != null && deviceInfo.getStatus().equals(DeviceStatus.ONLINE_PRINTING.getCode())) {
+                return TcpResponse.error("设备运行时不允许删除设备");
+            }
             
             if (deviceInfo.getIds() != null && deviceInfo.getIds().length > 0) {
                 // 批量删除
@@ -553,6 +620,174 @@ public class DeviceManagementHandler {
                 return "扫码枪";
             default:
                 return deviceType;
+        }
+    }
+
+    /**
+     * 检查设备是否在线
+     */
+    private boolean isDeviceOnline(String status) {
+        return DeviceStatus.ONLINE_IDLE.getCode().equals(status) || 
+               DeviceStatus.ONLINE_PRINTING.getCode().equals(status);
+    }
+
+    /**
+     * 检查设备参数是否有变化
+     */
+    private boolean hasParametersChanged(String oldParams, String newParams) {
+        if (oldParams == null && newParams == null) {
+            return false;
+        }
+        if (oldParams == null || newParams == null) {
+            return true;
+        }
+        return !oldParams.equals(newParams);
+    }
+
+    /** 尝试连接设备（TCP探测通过则置为 ONLINE_IDLE，否则 ERROR/保持原状） */
+    private TcpResponse connectDevice(String body) {
+        try {
+            DeviceInfo req = objectMapper.readValue(body, DeviceInfo.class);
+            if (req.getId() == null) {
+                return TcpResponse.error("设备ID不能为空");
+            }
+            DeviceInfo device = deviceInfoService.selectDeviceInfoById(req.getId());
+            if (device == null) {
+                return TcpResponse.error("设备不存在");
+            }
+            boolean ok = deviceConnectionService.testTcpReachable(device.getIpAddress(), device.getPort(), 3000);
+            String newStatus = ok ? DeviceStatus.ONLINE_IDLE.getCode() : DeviceStatus.ERROR.getCode();
+            deviceInfoService.updateDeviceStatus(device.getId(), newStatus);
+            return TcpResponse.success(ok ? "连接成功" : "连接失败");
+        } catch (Exception e) {
+            log.error("连接设备异常", e);
+            return TcpResponse.error("连接设备异常: " + e.getMessage());
+        }
+    }
+
+    /** 断开设备（置为 OFFLINE） */
+    private TcpResponse disconnectDevice(String body) {
+        try {
+            DeviceInfo req = objectMapper.readValue(body, DeviceInfo.class);
+            if (req.getId() == null) {
+                return TcpResponse.error("设备ID不能为空");
+            }
+            int r = deviceInfoService.updateDeviceStatus(req.getId(), DeviceStatus.OFFLINE.getCode());
+            return r > 0 ? TcpResponse.success("断开成功") : TcpResponse.error("断开失败");
+        } catch (Exception e) {
+            log.error("断开设备异常", e);
+            return TcpResponse.error("断开设备异常: " + e.getMessage());
+        }
+    }
+
+    /** ping 连通性检测（不改状态，仅返回是否可达） */
+    private TcpResponse pingDevice(String body) {
+        try {
+            DeviceInfo req = objectMapper.readValue(body, DeviceInfo.class);
+            if (req.getId() == null) {
+                return TcpResponse.error("设备ID不能为空");
+            }
+            DeviceInfo device = deviceInfoService.selectDeviceInfoById(req.getId());
+            if (device == null) {
+                return TcpResponse.error("设备不存在");
+            }
+            boolean ok = deviceConnectionService.testTcpReachable(device.getIpAddress(), device.getPort(), 2000);
+            return TcpResponse.success(ok);
+        } catch (Exception e) {
+            log.error("Ping设备异常", e);
+            return TcpResponse.error("Ping设备异常: " + e.getMessage());
+        }
+    }
+
+    /** 获取设备当前文件名称 */
+    private TcpResponse getCurrentFile(String body) {
+        try {
+            DeviceInfo req = objectMapper.readValue(body, DeviceInfo.class);
+            if (req.getId() == null) {
+                return TcpResponse.error("设备ID不能为空");
+            }
+            String fileName = deviceCommandService.getCurrentFileName(req.getId());
+            if (fileName != null) {
+                return TcpResponse.success(fileName);
+            } else {
+                return TcpResponse.error("获取当前文件失败");
+            }
+        } catch (Exception e) {
+            log.error("获取设备当前文件异常", e);
+            return TcpResponse.error("获取设备当前文件异常: " + e.getMessage());
+        }
+    }
+
+    /** 保存设备参数（仅落库） */
+    private TcpResponse saveDeviceParameters(String body) {
+        try {
+            if (body == null || body.trim().isEmpty()) {
+                return TcpResponse.error("请求体不能为空，需要提供设备ID与parameters");
+            }
+            DeviceInfo deviceInfo = objectMapper.readValue(body, DeviceInfo.class);
+            if (deviceInfo.getId() == null) {
+                return TcpResponse.error("设备ID不能为空");
+            }
+            // 解析与基础校验
+            deviceConfigService.parseAndValidate(deviceInfo.getParameters());
+            int updated = deviceInfoService.updateDeviceInfo(deviceInfo);
+            return updated > 0 ? TcpResponse.success("保存设备参数成功") : TcpResponse.error("保存设备参数失败");
+        } catch (Exception e) {
+            log.error("保存设备参数异常", e);
+            return TcpResponse.error("保存设备参数异常: " + e.getMessage());
+        }
+    }
+
+    /** 应用设备参数（读取设备parameters，解析并下发） */
+    private TcpResponse applyDeviceParameters(String body) {
+        try {
+            if (body == null || body.trim().isEmpty()) {
+                return TcpResponse.error("请求体不能为空，需要提供设备ID");
+            }
+            DeviceInfo req = objectMapper.readValue(body, DeviceInfo.class);
+            if (req.getId() == null) {
+                return TcpResponse.error("设备ID不能为空");
+            }
+            DeviceInfo device = deviceInfoService.selectDeviceInfoById(req.getId());
+            if (device == null) {
+                return TcpResponse.error("设备不存在");
+            }
+            if(!device.getStatus().equals(DeviceStatus.ONLINE_IDLE.getCode())){
+                return TcpResponse.error("设备不在在线空闲状态");
+            }
+            Map<DeviceConfigKey, Object> parsed = deviceConfigService.parseAndValidate(device.getParameters());
+            deviceCommandService.applyParameters(device.getId(), parsed);
+            return TcpResponse.success("应用设备参数成功");
+        } catch (Exception e) {
+            log.error("应用设备参数异常", e);
+            return TcpResponse.error("应用设备参数异常: " + e.getMessage());
+        }
+    }
+
+    /** 应用单项设备参数（key + param 对） */
+    private TcpResponse applySingleDeviceParameter(String body) {
+        try {
+            if (body == null || body.trim().isEmpty()) {
+                return TcpResponse.error("请求体不能为空，需要提供设备ID、key、param");
+            }
+            Map<String, Object> map = objectMapper.readValue(body, new TypeReference<Map<String, Object>>(){});
+            Object idObj = map.get("id");
+            Object keyObj = map.get("key");
+            Object param = map.get("param");
+            if (idObj == null || keyObj == null) {
+                return TcpResponse.error("设备ID与key不能为空");
+            }
+            Long deviceId = Long.valueOf(String.valueOf(idObj));
+            DeviceConfigKey key = DeviceConfigKey.fromKey(String.valueOf(keyObj));
+            if (key == null) {
+                return TcpResponse.error("未知的key");
+            }
+
+            deviceCommandService.applySingle(deviceId, key, param);
+            return TcpResponse.success("应用单项设备参数成功");
+        } catch (Exception e) {
+            log.error("应用单项设备参数异常", e);
+            return TcpResponse.error("应用单项设备参数异常: " + e.getMessage());
         }
     }
 }
