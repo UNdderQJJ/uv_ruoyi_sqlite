@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.business.mapper.TaskInfo.TaskDeviceLinkMapper">
+
+    <resultMap id="TaskDeviceLinkResult" type="com.ruoyi.business.domain.TaskInfo.TaskDeviceLink">
+        <id     property="id"                 column="id" />
+        <result property="taskId"             column="task_id" />
+        <result property="deviceId"           column="device_id" />
+        <result property="deviceName"         column="device_name" />
+        <result property="deviceFileConfigId" column="device_file_config_id" />
+        <result property="poolTemplateId"     column="pool_template_id" />
+        <result property="status"             column="status" />
+        <result property="assignedQuantity"   column="assigned_quantity" />
+        <result property="completedQuantity"  column="completed_quantity" />
+        <result property="delFlag"            column="del_flag" />
+        <result property="createTime"         column="create_time" />
+        <result property="updateTime"         column="update_time" />
+    </resultMap>
+
+    <!-- 新增关联 -->
+    <insert id="insertTaskDeviceLink" parameterType="com.ruoyi.business.domain.TaskInfo.TaskDeviceLink" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO task_device_link (
+            task_id, device_id, device_name, device_file_config_id, pool_template_id, status,
+            assigned_quantity, completed_quantity, del_flag, create_time, update_time
+        ) VALUES (
+            #{taskId}, #{deviceId}, #{deviceName}, #{deviceFileConfigId}, #{poolTemplateId}, #{status},
+            #{assignedQuantity}, COALESCE(#{completedQuantity}, 0), COALESCE(#{delFlag}, 0),
+            COALESCE(#{createTime}, datetime('now','localtime')), COALESCE(#{updateTime}, datetime('now','localtime'))
+        )
+    </insert>
+
+    <!-- 批量新增关联 -->
+    <insert id="batchInsertTaskDeviceLinks" parameterType="map">
+        INSERT INTO task_device_link (
+            task_id, device_id, device_name, device_file_config_id, pool_template_id, status,
+            assigned_quantity, completed_quantity, del_flag, create_time, update_time
+        ) VALUES
+        <foreach collection="list" item="item" separator=",">
+            (
+                #{item.taskId}, #{item.deviceId}, #{item.deviceName}, #{item.deviceFileConfigId}, #{item.poolTemplateId}, #{item.status},
+                #{item.assignedQuantity}, COALESCE(#{item.completedQuantity}, 0), COALESCE(#{item.delFlag}, 0),
+                COALESCE(#{item.createTime}, datetime('now','localtime')), COALESCE(#{item.updateTime}, datetime('now','localtime'))
+            )
+        </foreach>
+    </insert>
+
+    <!-- 更新关联 -->
+    <update id="updateTaskDeviceLink" parameterType="com.ruoyi.business.domain.TaskInfo.TaskDeviceLink">
+        UPDATE task_device_link
+        <set>
+            <if test="deviceName != null">device_name = #{deviceName},</if>
+            <if test="deviceFileConfigId != null">device_file_config_id = #{deviceFileConfigId},</if>
+            <if test="poolTemplateId != null">pool_template_id = #{poolTemplateId},</if>
+            <if test="status != null">status = #{status},</if>
+            <if test="assignedQuantity != null">assigned_quantity = #{assignedQuantity},</if>
+            <if test="completedQuantity != null">completed_quantity = #{completedQuantity},</if>
+            update_time = COALESCE(#{updateTime}, datetime('now','localtime'))
+        </set>
+        WHERE id = #{id} AND del_flag = 0
+    </update>
+
+    <!-- 软删除（按任务ID） -->
+    <update id="deleteByTaskId" parameterType="long" >
+        UPDATE task_device_link SET del_flag = 2, update_time = datetime('now','localtime')
+        WHERE task_id = #{taskId} AND del_flag = 0
+    </update>
+
+    <!-- 查询列表 -->
+    <select id="selectTaskDeviceLinkList" parameterType="com.ruoyi.business.domain.TaskInfo.TaskDeviceLink">
+        SELECT * FROM task_device_link
+        <where>
+            del_flag = 0
+            <if test="taskId != null">AND task_id = #{taskId}</if>
+            <if test="deviceId != null">AND device_id = #{deviceId}</if>
+            <if test="status != null">AND status = #{status}</if>
+        </where>
+        ORDER BY update_time DESC
+    </select>
+
+</mapper>
+
+

@@ -71,7 +71,7 @@
     </insert>
 
     <!-- 更新任务 -->
-    <update id="updateTaskInfo" parameterType="com.ruoyi.business.domain.TaskInfo.TaskInfo" resultType="int">
+    <update id="updateTaskInfo" parameterType="com.ruoyi.business.domain.TaskInfo.TaskInfo">
         UPDATE task_info
         <set>
             <if test="name != null">name = #{name},</if>
@@ -88,7 +88,7 @@
     </update>
 
     <!-- 批量软删除（del_flag=2） -->
-    <update id="deleteTaskInfoByIds" parameterType="map" resultType="int">
+    <update id="deleteTaskInfoByIds" parameterType="map" >
         UPDATE task_info SET del_flag = 2, update_time = datetime('now','localtime')
         WHERE id IN
         <foreach collection="ids" item="id" open="(" close=")" separator=",">
@@ -98,7 +98,7 @@
     </update>
 
     <!-- 更新任务状态 -->
-    <update id="updateTaskStatus" parameterType="map" resultType="int">
+    <update id="updateTaskStatus" parameterType="map">
         UPDATE task_info SET status = #{status}, update_time = datetime('now','localtime')
         WHERE id = #{id} AND del_flag = 0
     </update>
