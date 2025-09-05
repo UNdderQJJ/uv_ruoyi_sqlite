@@ -9,7 +9,6 @@ import com.ruoyi.business.domain.DataPoolItem.DataPoolItem;
 import com.ruoyi.business.domain.config.UDiskSourceConfig;
 import com.ruoyi.business.enums.SourceType;
 import com.ruoyi.business.enums.PoolStatus;
-import com.ruoyi.business.enums.ConnectionState;
 import com.ruoyi.business.service.DataPool.DataPoolConfigValidationService;
 import com.ruoyi.business.service.DataPool.DataPoolSchedulerService;
 import com.ruoyi.business.service.DataPool.IDataPoolService;
@@ -23,6 +22,7 @@ import com.ruoyi.business.service.DataPool.type.UDisk.UDiskFileReaderService;
 import com.ruoyi.business.service.DataPool.type.TcpServer.tcp.TcpClientManager;
 import com.ruoyi.business.service.DataPool.type.Http.HttpManager;
 import com.ruoyi.business.service.DataPool.type.Mqtt.MqttManager;
+import com.ruoyi.business.service.DataPool.DataSourceLifecycleService;
 import com.ruoyi.common.core.TcpResponse;
 import com.ruoyi.common.utils.StringUtils;
 import jakarta.annotation.Resource;
@@ -34,6 +34,7 @@ import org.springframework.stereotype.Component;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 /**
  * 数据池管理TCP处理器
@@ -82,6 +83,9 @@ public class DataPoolManagementHandler
     
     @Resource
     private DataPoolSchedulerService dataPoolSchedulerService;
+
+    @Resource
+    private DataSourceLifecycleService dataSourceLifecycleService;
 
 
 
@@ -463,72 +467,11 @@ public class DataPoolManagementHandler
     private TcpResponse startDataSource(String body) throws JsonProcessingException {
         DataPool dataPoolRtsp = objectMapper.readValue(body, DataPool.class);
         Long poolId = dataPoolRtsp.getId();
-        String sourceType = dataPoolRtsp.getSourceType();
-
-        DataPool dataPool = dataPoolService.selectDataPoolById(poolId);
-        if (dataPool == null) {
-            return TcpResponse.error("数据池不存在");
-        }
-
-        // 检查数据池状态
-        if (PoolStatus.RUNNING.getCode().equals(dataPool.getStatus())) {
-            return TcpResponse.error("数据池已处于运行状态，无法重新启动数据源");
-        }
-
-        //更新数据池状态
-        dataPoolService.updateDataPoolStatus(poolId, PoolStatus.RUNNING.getCode());
-
         try {
-            // 不直接启动定时任务，等待连接成功事件触发
-
-            String successMessage;
-            switch (sourceType) {
-                case "U_DISK":
-                    // U盘类型：触发文件读取
-                    successMessage = uDiskDataSchedulerService.manualTriggerDataReading(poolId, null);
-                    break;
-                case "TCP_SERVER":
-                    // TCP服务端：建立连接
-                    tcpClientManager.getOrCreateProvider(poolId).ensureConnected();
-                    log.info("[DataPoolManagement] TCP服务端数据源启动成功");
-                    successMessage = "TCP服务端数据源启动成功";
-                    break;
-                case "TCP_CLIENT":
-                    // TCP客户端：启动监听
-                    tcpServerManager.getOrCreateProvider(poolId);
-                    log.info("[DataPoolManagement] TCP客户端数据源启动成功");
-                    successMessage = "TCP客户端数据源启动成功";
-                    break;
-                case "HTTP":
-                    // HTTP：创建Provider（HTTP是请求驱动的，无需特殊启动）
-                    dataPoolService.updateConnectionState(poolId,ConnectionState.CONNECTING.getCode());
-                    httpManager.getOrCreateProvider(poolId);
-                    log.info("[DataPoolManagement] HTTP数据源启动成功");
-                    successMessage = "HTTP数据源启动成功";
-                    break;
-                case "MQTT":
-                    // MQTT：建立连接
-                    mqttManager.getOrCreateProvider(poolId);
-                    log.info("[DataPoolManagement] MQTT数据源启动成功");
-                    successMessage = "MQTT数据源启动成功";
-                    break;
-                case "WEBSOCKET":
-                    // WebSocket：建立连接
-                    webSocketManager.getOrCreateProvider(poolId);
-                    log.info("[DataPoolManagement] WebSocket数据源启动成功");
-                    successMessage = "WebSocket数据源启动成功";
-                    break;
-                default:
-                    successMessage = "不支持的数据源类型: " + sourceType;
-                    break;
-            }
-            // 启动定时任务
-            dataPoolSchedulerService.startDataPoolWithScheduler(dataPool.getId());
-
-            return TcpResponse.success(successMessage);
+            String result = dataSourceLifecycleService.startDataSource(poolId);
+            return TcpResponse.success(result);
         } catch (Exception e) {
-            log.error("[DataPoolManagement] 启动数据源失败: poolId={}, sourceType={}", poolId, sourceType, e);
-            //更新数据池状态
+            log.error("[DataPoolManagement] 启动数据源失败: poolId={}", poolId, e);
             dataPoolService.updateDataPoolStatus(poolId, PoolStatus.ERROR.getCode());
             return TcpResponse.error("启动数据源失败: " + e.getMessage());
         }
@@ -541,68 +484,11 @@ public class DataPoolManagementHandler
     private TcpResponse stopDataSource(String body) throws JsonProcessingException {
         DataPool dataPoolRtsp = objectMapper.readValue(body, DataPool.class);
         Long poolId = dataPoolRtsp.getId();
-        String sourceType = dataPoolRtsp.getSourceType();
-
-        DataPool dataPool = dataPoolService.selectDataPoolById(poolId);
-        if (dataPool == null) {
-            return TcpResponse.error("数据池不存在");
-        }
-
-        if(dataPool.getConnectionState().equals(ConnectionState.CONNECTING.getCode())){
-            return TcpResponse.error("数据源正在连接中，请稍后再试");
-        }
-
-         //更新数据池状态
-        if (!dataPool.getStatus().equals(PoolStatus.WINING.getCode())) {
-            dataPoolService.updateDataPoolStatus(poolId, PoolStatus.IDLE.getCode());
-        }
-
         try {
-            // 停止数据池的定时任务
-            dataPoolSchedulerService.stopDataPoolScheduler(poolId);
-            
-            switch (sourceType) {
-                case "U_DISK":
-                    // U盘类型：更新连接状态为断开
-                    dataPoolService.updateConnectionState(poolId, ConnectionState.DISCONNECTED.getCode());
-                    log.info("[DataPoolManagement] U盘数据源已停止");
-                    return TcpResponse.success("U盘数据源已停止");
-                    
-                case "TCP_SERVER":
-                    // TCP服务端：断开连接
-                    tcpClientManager.removeProvider(poolId);
-                    log.info("[DataPoolManagement] TCP服务端数据源停止成功");
-                    return TcpResponse.success("TCP服务端数据源停止成功");
-                    
-                case "TCP_CLIENT":
-                    // TCP客户端：停止监听
-                    tcpServerManager.removeProvider(poolId);
-                    log.info("[DataPoolManagement] TCP客户端数据源停止成功");
-                    return TcpResponse.success("TCP客户端数据源停止成功");
-                    
-                case "HTTP":
-                    // HTTP：移除Provider
-                    httpManager.removeProvider(poolId);
-                    log.info("[DataPoolManagement] HTTP数据源停止成功");
-                    return TcpResponse.success("HTTP数据源停止成功");
-                    
-                case "MQTT":
-                    // MQTT：断开连接
-                    mqttManager.removeProvider(poolId);
-                    log.info("[DataPoolManagement] MQTT数据源停止成功");
-                    return TcpResponse.success("MQTT数据源停止成功");
-                    
-                case "WEBSOCKET":
-                    // WebSocket：断开连接
-                    webSocketManager.removeProvider(poolId);
-                    log.info("[DataPoolManagement] WebSocket数据源停止成功");
-                    return TcpResponse.success("WebSocket数据源停止成功");
-                    
-                default:
-                    return TcpResponse.error("不支持的数据源类型: " + sourceType);
-            }
+            String result = dataSourceLifecycleService.stopDataSource(poolId);
+            return TcpResponse.success(result);
         } catch (Exception e) {
-            log.error("[DataPoolManagement] 停止数据源失败: poolId={}, sourceType={}", poolId, sourceType, e);
+            log.error("[DataPoolManagement] 停止数据源失败: poolId={}", poolId, e);
             return TcpResponse.error("停止数据源失败: " + e.getMessage());
         }
     }
