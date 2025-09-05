@@ -17,7 +17,23 @@ public enum DeviceConfigKey {
     CHANGEOBJ_POS("changeobj_pos"),//设置指定对象的X、Y坐标和对齐方式
     CHANGE_TEXTSIZE("change_textsize"),//修改文字对象的高度、宽度和字符间距
     CHANGEREPLEN("changereplen"),//改变管线打印的重复长度
-    SETRPYMODE("setrpymode");//设置通讯结束时，设备返回数据的形式
+    SETRPYMODE("setrpymode"),//设置通讯结束时，设备返回数据的形式
+
+    // 动作与查询补全
+    SETA("seta"),           // 发送打印数据
+    START("start"),         // 启动加工
+    STOP("stop"),           // 停止加工
+    TRIMARK("trimark"),     // 软件触发打印
+    SYS_STA("sys_sta"),     // 获取系统状态（可带参数 errsta）
+    GETA("geta"),           // 获取缓冲区数量
+    SNUM_INDEX("snum_index"), // 获取序列号当前值
+    GET_TEXTDATA("get_textdata"), // 获取对象内容
+    GETCOUNT("getcount"),   // 获取加工次数
+    GET_CURRTEXT("get_currtext"), // 获取当前打印内容
+    LOAD("load"),           // 加载模板文件
+    GET_FILELIST("get_filelist"), // 获取文件列表
+    CLEARBUF("clearbuf"),   // 清空数据缓冲区
+    PI_CLOSEUV("pi_closeuv"); // 一键关机（PI激光机）
 
     private final String key;
 

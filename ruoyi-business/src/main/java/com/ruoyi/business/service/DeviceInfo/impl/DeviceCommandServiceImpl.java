@@ -11,7 +11,7 @@ import com.ruoyi.business.service.DeviceInfo.DeviceCommandService;
 import com.ruoyi.business.service.DeviceInfo.IDeviceInfoService;
 import com.ruoyi.business.utils.StxEtxProtocolUtil;
 import com.ruoyi.common.exception.ServiceException;
-import io.netty.util.internal.ObjectUtil;
+import com.ruoyi.common.utils.StringUtils;
 import org.apache.commons.lang3.ObjectUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -21,8 +21,10 @@ import org.springframework.stereotype.Service;
 import java.io.IOException;
 import java.net.Socket;
 import java.net.SocketTimeoutException;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 @Service
 public class DeviceCommandServiceImpl implements DeviceCommandService {
@@ -49,6 +51,138 @@ public class DeviceCommandServiceImpl implements DeviceCommandService {
             return;
         }
         params.forEach((k, v) -> applySingle(deviceId, k, v));
+    }
+
+    @Override
+    public void sendPrintData(Long deviceId, Object setaParam) {
+        applySingle(deviceId, DeviceConfigKey.SETA, setaParam);
+    }
+
+     /**
+     * 将模版与实际数据合成为 SETA 指令参数结构。
+     * 统一返回 Map 结构，便于直接传给 DeviceCommandServiceImpl 的 SETA 构建逻辑。
+     *
+     * @param text 文本内容（用于 v1）
+     * @param width 宽度
+     * @param height 高度
+     * @param x X 坐标
+     * @param y Y 坐标
+     * @param r 旋转角度
+     * @param ng 负向标志
+     */
+    @Override
+    public Map<String, Object> buildSetaParam(String text, Integer width, Integer height, Integer x, Integer y, Integer r, Integer ng) {
+        Map<String, Object> map = new HashMap<>();
+        if (StringUtils.isNotEmpty(text)) {
+            map.put("text", text);
+        }
+        if (width != null && height != null) {
+            map.put("size", width + "|" + height);
+        }
+        if (x != null && y != null) {
+            StringBuilder pos = new StringBuilder();
+            pos.append(Objects.toString(x, "")).append("|").append(Objects.toString(y, ""));
+            pos.append("|").append(Objects.toString(r, "0"));
+            pos.append("|").append(Objects.toString(ng, "0"));
+            map.put("pos", pos.toString());
+        }
+        return map;
+    }
+
+    @Override
+    public void start(Long deviceId) {
+        applySingle(deviceId, DeviceConfigKey.START, null);
+    }
+
+    @Override
+    public void stop(Long deviceId) {
+        applySingle(deviceId, DeviceConfigKey.STOP, null);
+    }
+
+    @Override
+    public void triggerMark(Long deviceId) {
+        applySingle(deviceId, DeviceConfigKey.TRIMARK, null);
+    }
+
+    @Override
+    public String getSystemStatus(Long deviceId, boolean includeErrWarn) {
+        String arg = includeErrWarn ? "errsta" : "";
+        return sendAndRead(deviceId, buildCommand(deviceId, DeviceConfigKey.SYS_STA, arg, null));
+    }
+
+    @Override
+    public Integer getBufferCount(Long deviceId) {
+        String res = sendAndRead(deviceId, buildCommand(deviceId, DeviceConfigKey.GETA, null, null));
+        if (res == null) return null;
+        // 期望格式: geta:数量 → 解析冒号后数字
+        int idx = res.indexOf(":");
+        if (idx >= 0 && idx + 1 < res.length()) {
+            try { return Integer.parseInt(res.substring(idx + 1).trim()); } catch (Exception ignore) {}
+        }
+        return null;
+    }
+
+    @Override
+    public Integer getSerialCurrent(String serialName, boolean editMode, Long deviceId) {
+        Map<String, Object> param = java.util.Collections.unmodifiableMap(new java.util.HashMap<String, Object>() {{
+            put("name", serialName);
+            put("edit", editMode ? "1" : "0");
+        }});
+        String res = sendAndRead(deviceId, buildCommand(deviceId, DeviceConfigKey.SNUM_INDEX, param, null));
+        if (res == null) return null;
+        int idx = res.indexOf(":");
+        if (idx >= 0 && idx + 1 < res.length()) {
+            try { return Integer.parseInt(res.substring(idx + 1).trim()); } catch (Exception ignore) {}
+        }
+        return null;
+    }
+
+    @Override
+    public String getObjectText(String objectName, boolean editMode, Long deviceId) {
+        Map<String, Object> param = java.util.Collections.unmodifiableMap(new java.util.HashMap<String, Object>() {{
+            put("name", Objects.toString(objectName, ""));
+            put("edit", editMode ? "1" : "0");
+        }});
+        return sendAndRead(deviceId, buildCommand(deviceId, DeviceConfigKey.GET_TEXTDATA, param, objectName));
+    }
+
+    @Override
+    public Integer getProcessedCount(Long deviceId) {
+        String res = sendAndRead(deviceId, buildCommand(deviceId, DeviceConfigKey.GETCOUNT, null, null));
+        if (res == null) return null;
+        int idx = res.indexOf(":");
+        if (idx >= 0 && idx + 1 < res.length()) {
+            try { return Integer.parseInt(res.substring(idx + 1).trim()); } catch (Exception ignore) {}
+        }
+        return null;
+    }
+
+    @Override
+    public String getCurrentText(Long deviceId) {
+        return sendAndRead(deviceId, buildCommand(deviceId, DeviceConfigKey.GET_CURRTEXT, null, null));
+    }
+
+    @Override
+    public boolean loadFile(Long deviceId, String filePath) {
+        String cmd = buildCommand(deviceId, DeviceConfigKey.LOAD, filePath, null);
+        return sendAndExpectSuccess(deviceId, cmd, "load");
+    }
+
+    @Override
+    public String getFileList(Long deviceId) {
+        return sendAndRead(deviceId, buildCommand(deviceId, DeviceConfigKey.GET_FILELIST, null, null));
+    }
+
+    @Override
+    public boolean clearBuffer(Long deviceId) {
+        String cmd = buildCommand(deviceId, DeviceConfigKey.CLEARBUF, null, null);
+        return sendAndExpectSuccess(deviceId, cmd, "clearbuf");
+    }
+
+    @Override
+    public boolean powerOffPi(Long deviceId) {
+        String cmd = buildCommand(deviceId, DeviceConfigKey.PI_CLOSEUV, null, null);
+        return sendAndExpectSuccess(deviceId, cmd, "pi_closeuv");
     }
 
     @Override
@@ -95,62 +229,121 @@ public class DeviceCommandServiceImpl implements DeviceCommandService {
     private String buildCommand(Long deviceId, DeviceConfigKey key, Object param, String objectName) {
         try {
             switch (key) {
+                case SETA:
+                    // 使用强类型参数构建：seta:data#...+v1=...+size#w|h+pos#x|y|r|ng
+                    DeviceParams.SetaParam setaParam = objectMapper.convertValue(param, DeviceParams.SetaParam.class);
+                    StringBuilder sb = new StringBuilder();
+                    sb.append("seta:");
+                    if (setaParam != null && setaParam.getText() != null && !setaParam.getText().isEmpty()) {
+                        sb.append("data#").append(setaParam.getText());
+                    }
+                    if (setaParam != null && setaParam.getWidth() != null && setaParam.getHeight() != null) {
+                        if (sb.charAt(sb.length()-1) != ':') sb.append('+');
+                        sb.append("size#").append(setaParam.getWidth()).append('|').append(setaParam.getHeight());
+                    }
+                    if (setaParam != null && setaParam.getX() != null && setaParam.getY() != null) {
+                        if (sb.charAt(sb.length()-1) != ':') sb.append('+');
+                        int rr = setaParam.getR() == null ? 0 : setaParam.getR();
+                        int ng = setaParam.getNg() == null ? 0 : setaParam.getNg();
+                        sb.append("pos#").append(setaParam.getX()).append('|').append(setaParam.getY()).append('|').append(rr).append('|').append(ng);
+                    }
+                    return sb.toString();
+                
                 case CHANGEOBJ_POWER:
                     DeviceParams.ChangeObjPowerParam powerParam = objectMapper.convertValue(param, DeviceParams.ChangeObjPowerParam.class);
                     return String.format("changeobj_power:%s,%d", objectName, powerParam.getPowerPercent());
-                    
+                
                 case CHANGEOBJ_SIZE:
                     DeviceParams.ChangeObjSizeParam sizeParam = objectMapper.convertValue(param, DeviceParams.ChangeObjSizeParam.class);
                     return String.format("changeobj_size:%s,%d,%d", objectName, sizeParam.getWidth(), sizeParam.getHeight());
-                    
+                
                 case CHANGEOBJ_MARKNUM:
                     DeviceParams.ChangeObjMarknumParam markNumParam = objectMapper.convertValue(param, DeviceParams.ChangeObjMarknumParam.class);
                     return String.format("changeobj_marknum:%s,%d", objectName, markNumParam.getMarkNum());
-                    
+                
                 case DIT_SNUM:
                     DeviceParams.DitSnumParam ditSnumParam = objectMapper.convertValue(param, DeviceParams.DitSnumParam.class);
                     return String.format("dit_snum:%s,%d", objectName, ditSnumParam.getCurrentValue());
-                    
+                
                 case RESET_SERNUM:
-                    DeviceParams.ResetSernumParam resetParam = objectMapper.convertValue(param, DeviceParams.ResetSernumParam.class);
+                    // 重置流水号到初始值，仅需对象名
                     return String.format("reset_sernum:%s", objectName);
-                    
+                
                 case SETFIXEDDATA:
                     DeviceParams.SetFixedDataParam fixedParam = objectMapper.convertValue(param, DeviceParams.SetFixedDataParam.class);
                     return String.format("setfixeddata:%s,%s", objectName, fixedParam.getValue());
-                    
+                
                 case SETLIMITCOUNT:
                     DeviceParams.SetLimitCountParam limitParam = objectMapper.convertValue(param, DeviceParams.SetLimitCountParam.class);
                     return String.format("setlimitcount:%d,%d", limitParam.getMaxCount(), limitParam.getCurrentCount());
-                    
+                
                 case CHANGEOBJ_ENMARK:
                     DeviceParams.ChangeObjEnmarkParam enmarkParam = objectMapper.convertValue(param, DeviceParams.ChangeObjEnmarkParam.class);
                     return String.format("changeobj_enmark:%s,%s", objectName, enmarkParam.getEnabled() ? "1" : "0");
-                    
+                
                 case CHANGEOBJ_POS:
                     DeviceParams.ChangeObjPosParam posParam = objectMapper.convertValue(param, DeviceParams.ChangeObjPosParam.class);
                     return String.format("changeobj_pos:%s,%d,%d,%s", objectName, posParam.getX(), posParam.getY(), posParam.getAlign());
-                    
+                
                 case CHANGE_TEXTSIZE:
                     DeviceParams.ChangeTextSizeParam textSizeParam = objectMapper.convertValue(param, DeviceParams.ChangeTextSizeParam.class);
                     return String.format("change_textsize:%s,%d,%d,%d", objectName, textSizeParam.getHeight(), textSizeParam.getWidth(), textSizeParam.getCharSpacing());
-                    
+                
                 case CHANGEREPLEN:
                     DeviceParams.ChangeReplenParam replenParam = objectMapper.convertValue(param, DeviceParams.ChangeReplenParam.class);
                     return String.format("changereplen:%d", replenParam.getRepeatLength());
-                    
+                
                 case SETRPYMODE:
                     DeviceParams.SetRpyModeParam rpyParam = objectMapper.convertValue(param, DeviceParams.SetRpyModeParam.class);
                     return String.format("setrpymode:%s", rpyParam.getMode());
-                    
+                
+                case START:
+                    return "start:";
+                case STOP:
+                    return "stop:";
+                case TRIMARK:
+                    return "trimark";
+                case SYS_STA:
+                    // 强类型：includeErrWarn=true → sys_sta:errsta
+                    DeviceParams.SysStaParam sysStaParam = objectMapper.convertValue(param, DeviceParams.SysStaParam.class);
+                    boolean include = sysStaParam != null && Boolean.TRUE.equals(sysStaParam.getIncludeErrWarn());
+                    return include ? "sys_sta:errsta" : "sys_sta:";
+                case GETA:
+                    return "geta:";
+                case SNUM_INDEX:
+                    // 强类型：snum_index:序列名,是否编辑(0/1)
+                    DeviceParams.SnumIndexQueryParam si = objectMapper.convertValue(param, DeviceParams.SnumIndexQueryParam.class);
+                    if (si == null) return null;
+                    return String.format("snum_index:%s,%s", si.getSerialName(), si.getEdit());
+                case GET_TEXTDATA:
+                    // 强类型：get_textdata:对象名,是否编辑(0/1)
+                    DeviceParams.GetTextDataQueryParam gt = objectMapper.convertValue(param, DeviceParams.GetTextDataQueryParam.class);
+                    if (gt == null) return null;
+                    return String.format("get_textdata:%s,%s", gt.getObjectName(), gt.getEdit());
+                case GETCOUNT:
+                    return "getcount:";
+                case GET_CURRTEXT:
+                    return "get_currtext";
+                case LOAD:
+                    // 强类型：load:filepath
+                    DeviceParams.LoadFileParam lf = objectMapper.convertValue(param, DeviceParams.LoadFileParam.class);
+                    if (lf == null) return null;
+                    return "load:" + lf.getFilePath();
+                case GET_FILELIST:
+                    return "get_filelist";
+                case CLEARBUF:
+                    return "clearbuf";
+                case PI_CLOSEUV:
+                    return "pi_closeuv";
+                
                 case EDIT_TEXTDATA:
                     DeviceParams.EditTextDataParam editParam = objectMapper.convertValue(param, DeviceParams.EditTextDataParam.class);
                     return String.format("edit_textdata:%s,%s", objectName, editParam.getContent());
-                    
+                
                 case SET_SYSTIME:
                     DeviceParams.SetSysTimeParam sysTimeParam = objectMapper.convertValue(param, DeviceParams.SetSysTimeParam.class);
                     return String.format("set_systime:%s", sysTimeParam.getDatetime());
-                    
+                
                 default:
                     log.warn("未支持的设备配置键: {}", key);
                     return null;
@@ -270,6 +463,49 @@ public class DeviceCommandServiceImpl implements DeviceCommandService {
             }
         }
     }
+
+    /**
+     * 发送命令并读取响应数据文本（不强制要求为1/0）。
+     */
+    private String sendAndRead(Long deviceId, String command) {
+        try {
+            DeviceInfo device = deviceInfoService.selectDeviceInfoById(deviceId);
+            if (device == null) {
+                log.error("设备不存在: {}", deviceId);
+                return null;
+            }
+            Socket socket = null;
+            try {
+                socket = new Socket();
+                socket.connect(new java.net.InetSocketAddress(device.getIpAddress(), device.getPort()), CONNECT_TIMEOUT);
+                socket.setSoTimeout(READ_TIMEOUT);
+                byte[] commandBytes = StxEtxProtocolUtil.buildCommand(command);
+                socket.getOutputStream().write(commandBytes);
+                socket.getOutputStream().flush();
+                byte[] buffer = new byte[2048];
+                int bytesRead = socket.getInputStream().read(buffer);
+                if (bytesRead <= 0) return null;
+                byte[] response = new byte[bytesRead];
+                System.arraycopy(buffer, 0, response, 0, bytesRead);
+                if (!StxEtxProtocolUtil.isValidResponse(response)) return null;
+                String data = StxEtxProtocolUtil.parseResponse(response);
+                return data;
+            } finally {
+                if (socket != null) try { socket.close(); } catch (IOException ignore) {}
+            }
+        } catch (Exception e) {
+            log.warn("sendAndRead 异常 deviceId={} cmd={}", deviceId, command, e);
+            return null;
+        }
+    }
+
+    /** 发送命令并校验 like prefix:1 成功 */
+    private boolean sendAndExpectSuccess(Long deviceId, String command, String prefix) {
+        String res = sendAndRead(deviceId, command);
+        if (res == null) return false;
+        // 期望格式: prefix:1
+        return res.trim().equals(prefix + ":1");
+    }
     
     /**
      * 获取设备当前变量名
@@ -366,6 +602,9 @@ public class DeviceCommandServiceImpl implements DeviceCommandService {
             return null;
         }
     }
+
+
+
 }
 
 

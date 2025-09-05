@@ -34,6 +34,9 @@ public class DeviceConfigServiceImpl implements DeviceConfigService {
                 // 将 Object 再序列化再反序列化为强类型模型
                 String json = objectMapper.writeValueAsString(value);
                 switch (key) {
+                    case SETA:
+                        result.put(key, objectMapper.readValue(json, DeviceParams.SetaParam.class));
+                        break;
                     case SET_SYSTIME:
                         result.put(key, objectMapper.readValue(json, DeviceParams.SetSysTimeParam.class));
                         break;
@@ -75,6 +78,30 @@ public class DeviceConfigServiceImpl implements DeviceConfigService {
                         break;
                     case EDIT_TEXTDATA:
                         result.put(key, objectMapper.readValue(json, DeviceParams.EditTextDataParam.class));
+                        break;
+                    case SNUM_INDEX:
+                        result.put(key, objectMapper.readValue(json, DeviceParams.SnumIndexQueryParam.class));
+                        break;
+                    case GET_TEXTDATA:
+                        result.put(key, objectMapper.readValue(json, DeviceParams.GetTextDataQueryParam.class));
+                        break;
+                    case LOAD:
+                        result.put(key, objectMapper.readValue(json, DeviceParams.LoadFileParam.class));
+                        break;
+                    case SYS_STA:
+                        result.put(key, objectMapper.readValue(json, DeviceParams.SysStaParam.class));
+                        break;
+                    case START:
+                    case STOP:
+                    case TRIMARK:
+                    case GETA:
+                    case GETCOUNT:
+                    case GET_CURRTEXT:
+                    case GET_FILELIST:
+                    case CLEARBUF:
+                    case PI_CLOSEUV:
+                        // 无参数或简单无结构参数
+                        result.put(key, value);
                         break;
                     default:
                         throw new ServiceException("未处理的键: " + key);

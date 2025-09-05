@@ -176,6 +176,69 @@ public class DeviceParams {
         private String objectName;
         private String content;
     }
+
+    @Data
+    public static class SetaParam { // 发送打印数据（核心指令）
+        /**
+         * 示例 JSON:
+         * {
+         *   "seta": {"data": "RAW", "v1": "TEXT0001", "width": 20, "height": 10, "x": 100, "y": 50, "r": 0, "ng": 0}
+         * }
+         */
+        private String text;    // 可选，文本变量内容
+        private Integer width;  // 可选
+        private Integer height; // 可选
+        private Integer x;      // 可选
+        private Integer y;      // 可选
+        private Integer r;      // 可选，旋转角度
+        private Integer ng;     // 可选，负向标志
+    }
+
+    @Data
+    public static class SnumIndexQueryParam { // 获取序列号当前值
+        /**
+         * 示例 JSON:
+         * {
+         *   "snum_index": {"serialName": "SN1", "edit": 0}
+         * }
+         */
+        private String serialName;
+        private Integer edit; // 0/1
+    }
+
+    @Data
+    public static class GetTextDataQueryParam { // 获取对象内容
+        /**
+         * 示例 JSON:
+         * {
+         *   "get_textdata": {"objectName": "Text1", "edit": 0}
+         * }
+         */
+        private String objectName;
+        private Integer edit; // 0/1
+    }
+
+    @Data
+    public static class LoadFileParam { // 加载模板文件
+        /**
+         * 示例 JSON:
+         * {
+         *   "load": {"filePath": "folder/file1.prn"}
+         * }
+         */
+        private String filePath;
+    }
+
+    @Data
+    public static class SysStaParam { // 获取系统状态参数
+        /**
+         * 示例 JSON:
+         * {
+         *   "sys_sta": {"includeErrWarn": true}
+         * }
+         */
+        private Boolean includeErrWarn; // true → sys_sta:errsta, false/null → sys_sta:
+    }
 }
 
 
