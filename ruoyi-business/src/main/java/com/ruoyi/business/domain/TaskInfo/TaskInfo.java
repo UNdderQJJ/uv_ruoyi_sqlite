@@ -28,6 +28,11 @@ public class TaskInfo extends BaseEntity {
      */
     private String status;
 
+    /**‘
+     * 关联的设备名称
+     */
+    private String deviceName;
+
     /**
      * 关联的数据池ID
      */

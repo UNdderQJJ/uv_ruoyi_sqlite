@@ -155,6 +155,13 @@ public interface IDeviceInfoService
     public List<DeviceInfo> countDeviceInfoByType();
 
     /**
+     * 统计各状态设备数量
+     *
+     * @return 设备状态统计结果
+     */
+    public List<DeviceInfo> countDeviceInfoByStatus();
+
+    /**
      * 启用/禁用设备
      * 
      * @param id 设备ID

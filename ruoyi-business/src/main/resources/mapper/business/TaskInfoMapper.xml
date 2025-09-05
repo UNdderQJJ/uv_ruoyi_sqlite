@@ -7,6 +7,7 @@
         <id     property="id"                column="id" />
         <result property="name"              column="name" />
         <result property="status"            column="status" />
+        <result property="deviceName"        column="device_name" />
         <result property="poolId"            column="pool_id" />
         <result property="poolName"          column="pool_name" />
         <result property="plannedQuantity"   column="planned_quantity" />
@@ -16,6 +17,10 @@
         <result property="delFlag"           column="del_flag" />
         <result property="createTime"        column="create_time" />
         <result property="updateTime"        column="update_time" />
+        <!-- BaseEntity 的其他字段 -->
+        <result property="createBy"          column="create_by" />
+        <result property="updateBy"          column="update_by" />
+        <result property="remark"            column="remark" />
     </resultMap>
 
     <!-- 根据ID查询任务 -->
@@ -63,9 +68,9 @@
     <!-- 新增任务 -->
     <insert id="insertTaskInfo" parameterType="com.ruoyi.business.domain.TaskInfo.TaskInfo" useGeneratedKeys="true" keyProperty="id">
         INSERT INTO task_info (
-            name, status, pool_id, pool_name, planned_quantity, completed_quantity, preload_data_count, description, del_flag, create_time, update_time
+            name, status, device_name, pool_id, pool_name, planned_quantity, completed_quantity, preload_data_count, description, del_flag, create_time, update_time
         ) VALUES (
-            #{name}, #{status}, #{poolId}, #{poolName}, #{plannedQuantity}, #{completedQuantity}, #{preloadDataCount}, #{description},
+            #{name}, #{status}, #{deviceName}, #{poolId}, #{poolName}, #{plannedQuantity}, #{completedQuantity}, #{preloadDataCount}, #{description},
             COALESCE(#{delFlag}, 0), COALESCE(#{createTime}, datetime('now','localtime')), COALESCE(#{updateTime}, datetime('now','localtime'))
         )
     </insert>
@@ -76,6 +81,7 @@
         <set>
             <if test="name != null">name = #{name},</if>
             <if test="status != null">status = #{status},</if>
+            <if test="deviceName != null">device_name = #{deviceName},</if>
             <if test="poolId != null">pool_id = #{poolId},</if>
             <if test="poolName != null">pool_name = #{poolName},</if>
             <if test="plannedQuantity != null">planned_quantity = #{plannedQuantity},</if>

@@ -12,7 +12,6 @@ import com.ruoyi.business.service.DeviceInfo.IDeviceInfoService;
 import com.ruoyi.common.core.TcpResponse;
 import com.ruoyi.common.utils.StringUtils;
 
-import io.netty.util.internal.ObjectUtil;
 import org.apache.commons.lang3.ObjectUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -90,6 +89,8 @@ public class DeviceManagementHandler {
                 return countDevices(body);
             } else if (path.equals("/business/device/countByType")) {
                 return countDevicesByType();
+            } else if (path.equals("/business/device/countByStatus")) {
+                return countDevicesByStatus();
             } else if (path.equals("/business/device/tree")) {
                 return getDeviceTree();
             } else if (path.equals("/business/device/saveParameters")) {
@@ -330,7 +331,7 @@ public class DeviceManagementHandler {
                         return TcpResponse.success("更新设备成功，但配置下发失败: " + e.getMessage());
                     }
                 } else {
-                    return TcpResponse.success("更新设备成功");
+                return TcpResponse.success("更新设备成功");
                 }
             } else {
                 return TcpResponse.error("更新设备失败");
@@ -556,9 +557,34 @@ public class DeviceManagementHandler {
     private TcpResponse countDevicesByType() {
         try {
             List<DeviceInfo> list = deviceInfoService.countDeviceInfoByType();
-            return TcpResponse.success(list);
+            Map<String, Integer> map = new LinkedHashMap<>();
+            for (DeviceInfo d : list) {
+                if (d.getDeviceType() != null) {
+                    map.put(d.getDeviceType(), d.getId() == null ? 0 : d.getId().intValue());
+                }
+            }
+            return TcpResponse.success(map);
         } catch (Exception e) {
             log.error("统计各类型设备数量异常", e);
+            return TcpResponse.error("统计设备数量异常: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 统计各状态设备数量
+     */
+    private TcpResponse countDevicesByStatus() {
+        try {
+            List<DeviceInfo> list = deviceInfoService.countDeviceInfoByStatus();
+            Map<String, Integer> map = new LinkedHashMap<>();
+            for (DeviceInfo d : list) {
+                if (d.getStatus() != null) {
+                    map.put(d.getStatus(), d.getId() == null ? 0 : d.getId().intValue());
+                }
+            }
+            return TcpResponse.success(map);
+        } catch (Exception e) {
+            log.error("统计各状态设备数量异常", e);
             return TcpResponse.error("统计设备数量异常: " + e.getMessage());
         }
     }

@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ruoyi.common.core.TcpResponse;
 import com.ruoyi.common.core.domain.model.TcpRequest;
 import com.ruoyi.common.utils.StringUtils;
+import com.ruoyi.tcp.business.Task.TaskDeviceLinkManagementHandler;
 import com.ruoyi.tcp.system.AuthManagementHandler;
 import com.ruoyi.tcp.system.MenuManagementHandler;
 import com.ruoyi.tcp.system.RoleManagementHandler;
@@ -15,6 +16,7 @@ import com.ruoyi.tcp.business.ArchivedDataPool.ArchivedDataPoolItemManagementHan
 import com.ruoyi.tcp.business.DataPoolTemplate.DataPoolTemplateManagementHandler;
 import com.ruoyi.tcp.business.Device.DeviceManagementHandler;
 import com.ruoyi.tcp.business.DeviceFileConfig.DeviceFileConfigManagementHandler;
+import com.ruoyi.tcp.business.Task.TaskInfoManagementHandler;
 import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
@@ -83,6 +85,14 @@ public class NettyServerHandler extends SimpleChannelInboundHandler<String> {
     @Autowired
     private DeviceFileConfigManagementHandler deviceFileConfigManagementHandler;
 
+    // 注入任务中心处理器
+    @Autowired
+    private TaskInfoManagementHandler taskInfoManagementHandler;
+
+    // 注入任务管理处理器
+    @Autowired
+    private TaskDeviceLinkManagementHandler taskDeviceLinkManagementHandler;
+
     // 注入Spring的TaskExecutor，用于异步处理业务逻辑
     @Autowired
     private TaskExecutor taskExecutor;
@@ -143,7 +153,7 @@ public class NettyServerHandler extends SimpleChannelInboundHandler<String> {
     /**
      * 处理业务请求（在业务线程池中执行）
      */
-    private TcpResponse processBusinessRequest(String path, String body, String requestId, String clientAddress) {
+    private TcpResponse processBusinessRequest(String path, String body, String requestId, String clientAddress) throws Exception {
         TcpResponse response;
         
         // 根据 Path 路由到不同的业务逻辑
@@ -177,6 +187,12 @@ public class NettyServerHandler extends SimpleChannelInboundHandler<String> {
         } else if (path.startsWith("/business/deviceFileConfig/")) {
             // 设备文件配置管理相关请求
             response = deviceFileConfigManagementHandler.handleDeviceFileConfigRequest(path, body);
+        }else if (path.startsWith("/business/taskInfo/link/")) {
+            // 任务设备关联表相关请求
+            response = taskDeviceLinkManagementHandler.handleTaskDeviceLinkRequest(path, body);
+        } else if (path.startsWith("/business/taskInfo/")) {
+            // 任务中心相关请求
+            response = taskInfoManagementHandler.handleTaskInfoRequest(path, body);
         } else {
             log.warn("[Netty-Handler] 客户端 [{}] 请求了未知的路径: {}", clientAddress, path);
             response = TcpResponse.error("请求的路径不存在: " + path);

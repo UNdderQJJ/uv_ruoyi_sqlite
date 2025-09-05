@@ -151,4 +151,11 @@ public interface DeviceInfoMapper
      * @return 设备类型统计结果
      */
     public List<DeviceInfo> countDeviceInfoByType();
+
+    /**
+     * 统计各状态设备数量
+     *
+     * @return 设备状态统计结果
+     */
+    public List<DeviceInfo> countDeviceInfoByStatus();
 }

@@ -120,6 +120,10 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
     <select id="countDeviceInfoByType" resultMap="DeviceInfoResult">
         select device_type, count(1) as id from device_info where del_flag = 0 group by device_type
     </select>
+    
+    <select id="countDeviceInfoByStatus" resultMap="DeviceInfoResult">
+        select status, count(1) as id from device_info where del_flag = 0 group by status
+    </select>
         
     <insert id="insertDeviceInfo" parameterType="DeviceInfo" useGeneratedKeys="true" keyProperty="id">
         insert into device_info

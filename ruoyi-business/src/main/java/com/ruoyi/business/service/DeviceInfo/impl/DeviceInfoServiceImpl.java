@@ -5,7 +5,6 @@ import java.util.List;
 import com.ruoyi.common.utils.DateUtils;
 import com.ruoyi.common.utils.StringUtils;
 import jakarta.annotation.Resource;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import com.ruoyi.business.mapper.DeviceInfo.DeviceInfoMapper;
 import com.ruoyi.business.domain.DeviceInfo.DeviceInfo;
@@ -266,6 +265,17 @@ public class DeviceInfoServiceImpl implements IDeviceInfoService
     public List<DeviceInfo> countDeviceInfoByType()
     {
         return deviceInfoMapper.countDeviceInfoByType();
+    }
+
+    /**
+     * 统计各状态设备数量
+     *
+     * @return 设备状态统计结果
+     */
+    @Override
+    public List<DeviceInfo> countDeviceInfoByStatus()
+    {
+        return deviceInfoMapper.countDeviceInfoByStatus();
     }
 
     /**
