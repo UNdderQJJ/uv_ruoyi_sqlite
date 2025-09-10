@@ -18,7 +18,7 @@ public class TaskDispatchStatus {
     /** 开始时间 */
     private Long startTime;
     
-    /** 结束时间 */
+    /** 结束x时间 */
     private Long endTime;
     
     /** 错误信息 */
@@ -29,12 +29,18 @@ public class TaskDispatchStatus {
     
     /** 已发送指令数量 */
     private Integer sentCommandCount;
+
+    /** 计划打印数量 */
+    private Integer plannedPrintCount;
     
     /** 已完成指令数量 */
     private Integer completedCommandCount;
     
     /** 失败指令数量 */
     private Integer failedCommandCount;
+
+    /** 原已完成指令数量 */
+    private Integer originalCommandCount;
     
     /** 关联设备数量 */
     private Integer deviceCount;

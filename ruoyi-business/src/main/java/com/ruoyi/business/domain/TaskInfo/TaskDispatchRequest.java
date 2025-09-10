@@ -18,9 +18,14 @@ public class TaskDispatchRequest {
     /** 数据池ID */
     private Long poolId;
     
-    /** 预加载数量 */
+    /** 预加载数量，数据池大小 */
     private Integer preloadCount;
-    
+
+    /** 计划打印数量  */
+    private Integer printCount;
+
+    /** 原已完成数量 */
+    private Integer originalCount;
     /** 批处理大小 */
     private Integer batchSize;
     

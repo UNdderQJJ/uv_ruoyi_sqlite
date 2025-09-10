@@ -1,9 +1,11 @@
 package com.ruoyi.business.service.TaskInfo.runner;
 
+import com.ruoyi.business.config.TaskDispatchProperties;
 import com.ruoyi.business.domain.DataPoolTemplate.DataPoolTemplate;
 import com.ruoyi.business.domain.DeviceFileConfig.DeviceFileConfig;
 import com.ruoyi.business.domain.TaskInfo.PrintCommand;
 import com.ruoyi.business.domain.DataPoolItem.DataPoolItem;
+import com.ruoyi.business.enums.ItemStatus;
 import com.ruoyi.business.service.DataPoolItem.IDataPoolItemService;
 import com.ruoyi.business.service.DataPoolTemplate.IDataPoolTemplateService;
 import com.ruoyi.business.service.DeviceFileConfig.IDeviceFileConfigService;
@@ -11,11 +13,11 @@ import com.ruoyi.business.service.TaskInfo.ITaskDeviceLinkService;
 import com.ruoyi.business.service.TaskInfo.CommandQueueService;
 import com.ruoyi.business.domain.TaskInfo.TaskDeviceLink;
 import com.ruoyi.business.enums.PrintCommandStatusEnum;
+import com.ruoyi.business.config.TaskDispatchProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.List;
-import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
@@ -33,6 +35,7 @@ public class DataPoolProducerRunner implements Runnable {
     private final ITaskDeviceLinkService taskDeviceLinkService;
     private final IDataPoolTemplateService iDataPoolTemplateService;
     private final IDeviceFileConfigService iDeviceFileConfigService;
+    private final TaskDispatchProperties taskDispatchProperties;
     
     private volatile boolean running = true;
     private volatile boolean paused = false;
@@ -42,7 +45,10 @@ public class DataPoolProducerRunner implements Runnable {
     public DataPoolProducerRunner(Long taskId, Long poolId,
                                   CommandQueueService commandQueueService,
                                   IDataPoolItemService dataPoolItemService,
-                                  ITaskDeviceLinkService taskDeviceLinkService, IDataPoolTemplateService iDataPoolTemplateService, IDeviceFileConfigService iDeviceFileConfigService) {
+                                  ITaskDeviceLinkService taskDeviceLinkService, 
+                                  IDataPoolTemplateService iDataPoolTemplateService, 
+                                  IDeviceFileConfigService iDeviceFileConfigService,
+                                  TaskDispatchProperties taskDispatchProperties) {
         this.taskId = taskId;
         this.poolId = poolId;
         this.commandQueueService = commandQueueService;
@@ -50,6 +56,7 @@ public class DataPoolProducerRunner implements Runnable {
         this.taskDeviceLinkService = taskDeviceLinkService;
         this.iDataPoolTemplateService = iDataPoolTemplateService;
         this.iDeviceFileConfigService = iDeviceFileConfigService;
+        this.taskDispatchProperties = taskDispatchProperties;
     }
     
     @Override
@@ -64,7 +71,7 @@ public class DataPoolProducerRunner implements Runnable {
                 }
                 
                 fetchAndProcessData();
-                Thread.sleep(100); // 避免CPU占用过高
+                Thread.sleep(2000); // 避免CPU占用过高
                 
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
@@ -90,8 +97,19 @@ public class DataPoolProducerRunner implements Runnable {
      */
     private void fetchAndProcessData() {
         try {
+            // 检查队列大小，避免队列过满
+            int queueSize = commandQueueService.getQueueSize();
+            int maxQueueSize = taskDispatchProperties.getCommandQueueSize();
+            if (queueSize > maxQueueSize * 0.5) { // 队列超过50%时暂停生产
+                log.debug("指令队列已满，暂停生产，任务ID: {}, 队列大小: {}, 最大容量: {}", taskId, queueSize, maxQueueSize);
+                return;
+            }
+            
             // 批量查询待打印数据
-            List<DataPoolItem> items = dataPoolItemService.selectPendingItems(poolId, 1000);
+            List<DataPoolItem> items = dataPoolItemService.selectPendingItems(poolId, (int) Math.floor(taskDispatchProperties.getBatchSize()*0.2));
+
+            //更新成打印中
+            dataPoolItemService.updateItemsStatus(items,ItemStatus.PRINTING.getCode());
             
             if (items == null || items.isEmpty()) {
                 log.debug("没有待处理数据，任务ID: {}", taskId);
