@@ -66,7 +66,7 @@ public class NettyServer {
                             @Override
                             protected void initChannel(SocketChannel ch) {
                                 ch.pipeline()
-                                        // 空闲状态检测
+                                        // 仅读超时检测（服务端不主动写），不自动断开
                                         .addLast(new IdleStateHandler(connectionTimeout, 0, 0, TimeUnit.SECONDS))
                                         // 基于分隔符的解码器，使用换行符作为消息分隔符
                                         .addLast(new DelimiterBasedFrameDecoder(10 * 1024 * 1024, 

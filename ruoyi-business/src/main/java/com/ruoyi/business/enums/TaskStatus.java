@@ -15,6 +15,9 @@ public enum TaskStatus {
     /** 已暂停 */
     PAUSED("PAUSED", "已暂停"),
 
+    /** 已停止 */
+    STOPPED("STOPPED", "已停止"),
+
     /** 已完成 */
     COMPLETED("COMPLETED", "已完成"),
 

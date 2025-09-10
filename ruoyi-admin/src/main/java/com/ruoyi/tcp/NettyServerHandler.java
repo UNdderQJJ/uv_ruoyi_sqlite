@@ -20,6 +20,7 @@ import com.ruoyi.tcp.business.Task.TaskInfoManagementHandler;
 import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
+import jakarta.annotation.Resource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -94,7 +95,7 @@ public class NettyServerHandler extends SimpleChannelInboundHandler<String> {
     private TaskDeviceLinkManagementHandler taskDeviceLinkManagementHandler;
 
     // 注入Spring的TaskExecutor，用于异步处理业务逻辑
-    @Autowired
+    @Resource
     private TaskExecutor taskExecutor;
 
     /**

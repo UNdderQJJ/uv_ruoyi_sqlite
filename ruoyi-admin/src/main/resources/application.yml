@@ -87,3 +87,9 @@ pagehelper:
   helperDialect: sqlite
   supportMethodsArguments: true
   params: count=countSql
+
+# 设备通道连接配置
+device:
+  connection:
+    timeout: 5000        # 连接超时时间(毫秒)
+    retry-interval: 30000 # 重连间隔时间(毫秒)
