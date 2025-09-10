@@ -1,6 +1,7 @@
 package com.ruoyi.business.service.TaskInfo;
 
 import com.ruoyi.business.domain.TaskInfo.PrintCommand;
+import java.util.List;
 
 /**
  * 指令队列服务接口
@@ -38,5 +39,37 @@ public interface CommandQueueService {
     /**
      * 获取当前队列中所有指令的快照（不会移除）
      */
-    java.util.List<PrintCommand> getAllCommandsSnapshot();
+    List<PrintCommand> getAllCommandsSnapshot();
+    
+    /**
+     * 从队列中移除指定指令
+     * 
+     * @param command 要移除的指令
+     * @return 是否移除成功
+     */
+    boolean removeCommand(PrintCommand command);
+    
+    /**
+     * 记录已发送的数据项（轻量通道）
+     *
+     * @param taskId 任务ID
+     * @param dataPoolItemId 数据项ID
+     * @param deviceId 设备ID
+     */
+    void addSentRecord(Long taskId, Long dataPoolItemId, String deviceId);
+
+    /**
+     * 兼容方法（无设备ID），等价于 deviceId=null
+     */
+    default void addSentRecord(Long taskId, Long dataPoolItemId) {
+        addSentRecord(taskId, dataPoolItemId, null);
+    }
+
+    /**
+     * 针对指定任务，获取并移除其已发送记录（原子方式抽取）
+     *
+     * @param taskId 任务ID
+     * @return 该任务的已发送记录（包含数据项ID与设备ID）
+     */
+    List<SentRecord> drainSentRecordsForTask(Long taskId);
 }

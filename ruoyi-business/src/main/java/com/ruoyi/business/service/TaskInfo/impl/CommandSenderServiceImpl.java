@@ -1,22 +1,18 @@
 package com.ruoyi.business.service.TaskInfo.impl;
 
 import com.ruoyi.business.domain.TaskInfo.PrintCommand;
+import com.ruoyi.business.domain.TaskInfo.TaskDispatchStatus;
 import com.ruoyi.business.domain.TaskInfo.TaskInfo;
 import com.ruoyi.business.enums.ItemStatus;
 import com.ruoyi.business.events.TaskPauseEvent;
 import com.ruoyi.business.domain.TaskInfo.TaskDeviceLink;
-import com.ruoyi.business.service.TaskInfo.ITaskDeviceLinkService;
+import com.ruoyi.business.service.TaskInfo.*;
 import com.ruoyi.business.domain.DeviceInfo.DeviceInfo;
 import com.ruoyi.business.service.DeviceInfo.IDeviceInfoService;
 import com.ruoyi.business.service.DeviceInfo.DeviceCommandService;
-import com.ruoyi.business.service.TaskInfo.CommandSenderService;
-import com.ruoyi.business.service.TaskInfo.TaskDispatcherService;
-import com.ruoyi.business.service.TaskInfo.DeviceDataHandlerService;
-import com.ruoyi.business.service.TaskInfo.CommandQueueService;
 import com.ruoyi.business.service.TaskInfo.runner.CommandSenderRunner;
 import com.ruoyi.business.service.DataPoolItem.IDataPoolItemService;
 import com.ruoyi.business.domain.DataPoolItem.DataPoolItem;
-import com.ruoyi.business.service.TaskInfo.ITaskInfoService;
 import com.ruoyi.business.events.TaskStartEvent;
 import com.ruoyi.business.events.TaskStopEvent;
 import org.slf4j.Logger;
@@ -67,16 +63,10 @@ public class CommandSenderServiceImpl implements CommandSenderService {
     private IDeviceInfoService deviceInfoService;
 
     @Autowired
-    private DeviceCommandService deviceCommandService;
-
-    @Autowired
     private TaskScheduler taskScheduler;
 
     @Autowired
     private IDataPoolItemService dataPoolItemService;
-
-    @Autowired
-    private ITaskInfoService taskInfoService;
 
     // 任务队列维护与状态标记调度句柄
     private final ConcurrentHashMap<Long, java.util.concurrent.ScheduledFuture<?>> queueMaintainers = new ConcurrentHashMap<>();
@@ -144,28 +134,6 @@ public class CommandSenderServiceImpl implements CommandSenderService {
         try {
             log.info("停止指令发送，任务ID: {}", taskId);
 
-             // 向参与设备发送停止加工指令（stop:）
-            try {
-                TaskDeviceLink query = new TaskDeviceLink();
-                query.setTaskId(taskId);
-                List<TaskDeviceLink> links = taskDeviceLinkService.list(query);
-                if (links != null) {
-                    for (TaskDeviceLink link : links) {
-                        DeviceInfo d = deviceInfoService.selectDeviceInfoById(link.getDeviceId());
-                        if (d != null) {
-                            String stopCmd = "stop:";
-                            boolean success = dispatcher.sendCommandToDevice(d.getId().toString(), stopCmd);
-                            if (success) {
-                                log.info("已发送停止指令至设备，设备ID: {}, IP: {}, 端口: {}", d.getId(), d.getIpAddress(), d.getPort());
-                            } else {
-                                log.warn("发送停止指令失败，设备ID: {}, IP: {}, 端口: {}", d.getId(), d.getIpAddress(), d.getPort());
-                            }
-                        }
-                    }
-                }
-            } catch (Exception ex) {
-                log.warn("下发停止指令时出现异常，任务ID: {}", taskId, ex);
-            }
             
             // 停止Runner
             CommandSenderRunner runner = runningRunners.get(taskId);
@@ -177,6 +145,32 @@ public class CommandSenderServiceImpl implements CommandSenderService {
             Future<?> future = runningFutures.get(taskId);
             if (future != null) {
                 future.cancel(true);
+            }
+
+
+             // 向参与设备发送停止加工指令（stop:）
+            try {
+                TaskDeviceLink query = new TaskDeviceLink();
+                query.setTaskId(taskId);
+                List<TaskDeviceLink> links = taskDeviceLinkService.list(query);
+                if (links != null) {
+                    for (TaskDeviceLink link : links) {
+                        DeviceInfo d = deviceInfoService.selectDeviceInfoById(link.getDeviceId());
+                        if (d != null) {
+                            String stopCmd = "stop:";
+//                            //睡眠两秒
+//                            Thread.sleep(2000);
+                            boolean success = dispatcher.sendCommandToDevice(d.getId().toString(), stopCmd);
+                            if (success) {
+                                log.info("已发送停止指令至设备，设备ID: {}, IP: {}, 端口: {}", d.getId(), d.getIpAddress(), d.getPort());
+                            } else {
+                                log.warn("发送停止指令失败，设备ID: {}, IP: {}, 端口: {}", d.getId(), d.getIpAddress(), d.getPort());
+                            }
+                        }
+                    }
+                }
+            } catch (Exception ex) {
+                log.warn("下发停止指令时出现异常，任务ID: {}", taskId, ex);
             }
             
             // 清理资源
@@ -276,43 +270,29 @@ public class CommandSenderServiceImpl implements CommandSenderService {
         }
     }
 
-    // 标记SENT为PRINTING并按30%阈值补充
+    // 标记SENT为PRINTING
     private void maintainQueueAndMarkPrinting(Long taskId) {
         try {
-            // 1) 将队列中状态为SENT的命令，更新数据库为打印中（PRINTING）
-            List<PrintCommand> snapshot = commandQueueService.getAllCommandsSnapshot();
-            if (snapshot != null && !snapshot.isEmpty()) {
-                List<DataPoolItem> toUpdate = new ArrayList<>();
-                for (PrintCommand pc : snapshot) {
-                    if (pc.getTaskId() != null && taskId.equals(pc.getTaskId()) && "SENT".equals(pc.getStatus())) {
-                        DataPoolItem item = new DataPoolItem();
-                        try {
-                            item.setId(Long.valueOf(pc.getId()));
-                            toUpdate.add(item);
-                        } catch (NumberFormatException ignore) {
-                        }
-                    }
-                }
-                if (!toUpdate.isEmpty()) {
-                    try {
-                        dataPoolItemService.updateDataPoolItemsStatus(toUpdate, ItemStatus.PRINTING.getCode());
-                    } catch (Exception ex) {
-                        log.warn("批量更新数据项为PRINTING失败，任务ID: {}", taskId, ex);
-                    }
-                }
-            }
+            // 1) 处理已发送ID：按任务原子抽取并批量更新为PRINTING
+            List<SentRecord> sentRecords = commandQueueService.drainSentRecordsForTask(taskId);
 
-            // 2) 队列补充：低于预加载数量的30%时补充
-            int queueSize = commandQueueService.getQueueSize();
-            TaskInfo t = taskInfoService.selectTaskInfoById(taskId);
-            Integer preload = t != null ? t.getPreloadDataCount() : 20;
-            int base = preload != null ? preload : 20;
-            int threshold = (int) Math.ceil(base * 0.3);
-            if (queueSize < threshold) {
-                log.info("队列低于阈值，准备补充，任务ID: {}, 当前大小: {}, 阈值: {}", taskId, queueSize, threshold);
+            if (sentRecords != null && !sentRecords.isEmpty()) {
+                List<DataPoolItem> toUpdate = new ArrayList<>(sentRecords.size());
+                for (SentRecord rec : sentRecords) {
+                    DataPoolItem item = new DataPoolItem();
+                    item.setId(rec.getDataPoolItemId());
+                    item.setDeviceId(rec.getDeviceId());
+                    toUpdate.add(item);
+                }
+                try {
+                    dataPoolItemService.updateDataPoolItemsStatus(toUpdate, ItemStatus.PRINTED.getCode());
+                    log.debug("批量更新{}个数据项状态为PRINTING，任务ID: {}", toUpdate.size(), taskId);
+                } catch (Exception ex) {
+                    log.warn("批量更新数据项为PRINTING失败，任务ID: {}", taskId, ex);
+                }
             }
         } catch (Exception e) {
-            log.error("维护队列与标记打印中失败，任务ID: {}", taskId, e);
+            log.error("标记打印中失败，任务ID: {}", taskId, e);
         }
     }
     

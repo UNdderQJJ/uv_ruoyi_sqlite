@@ -149,6 +149,14 @@ public class CommandSenderRunner implements Runnable {
             command.setStatus(PrintCommandStatusEnum.SENT.getCode());
             command.setSentTime(System.currentTimeMillis());
             
+            // 记录轻量的已发送ID，避免回填整个指令对象导致性能下降
+            try {
+                Long dataPoolItemId = Long.valueOf(command.getId());
+                Long taskId = command.getTaskId();
+                commandQueueService.addSentRecord(taskId, dataPoolItemId,deviceId);
+            } catch (NumberFormatException ignore) {
+            }
+            
             // 报告指令已发送
             dispatcher.reportCommandSent(deviceId);
             sentCount.incrementAndGet();
