@@ -8,6 +8,7 @@ import com.ruoyi.business.service.TaskInfo.CommandQueueService;
 import com.ruoyi.business.service.TaskInfo.runner.DataPoolProducerRunner;
 import com.ruoyi.business.service.DataPoolItem.IDataPoolItemService;
 import com.ruoyi.business.service.TaskInfo.ITaskDeviceLinkService;
+import com.ruoyi.business.config.TaskDispatchProperties;
 import com.ruoyi.business.events.TaskStartEvent;
 import com.ruoyi.business.events.TaskStopEvent;
 import org.slf4j.Logger;
@@ -53,6 +54,9 @@ public class DataPoolProducerServiceImpl implements DataPoolProducerService {
     @Autowired
     private IDeviceFileConfigService iDeviceFileConfigService;
     
+    @Autowired
+    private TaskDispatchProperties taskDispatchProperties;
+    
     @Override
     public void startProduction(Long taskId, Long poolId) {
         try {
@@ -66,7 +70,8 @@ public class DataPoolProducerServiceImpl implements DataPoolProducerService {
             
             // 创建并启动Runner
             DataPoolProducerRunner runner = new DataPoolProducerRunner(
-                    taskId, poolId, commandQueueService, dataPoolItemService, taskDeviceLinkService,iDataPoolTemplateService,iDeviceFileConfigService);
+                    taskId, poolId, commandQueueService, dataPoolItemService, taskDeviceLinkService,
+                    iDataPoolTemplateService, iDeviceFileConfigService, taskDispatchProperties);
 
             // 创建Future
             Future<?> future = taskProducerExecutor.submit(runner);

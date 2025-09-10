@@ -189,6 +189,8 @@ public class TaskInfoManagementHandler {
             request.setDeviceFileConfigId(map.deviceFileConfigId);
             request.setPoolTemplateId(map.poolTemplateId);
             request.setAssignedQuantity(taskInfo.getPreloadDataCount());
+            request.setOriginalCount(taskInfo.getCompletedQuantity());
+            request.setPrintCount(taskInfo.getPlannedQuantity());
             
             // 3. 启动任务调度
             taskDispatcherService.startNewTask(request);
@@ -344,6 +346,8 @@ public class TaskInfoManagementHandler {
             request.setDeviceFileConfigId(links.get(0).getDeviceFileConfigId());
             request.setPoolTemplateId(links.get(0).getPoolTemplateId());
             request.setAssignedQuantity(taskInfo.getPreloadDataCount());
+            request.setOriginalCount(taskInfo.getCompletedQuantity());
+            request.setPrintCount(taskInfo.getPlannedQuantity());
 
         taskDispatcherService.startNewTask(request);
         return TcpResponse.success("任务调度启动成功");

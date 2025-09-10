@@ -387,9 +387,7 @@ public class DeviceDataHandlerServiceImpl implements DeviceDataHandlerService {
                 // 将重试指令放回队列
                 commandQueueService.addCommandToQueue(retryPrintCommand);
                 log.info("将重试指令放回队列，设备ID: {}, 指令: {}", deviceId, retryCommand);
-                
-                // 减少设备的在途计数（因为原指令失败了）
-                dispatcher.reportCommandCompleted(deviceId, currentTaskId);
+
                 
             } else {
                 log.warn("无法获取设备当前任务ID，跳过重试，设备ID: {}", deviceId);
