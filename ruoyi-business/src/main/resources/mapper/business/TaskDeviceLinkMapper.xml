@@ -25,7 +25,7 @@
         ) VALUES (
             #{taskId}, #{deviceId}, #{deviceName}, #{deviceFileConfigId}, #{poolTemplateId}, #{status},
             #{assignedQuantity}, COALESCE(#{completedQuantity}, 0), COALESCE(#{delFlag}, 0),
-            COALESCE(#{createTime}, datetime('now','localtime')), COALESCE(#{updateTime}, datetime('now','localtime'))
+            COALESCE(#{createTime}, datetime('now','localtime')), COALESCE(datetime(#{updateTime} / 1000, 'unixepoch', 'localtime'), datetime('now', 'localtime'))
         )
     </insert>
 
@@ -54,19 +54,27 @@
             <if test="status != null">status = #{status},</if>
             <if test="assignedQuantity != null">assigned_quantity = #{assignedQuantity},</if>
             <if test="completedQuantity != null">completed_quantity = #{completedQuantity},</if>
-            update_time = COALESCE(#{updateTime}, datetime('now','localtime'))
+            update_time = COALESCE(datetime(#{updateTime} / 1000, 'unixepoch', 'localtime'), datetime('now', 'localtime'))
         </set>
         WHERE id = #{id} AND del_flag = 0
     </update>
 
     <!-- 软删除（按任务ID） -->
     <update id="deleteByTaskId" parameterType="long" >
-        UPDATE task_device_link SET del_flag = 2, update_time = datetime('now','localtime')
+        UPDATE task_device_link SET del_flag = 2
+        WHERE task_id = #{taskId} AND del_flag = 0
+    </update>
+    <update id="updateDeviceStatus" parameterType="map">
+        UPDATE task_device_link SET status = #{status}
+        WHERE device_id = #{deviceId} and task_id = #{taskId} AND del_flag = 0
+    </update>
+    <update id="updateStatusByTaskId" parameterType="map">
+        UPDATE task_device_link SET status = #{status}
         WHERE task_id = #{taskId} AND del_flag = 0
     </update>
 
     <!-- 查询列表 -->
-    <select id="selectTaskDeviceLinkList" parameterType="com.ruoyi.business.domain.TaskInfo.TaskDeviceLink">
+    <select id="selectTaskDeviceLinkList" parameterType="com.ruoyi.business.domain.TaskInfo.TaskDeviceLink" resultType="com.ruoyi.business.domain.TaskInfo.TaskDeviceLink">
         SELECT * FROM task_device_link
         <where>
             del_flag = 0
@@ -74,6 +82,12 @@
             <if test="deviceId != null">AND device_id = #{deviceId}</if>
             <if test="status != null">AND status = #{status}</if>
         </where>
+        ORDER BY update_time DESC
+    </select>
+
+    <select id="listByTaskId" parameterType="com.ruoyi.business.domain.TaskInfo.TaskDeviceLink" resultType="com.ruoyi.business.domain.TaskInfo.TaskDeviceLink">
+        SELECT * FROM task_device_link
+        WHERE task_id = #{taskId} AND del_flag = 0
         ORDER BY update_time DESC
     </select>
 

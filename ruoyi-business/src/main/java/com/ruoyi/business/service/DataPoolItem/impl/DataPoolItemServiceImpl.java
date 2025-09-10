@@ -79,6 +79,20 @@ public class DataPoolItemServiceImpl implements IDataPoolItemService {
     }
 
     /**
+     * 更新数据项状态（批量）
+     *
+     * @param itemList 数据项列表
+     * @param status 新状态
+     * @return 影响数据项数量
+     */
+    @Override
+    public int updateDataPoolItemsStatus(List<DataPoolItem> itemList, String status) {
+        List<Long> ids = new ArrayList<>();
+        itemList.forEach(item -> ids.add(item.getId()));
+        return dataPoolItemMapper.updateDataPoolItemsStatus(ids, status);
+    }
+
+    /**
      * 锁定数据项（设置状态为PRINTING并设置deviceId）
      * 
      * @param id 数据项ID

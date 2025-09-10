@@ -155,6 +155,15 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         </trim>
         where id = #{id} and del_flag = '0'
     </update>
+    <update id="updateDataPoolItemsStatus">
+        update data_pool_item
+        set status = #{status}
+        where id in
+        <foreach item="id" collection="ids" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+        and del_flag = '0'
+    </update>
 
     <delete id="deleteDataPoolItemById" parameterType="Long">
         update data_pool_item set del_flag = '2', update_time = now() where id = #{id}

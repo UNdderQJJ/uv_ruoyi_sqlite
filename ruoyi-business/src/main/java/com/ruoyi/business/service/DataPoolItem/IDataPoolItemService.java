@@ -54,6 +54,15 @@ public interface IDataPoolItemService {
     public List<DataPoolItem> selectPendingItems(Long poolId, Integer limit);
 
     /**
+     * 批量更新数据项状态
+     *
+     * @param itemList 数据项列表
+     * @param status 新状态
+     * @return 影响数据项数量
+     */
+    public int updateDataPoolItemsStatus(List<DataPoolItem> itemList, String status);
+
+    /**
      * 锁定数据项（设置状态为PRINTING并设置deviceId）
      * 
      * @param id 数据项ID

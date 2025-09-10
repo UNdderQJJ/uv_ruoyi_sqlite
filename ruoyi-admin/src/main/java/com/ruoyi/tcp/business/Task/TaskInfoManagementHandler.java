@@ -17,6 +17,7 @@ import com.ruoyi.business.domain.TaskInfo.TaskDispatchRequest;
 import com.ruoyi.common.core.TcpResponse;
 import com.ruoyi.common.utils.StringUtils;
 import jakarta.annotation.Resource;
+import org.apache.commons.lang3.ObjectUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
@@ -79,22 +80,12 @@ public class TaskInfoManagementHandler {
             } else if (path.endsWith("/count")) {
                 return count(body);
             } else if (path.endsWith("/start")) {
-                return start(body);
-            } else if (path.endsWith("/pause")) {
-                return pause(body);
-            } else if (path.endsWith("/resume")) {
-                return resume(body);
-            } else if (path.endsWith("/complete")) {
-                return complete(body);
-            } else if (path.endsWith("/fail")) {
-                return fail(body);
-            } else if (path.endsWith("/startDispatch")) {
                 return startDispatch(body);
-            } else if (path.endsWith("/stopDispatch")) {
+            } else if (path.endsWith("/stop")) {
                 return stopDispatch(body);
-            } else if (path.endsWith("/pauseDispatch")) {
+            } else if (path.endsWith("/pause")) {
                 return pauseDispatch(body);
-            } else if (path.endsWith("/resumeDispatch")) {
+            } else if (path.endsWith("/resume")) {
                 return resumeDispatch(body);
             } else if (path.endsWith("/getDispatchStatus")) {
                 return getDispatchStatus(body);
@@ -197,7 +188,7 @@ public class TaskInfoManagementHandler {
             request.setDescription(taskInfo.getDescription());
             request.setDeviceFileConfigId(map.deviceFileConfigId);
             request.setPoolTemplateId(map.poolTemplateId);
-            request.setAssignedQuantity(map.assignedQuantity);
+            request.setAssignedQuantity(taskInfo.getPreloadDataCount());
             
             // 3. 启动任务调度
             taskDispatcherService.startNewTask(request);
@@ -317,41 +308,6 @@ public class TaskInfoManagementHandler {
         return TcpResponse.success(cnt);
     }
 
-    /** 启动任务 */
-    private TcpResponse start(String body) throws Exception {
-        Long id = parseId(body);
-        int rows = taskInfoService.startTask(id);
-        return TcpResponse.success(rows);
-    }
-
-    /** 暂停任务 */
-    private TcpResponse pause(String body) throws Exception {
-        Long id = parseId(body);
-        int rows = taskInfoService.pauseTask(id);
-        return TcpResponse.success(rows);
-    }
-
-    /** 恢复任务 */
-    private TcpResponse resume(String body) throws Exception {
-        Long id = parseId(body);
-        int rows = taskInfoService.resumeTask(id);
-        return TcpResponse.success(rows);
-    }
-
-    /** 完成任务 */
-    private TcpResponse complete(String body) throws Exception {
-        Long id = parseId(body);
-        int rows = taskInfoService.completeTask(id);
-        return TcpResponse.success(rows);
-    }
-
-    /** 失败任务 */
-    private TcpResponse fail(String body) throws Exception {
-        Long id = parseId(body);
-        int rows = taskInfoService.failTask(id);
-        return TcpResponse.success(rows);
-    }
-
     /** 解析ID，支持{"id":1}或直接传long字符串 */
     private Long parseId(String body) throws Exception {
         if (StringUtils.isEmpty(body)) {
@@ -366,7 +322,29 @@ public class TaskInfoManagementHandler {
 
     /** 启动任务调度 */
     private TcpResponse startDispatch(String body) throws Exception {
-        TaskDispatchRequest request = objectMapper.readValue(body, TaskDispatchRequest.class);
+        Long id = parseId(body);;
+        TaskInfo taskInfo = taskInfoService.selectTaskInfoById(id);
+
+        TaskDeviceLink query = new TaskDeviceLink();
+        query.setTaskId(id);
+        List<TaskDeviceLink> links = taskDeviceLinkService.list(query);
+        if(ObjectUtils.isEmpty( links)){
+            return TcpResponse.error("请先配置任务设备关联");
+        }
+        Long[] deviceIds = links.stream().map(TaskDeviceLink::getDeviceId).toArray(Long[]::new);
+        // 创建调度请求
+        TaskDispatchRequest request = new TaskDispatchRequest();
+            request.setTaskId(taskInfo.getId());
+            request.setDeviceIds(deviceIds);
+            request.setPoolId(taskInfo.getPoolId());
+            request.setPreloadCount(taskInfo.getPreloadDataCount());
+            request.setBatchSize(1000);
+            request.setTaskName(taskInfo.getName());
+            request.setDescription(taskInfo.getDescription());
+            request.setDeviceFileConfigId(links.get(0).getDeviceFileConfigId());
+            request.setPoolTemplateId(links.get(0).getPoolTemplateId());
+            request.setAssignedQuantity(taskInfo.getPreloadDataCount());
+
         taskDispatcherService.startNewTask(request);
         return TcpResponse.success("任务调度启动成功");
     }

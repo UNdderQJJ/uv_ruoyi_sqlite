@@ -431,36 +431,36 @@ public class DataPoolSchedulerService implements ApplicationRunner {
      */
     @Override
     public void run(ApplicationArguments args) throws Exception {
-        try {
-            log.info("[DataPoolScheduler] 开始恢复运行中数据池的定时任务...");
-            
-            // 查询所有运行中的数据池
-            DataPool query = new DataPool();
-            query.setStatus(PoolStatus.RUNNING.getCode());
-            query.setDelFlag("0"); // 未删除
-
-            List<DataPool> pools = dataPoolService.selectDataPoolList(query);
-            if (pools == null || pools.isEmpty()) {
-                log.info("[DataPoolScheduler] 没有运行中的数据池需要恢复定时任务");
-                return;
-            }
-
-            for (DataPool pool : pools) {
-                try {
-                    // 仅在已连接时恢复任务，避免未连接时盲目触发
-                    if (ConnectionState.CONNECTED.getCode().equals(pool.getConnectionState())) {
-                        startDataPoolScheduler(pool.getId());
-                    } else {
-                        log.debug("[DataPoolScheduler] 跳过恢复未连接的数据池: poolId={}, state={}", pool.getId(), pool.getConnectionState());
-                    }
-                } catch (Exception e) {
-                    log.error("[DataPoolScheduler] 恢复数据池定时任务失败: poolId={}", pool.getId(), e);
-                }
-            }
-            
-            log.info("[DataPoolScheduler] 成功恢复 {} 个数据池的定时任务", pools.size());
-        } catch (Exception e) {
-            log.error("[DataPoolScheduler] 恢复数据池定时任务时发生异常", e);
-        }
+//        try {
+//            log.info("[DataPoolScheduler] 开始恢复运行中数据池的定时任务...");
+//
+//            // 查询所有运行中的数据池
+//            DataPool query = new DataPool();
+//            query.setStatus(PoolStatus.RUNNING.getCode());
+//            query.setDelFlag("0"); // 未删除
+//
+//            List<DataPool> pools = dataPoolService.selectDataPoolList(query);
+//            if (pools == null || pools.isEmpty()) {
+//                log.info("[DataPoolScheduler] 没有运行中的数据池需要恢复定时任务");
+//                return;
+//            }
+//
+//            for (DataPool pool : pools) {
+//                try {
+//                    // 仅在已连接时恢复任务，避免未连接时盲目触发
+//                    if (ConnectionState.CONNECTED.getCode().equals(pool.getConnectionState())) {
+//                        startDataPoolScheduler(pool.getId());
+//                    } else {
+//                        log.debug("[DataPoolScheduler] 跳过恢复未连接的数据池: poolId={}, state={}", pool.getId(), pool.getConnectionState());
+//                    }
+//                } catch (Exception e) {
+//                    log.error("[DataPoolScheduler] 恢复数据池定时任务失败: poolId={}", pool.getId(), e);
+//                }
+//            }
+//
+//            log.info("[DataPoolScheduler] 成功恢复 {} 个数据池的定时任务", pools.size());
+//        } catch (Exception e) {
+//            log.error("[DataPoolScheduler] 恢复数据池定时任务时发生异常", e);
+//        }
     }
 }

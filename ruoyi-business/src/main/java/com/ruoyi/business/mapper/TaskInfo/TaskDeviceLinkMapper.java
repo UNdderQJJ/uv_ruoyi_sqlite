@@ -24,6 +24,15 @@ public interface TaskDeviceLinkMapper {
 
     /** 查询列表 */
     List<TaskDeviceLink> selectTaskDeviceLinkList(TaskDeviceLink query);
+
+    /** 更新设备状态 */
+    int updateDeviceStatus(@Param("taskId") Long taskId, @Param("deviceId") Long deviceId, @Param("status") String status);
+
+    /** 批量更新设备状态 */
+    int updateStatusByTaskId(@Param("taskId") Long taskId, @Param("status") String status);
+
+    /** 查询列表（按任务ID） */
+    List<TaskDeviceLink> listByTaskId(Long taskId);
 }
 
 

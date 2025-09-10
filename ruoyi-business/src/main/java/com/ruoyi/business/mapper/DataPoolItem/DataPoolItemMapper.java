@@ -160,4 +160,13 @@ public interface DataPoolItemMapper {
      * @return 清理的数据量
      */
     public int cleanPrintedData(Long poolId, java.util.Date beforeTime);
+
+
+    /**
+     *  批量更新数据项状态
+     * @param ids 数据项ID列表
+     * @param status 新状态
+     * @return
+     */
+    public int updateDataPoolItemsStatus(List<Long> ids, String status);
 }

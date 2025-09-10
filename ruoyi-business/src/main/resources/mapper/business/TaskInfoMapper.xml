@@ -71,7 +71,7 @@
             name, status, device_name, pool_id, pool_name, planned_quantity, completed_quantity, preload_data_count, description, del_flag, create_time, update_time
         ) VALUES (
             #{name}, #{status}, #{deviceName}, #{poolId}, #{poolName}, #{plannedQuantity}, #{completedQuantity}, #{preloadDataCount}, #{description},
-            COALESCE(#{delFlag}, 0), COALESCE(#{createTime}, datetime('now','localtime')), COALESCE(#{updateTime}, datetime('now','localtime'))
+            COALESCE(#{delFlag}, 0), COALESCE(#{createTime}, datetime('now','localtime')), COALESCE(datetime(#{updateTime} / 1000, 'unixepoch', 'localtime'), datetime('now', 'localtime'))
         )
     </insert>
 
@@ -88,7 +88,7 @@
             <if test="completedQuantity != null">completed_quantity = #{completedQuantity},</if>
             <if test="preloadDataCount != null">preload_data_count = #{preloadDataCount},</if>
             <if test="description != null">description = #{description},</if>
-            update_time = COALESCE(#{updateTime}, datetime('now','localtime'))
+            update_time = COALESCE(datetime(#{updateTime} / 1000, 'unixepoch', 'localtime'), datetime('now', 'localtime'))
         </set>
         WHERE id = #{id} AND del_flag = 0
     </update>
