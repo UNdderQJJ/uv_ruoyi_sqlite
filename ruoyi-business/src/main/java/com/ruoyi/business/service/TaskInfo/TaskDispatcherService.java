@@ -24,7 +24,14 @@ public interface TaskDispatcherService {
      * @param taskId 任务ID
      */
     void stopTaskDispatch(Long taskId);
-    
+
+    /**
+     * 完成任务调度
+     *
+     * @param taskId 任务ID
+     */
+    void finishTaskDispatch(Long taskId);
+
     /**
      * 暂停任务调度
      * 

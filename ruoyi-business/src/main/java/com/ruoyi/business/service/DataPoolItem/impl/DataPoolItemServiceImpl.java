@@ -10,6 +10,7 @@ import jakarta.annotation.Resource;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * 数据池热数据Service业务层处理
@@ -78,18 +79,50 @@ public class DataPoolItemServiceImpl implements IDataPoolItemService {
         return dataPoolItemMapper.selectPendingItems(poolId, limit);
     }
 
-    /**
-     * 更新数据项状态（批量）
-     *
-     * @param itemList 数据项列表
-     * @param status 新状态
-     * @return 影响数据项数量
-     */
+/**
+ * 更新数据项状态（批量），此方法会根据 deviceId 对数据项进行分组，然后分别更新。
+ *
+ * @param itemList 待更新的数据项列表
+ * @param status   要更新的目标新状态
+ */
+@Override
+public void updateDataPoolItemsStatus(List<DataPoolItem> itemList, String status) {
+    // 1. 边界条件检查：如果传入的列表为空或 null，直接返回 0
+    if (itemList == null || itemList.isEmpty()) {
+        return;
+    }
+
+    // 2. 核心步骤：使用 Stream API 的 groupingBy 按 deviceId 对 itemList 进行分组
+    // 结果为一个 Map，Key 是 deviceId，Value 是该 deviceId 对应的 DataPoolItem 列表
+    Map<String, List<DataPoolItem>> groupedByDeviceId = itemList.stream()
+            .collect(Collectors.groupingBy(DataPoolItem::getDeviceId));
+
+    // 3. 遍历分组后的 Map，对每个 deviceId 的分组执行一次批量更新
+    for (Map.Entry<String, List<DataPoolItem>> entry : groupedByDeviceId.entrySet()) {
+        Long currentDeviceId = Long.valueOf(entry.getKey());
+        List<DataPoolItem> itemsInGroup = entry.getValue();
+
+        // 提取当前分组中的所有 item 的 ID
+        List<Long> idsInGroup = itemsInGroup.stream()
+                                            .map(DataPoolItem::getId)
+                                            .collect(Collectors.toList());
+
+        // 确保当前分组中有 ID 才执行数据库操作
+        if (!idsInGroup.isEmpty()) {
+            // 调用 mapper 方法，传入当前分组的 ID 列表、状态和对应的 deviceId
+            dataPoolItemMapper.updateDataPoolItemsStatus(idsInGroup, status, currentDeviceId);
+        }
+    }
+}
+
     @Override
-    public int updateDataPoolItemsStatus(List<DataPoolItem> itemList, String status) {
-        List<Long> ids = new ArrayList<>();
-        itemList.forEach(item -> ids.add(item.getId()));
-        return dataPoolItemMapper.updateDataPoolItemsStatus(ids, status);
+    public void updateItemsStatus(List<DataPoolItem> itemList, String status) {
+     // 提取当前分组中的所有 item 的 ID
+        List<Long> idsInGroup = itemList.stream()
+                                            .map(DataPoolItem::getId)
+                                            .toList();
+
+        dataPoolItemMapper.updateItemsStatus(idsInGroup, status);
     }
 
     /**
@@ -490,5 +523,15 @@ public class DataPoolItemServiceImpl implements IDataPoolItemService {
         queueInfo.put("activePrinterCount", activeDeviceIds.size());
         
         return queueInfo;
+    }
+
+    @Override
+    public Long getCompletedCount(String deviceId, Long poolId, String code) {
+        return dataPoolItemMapper.getCompletedCount(deviceId, poolId, code);
+    }
+
+    @Override
+    public void updateToPendingItem(Long poolId) {
+        dataPoolItemMapper.updateToPendingItem(poolId);
     }
 }

@@ -1,6 +1,7 @@
 package com.ruoyi.business.service.DataPoolItem;
 
 import com.ruoyi.business.domain.DataPoolItem.DataPoolItem;
+
 import java.util.List;
 import java.util.Map;
 import java.util.Date;
@@ -54,13 +55,20 @@ public interface IDataPoolItemService {
     public List<DataPoolItem> selectPendingItems(Long poolId, Integer limit);
 
     /**
-     * 批量更新数据项状态
+     * 批量更新数据项状态于关联设备
      *
      * @param itemList 数据项列表
-     * @param status 新状态
-     * @return 影响数据项数量
+     * @param status   新状态
      */
-    public int updateDataPoolItemsStatus(List<DataPoolItem> itemList, String status);
+    public void updateDataPoolItemsStatus(List<DataPoolItem> itemList, String status);
+
+
+    /**
+     *  批量更新数据项状态
+     * @param itemList 数据项列表
+     * @param status   新状态
+     */
+    public void updateItemsStatus(List<DataPoolItem> itemList, String status);
 
     /**
      * 锁定数据项（设置状态为PRINTING并设置deviceId）
@@ -228,4 +236,21 @@ public interface IDataPoolItemService {
      * @return 队列信息
      */
     public Map<String, Object> getPrintQueueInfo(Long poolId);
+
+    /**
+     * 获取设备已处理的数据项数量
+     *
+     * @param deviceId 设备ID
+     * @param PoolId 任务ID
+     * @param code 数据项状态码
+     * @return 已处理的数据项数量
+     */
+    Long getCompletedCount(String deviceId, Long PoolId, String code);
+
+    /**
+     * 更新数据项为待打印状态
+     *
+     * @param poolId 数据池ID
+     */
+    void updateToPendingItem(Long poolId);
 }

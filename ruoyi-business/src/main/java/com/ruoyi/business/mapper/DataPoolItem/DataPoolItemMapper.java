@@ -166,7 +166,30 @@ public interface DataPoolItemMapper {
      *  批量更新数据项状态
      * @param ids 数据项ID列表
      * @param status 新状态
+     * @param deviceId 设备ID
      * @return
      */
-    public int updateDataPoolItemsStatus(List<Long> ids, String status);
+    public int updateDataPoolItemsStatus(List<Long> ids, String status,Long deviceId);
+
+    /**
+     * 获取已打印的数据项数量
+     * @param deviceId 设备ID
+     * @param poolId 数据池ID
+     * @param status 设备编号
+     * @return 已打印的数据项数量
+     */
+    public Long getCompletedCount(String deviceId, Long poolId, String status);
+
+    /**
+     * 批量更新数据项状态
+     * @param ids 数据项ID列表
+     * @param status 新状态
+     */
+    void updateItemsStatus(List<Long> ids, String status);
+
+    /**
+     * 更新为待打印状态
+     * @param poolId 数据池ID
+     */
+    void updateToPendingItem(Long poolId);
 }
