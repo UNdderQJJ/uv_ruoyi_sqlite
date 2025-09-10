@@ -25,7 +25,7 @@ public enum DeviceConfigKey {
     STOP("stop"),           // 停止加工
     TRIMARK("trimark"),     // 软件触发打印
     SYS_STA("sys_sta"),     // 获取系统状态（可带参数 errsta）
-    GETA("geta"),           // 获取缓冲区数量
+    GETA("geta:"),           // 获取缓冲区数量
     SNUM_INDEX("snum_index"), // 获取序列号当前值
     GET_TEXTDATA("get_textdata"), // 获取对象内容
     GETCOUNT("getcount"),   // 获取加工次数
@@ -33,7 +33,8 @@ public enum DeviceConfigKey {
     LOAD("load"),           // 加载模板文件
     GET_FILELIST("get_filelist"), // 获取文件列表
     CLEARBUF("clearbuf"),   // 清空数据缓冲区
-    PI_CLOSEUV("pi_closeuv"); // 一键关机（PI激光机）
+    PI_CLOSEUV("pi_closeuv"), // 一键关机（PI激光机）
+    OBJECT_NAME("object_name"); // 对象名称配置
 
     private final String key;
 

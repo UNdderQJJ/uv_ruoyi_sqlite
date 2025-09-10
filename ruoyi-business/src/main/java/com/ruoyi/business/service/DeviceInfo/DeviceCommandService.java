@@ -12,7 +12,9 @@ public interface DeviceCommandService {
     void applyParameters(Long deviceId, Map<DeviceConfigKey, Object> params);
 
     void applySingle(Long deviceId, DeviceConfigKey key, Object param);
-    
+
+    boolean sendCommand(String ip, Integer port, String command);
+
     /**
      * 获取设备当前文件名称
      * 

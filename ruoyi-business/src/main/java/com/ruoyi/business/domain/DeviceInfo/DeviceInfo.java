@@ -9,6 +9,7 @@ import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.apache.commons.lang3.builder.ToStringStyle;
 
 import java.util.Date;
+import java.util.UUID;
 
 /**
  * 设备信息对象 device_info
@@ -113,7 +114,7 @@ public class DeviceInfo extends BaseEntity
     public void setDeviceUuid(String deviceUuid) {
         if (deviceUuid == null || deviceUuid.trim().isEmpty()) {
             // 自动生成UUID，使用简化版本（去掉横线）
-            this.deviceUuid = IdUtils.fastSimpleUUID();
+            this.deviceUuid = UUID.randomUUID().toString();
         } else {
             this.deviceUuid = deviceUuid;
         }

@@ -190,6 +190,8 @@ public class DeviceCommandServiceImpl implements DeviceCommandService {
         try {
             // 获取设备信息
             DeviceInfo device = deviceInfoService.selectDeviceInfoById(deviceId);
+            // 获取默认文件配置
+            List<DeviceFileConfig> deviceFileConfigs = deviceFileConfigService.selectDefaultDeviceFileConfigListByDeviceId(deviceId);
             if (device == null) {
                 throw new ServiceException("设备不存在: " + deviceId);
             }
@@ -200,11 +202,8 @@ public class DeviceCommandServiceImpl implements DeviceCommandService {
                 log.warn("[DeviceCommand] deviceId={} 设备不在线，状态: {}", deviceId, device.getStatus());
                 return;
             }
-            // 获取默认变量名
-            String powerObjectName = getObjectNameFromDeviceConfig(deviceId);
-            
             // 构建命令并发送
-            String command = buildCommand(deviceId, key, param, powerObjectName);
+            String command = buildCommand(deviceId, key, param, deviceFileConfigs.get(0).getVariableName());
             if (command != null) {
                 boolean success = sendCommand(device.getIpAddress(), device.getPort(), command);
                 if (success) {
@@ -400,7 +399,8 @@ public class DeviceCommandServiceImpl implements DeviceCommandService {
     /**
      * 通过TCP发送命令到设备
      */
-    private boolean sendCommand(String ip, Integer port, String command) {
+    @Override
+    public boolean sendCommand(String ip, Integer port, String command) {
         Socket socket = null;
         try {
             // 建立连接
@@ -430,7 +430,8 @@ public class DeviceCommandServiceImpl implements DeviceCommandService {
                 if (StxEtxProtocolUtil.isValidResponse(response)) {
                     String data = StxEtxProtocolUtil.parseResponse(response);
                     log.debug("解析响应数据: {}", data);
-                    
+                     //截取':'后面取一位
+                    data = data.substring(data.indexOf(":")+1, data.indexOf(":") + 2);
                     // 检查返回状态：1表示成功，0表示失败
                     if (data != null && data.trim().equals("1")) {
                         return true;
@@ -509,7 +510,7 @@ public class DeviceCommandServiceImpl implements DeviceCommandService {
     
     /**
      * 获取设备当前变量名
-     * 
+     *
      * @param deviceId 设备ID
      * @return 当前变量名，如果获取失败返回null
      */
@@ -567,6 +568,8 @@ public class DeviceCommandServiceImpl implements DeviceCommandService {
                         
                         if (!fileName.trim().isEmpty()) {
                             log.info("设备 {} 当前文件: {}", deviceId, fileName);
+                            //裁剪掉文件名后面的后缀.ncfm
+                            fileName = fileName.substring(0, fileName.lastIndexOf("."));
                             return fileName.trim();
                         } else {
                             log.warn("设备 {} 返回的文件名为空", deviceId);

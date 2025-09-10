@@ -5,6 +5,7 @@ import com.ruoyi.business.domain.DeviceFileConfig.DeviceFileConfig;
 import com.ruoyi.business.service.DeviceFileConfig.IDeviceFileConfigService;
 import com.ruoyi.common.core.TcpResponse;
 import com.ruoyi.common.utils.StringUtils;
+import org.apache.commons.lang3.ObjectUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -240,7 +241,8 @@ public class DeviceFileConfigManagementHandler {
             }
 
             //变量名不能重复
-            if(!deviceFileConfigService.selectDeviceFileConfigListByDeviceIdAndFileName(deviceFileConfig.getDeviceId(), deviceFileConfig.getFileName()).isEmpty()){
+            List<DeviceFileConfig>  deviceFileConfigList = deviceFileConfigService.selectDeviceFileConfigListByDeviceIdAndFileName(deviceFileConfig.getDeviceId(), deviceFileConfig.getFileName());
+            if(ObjectUtils.isNotEmpty(deviceFileConfigList) && deviceFileConfigList.size()>1){
                 return TcpResponse.error("变量名不能重复");
             }
 

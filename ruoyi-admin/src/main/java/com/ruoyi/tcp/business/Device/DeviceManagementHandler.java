@@ -269,7 +269,7 @@ public class DeviceManagementHandler {
             }
 
             // UUID由内部自动生成，无需验证
-            // 在setDeviceUuid方法中会自动生成UUID
+            deviceInfo.setDeviceUuid(UUID.randomUUID().toString());
 
             // 解析与基础校验
             if (ObjectUtils.isNotEmpty(deviceInfo.getParameters())) {
