@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.business.mapper.SystemLog.SystemLogMapper">
+
+    <resultMap id="SystemLogResult" type="com.ruoyi.business.domain.SystemLog.SystemLog">
+        <id    column="id"          property="id"/>
+        <result column="log_time"    property="logTime"/>
+        <result column="log_type"    property="logType"/>
+        <result column="task_id"     property="taskId"/>
+        <result column="task_name"   property="taskName"/>
+        <result column="device_id"   property="deviceId"/>
+        <result column="device_name" property="deviceName"/>
+        <result column="pool_id"     property="poolId"/>
+        <result column="pool_name"   property="poolName"/>
+        <result column="log_level"   property="logLevel"/>
+        <result column="content"     property="content"/>
+    </resultMap>
+
+    <!-- 列表查询（按条件） -->
+    <select id="selectList" parameterType="com.ruoyi.business.domain.SystemLog.SystemLog" resultMap="SystemLogResult">
+        SELECT *
+        FROM system_log
+        <where>
+            <if test="logType != null and logType != ''"> AND log_type = #{logType} </if>
+            <if test="logLevel != null and logLevel != ''"> AND log_level = #{logLevel} </if>
+            <if test="taskId != null"> AND task_id = #{taskId} </if>
+            <if test="deviceId != null"> AND device_id = #{deviceId} </if>
+            <if test="poolId != null"> AND pool_id = #{poolId} </if>
+            <if test="taskName != null and taskName != ''"> AND task_name LIKE '%' || #{taskName} || '%' </if>
+            <if test="deviceName != null and deviceName != ''"> AND device_name LIKE '%' || #{deviceName} || '%' </if>
+            <if test="poolName != null and poolName != ''"> AND pool_name LIKE '%' || #{poolName} || '%' </if>
+        </where>
+        ORDER BY log_time DESC
+    </select>
+
+    <!-- 统计数量（按条件） -->
+    <select id="count" parameterType="com.ruoyi.business.domain.SystemLog.SystemLog" resultType="int">
+        SELECT COUNT(1)
+        FROM system_log
+        <where>
+            <if test="logType != null and logType != ''"> AND log_type = #{logType} </if>
+            <if test="logLevel != null and logLevel != ''"> AND log_level = #{logLevel} </if>
+            <if test="taskId != null"> AND task_id = #{taskId} </if>
+            <if test="deviceId != null"> AND device_id = #{deviceId} </if>
+            <if test="poolId != null"> AND pool_id = #{poolId} </if>
+        </where>
+    </select>
+
+    <!-- 新增日志 -->
+    <insert id="insertSystemLog" parameterType="com.ruoyi.business.domain.SystemLog.SystemLog" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO system_log (
+            log_type, task_id, task_name, device_id, device_name, pool_id, pool_name, log_level, content
+        ) VALUES (
+           #{logType}, #{taskId}, #{taskName}, #{deviceId}, #{deviceName}, #{poolId}, #{poolName}, #{logLevel}, #{content}
+        )
+    </insert>
+
+    <!-- 批量新增日志 -->
+    <insert id="batchInsert">
+        INSERT INTO system_log (
+            log_time, log_type, task_id, task_name, device_id, device_name, pool_id, pool_name, log_level, content
+        ) VALUES
+        <foreach collection="list" item="item" separator=",">
+            (COALESCE(#{item.logTime}, datetime('now','localtime')), #{item.logType}, #{item.taskId}, #{item.taskName}, #{item.deviceId}, #{item.deviceName}, #{item.poolId}, #{item.poolName}, #{item.logLevel}, #{item.content})
+        </foreach>
+    </insert>
+
+    <!-- 批量删除日志 -->
+    <delete id="deleteByIds">
+        DELETE FROM system_log WHERE id IN
+        <foreach collection="ids" item="id" open="(" separator="," close=")"> #{id} </foreach>
+    </delete>
+
+    <!-- 根据ID查询 -->
+    <select id="selectById" parameterType="long" resultMap="SystemLogResult">
+        SELECT * FROM system_log WHERE id = #{id}
+    </select>
+
+</mapper>
+
+
