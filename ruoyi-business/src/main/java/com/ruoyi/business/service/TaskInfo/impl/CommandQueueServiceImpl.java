@@ -4,6 +4,7 @@ import com.ruoyi.business.domain.TaskInfo.PrintCommand;
 import com.ruoyi.business.service.TaskInfo.CommandQueueService;
 import com.ruoyi.business.config.TaskDispatchProperties;
 import com.ruoyi.business.service.TaskInfo.SentRecord;
+import com.ruoyi.business.service.TaskInfo.TaskDispatcherService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -30,7 +31,7 @@ public class CommandQueueServiceImpl implements CommandQueueService {
     
     // 已发送记录（轻量：按任务分桶，含deviceId）
     private final ConcurrentHashMap<Long, BlockingQueue<SentRecord>> taskIdToSentRecords = new ConcurrentHashMap<>();
-    
+
     /**
      * 初始化队列
      */
@@ -67,7 +68,12 @@ public class CommandQueueServiceImpl implements CommandQueueService {
         initQueues();
         return commandQueue.size();
     }
-    
+
+    @Override
+    public int getQueueSize(Long taskId) {
+        return commandQueue.stream().filter(command -> command.getTaskId().equals(taskId)).toArray().length;
+    }
+
     @Override
     public void clearQueue() {
         initQueues();

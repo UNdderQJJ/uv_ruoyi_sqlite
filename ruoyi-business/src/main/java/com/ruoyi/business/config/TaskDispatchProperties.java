@@ -24,6 +24,9 @@ public class TaskDispatchProperties {
     
     /** 指令队列大小 */
     private Integer commandQueueSize = 1000;
+
+    /** 计划打印数量 */
+    private Integer planPrintCount;
     
     /** 线程池配置 */
     private ThreadPoolConfig threadPool = new ThreadPoolConfig();

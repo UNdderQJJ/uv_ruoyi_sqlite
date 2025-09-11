@@ -121,6 +121,7 @@ public class TaskDispatcherServiceImpl implements TaskDispatcherService {
             taskStatus.setOriginalCommandCount(request.getOriginalCount());
             taskStatus.setPlannedPrintCount(request.getPrintCount());
             taskStatusMap.put(request.getTaskId(), taskStatus);
+            taskDispatchProperties.setPlanPrintCount(request.getPrintCount());//设置计划打印数量
             
             // 2. 执行预检
             if (!executePreFlightChecks(request.getTaskId(), request.getDeviceIds())) {
@@ -216,8 +217,6 @@ public class TaskDispatcherServiceImpl implements TaskDispatcherService {
          try {
             log.info("完成任务调度，任务ID: {}", taskId);
 
-            // 发布任务停止事件
-            eventPublisher.publishEvent(new TaskStopEvent(this, taskId));
 
             // 更新任务状态
             TaskDispatchStatus taskStatus = taskStatusMap.get(taskId);
@@ -240,6 +239,11 @@ public class TaskDispatcherServiceImpl implements TaskDispatcherService {
                 //在设备异常的情况下只能进行状态更新
                 deviceStatusMap.get(link.getDeviceId().toString()).setStatus(TaskDeviceStatus.WAITING.getCode());
             }
+            //休眠2秒等待设备缓存池消耗
+             Thread.sleep(2000);
+
+            // 发布任务停止事件
+            eventPublisher.publishEvent(new TaskStopEvent(this, taskId));
 
             // 停止任务进度上报定时器
             stopProgressUpdater(taskId);
@@ -529,6 +533,7 @@ public class TaskDispatcherServiceImpl implements TaskDispatcherService {
             TaskInfo task = new TaskInfo();
             task.setId(taskId);
             task.setCompletedQuantity(totalCompleted);
+            taskDispatch.setCompletedCommandCount(totalCompleted);
             try {
                 taskInfoService.updateTaskInfo(task);
             } catch (Exception ex) {
@@ -574,25 +579,10 @@ public class TaskDispatcherServiceImpl implements TaskDispatcherService {
         // 发布指令完成事件
         eventPublisher.publishEvent(new CommandCompletedEvent(this, taskId, deviceId));
 
-        // 检查计划打印数量：-1 表示无限，否则达到计划数则自动完成并停止任务
+        // 检查计划打印数量：-1 表示无限，查询数据队列数量，如果为0则完成任务
         try {
-            TaskDispatchStatus taskStatus = taskStatusMap.get(taskId);
-            if (taskStatus != null) {
-                Integer planned = taskStatus.getPlannedPrintCount();
-                if (planned != null && planned >= 0) {
-                    // 使用内存累计计数，避免频繁查库
-                    Integer completed = taskStatus.getCompletedCommandCount();
-                    if (completed == null) completed = 0;
-                    completed = completed + 1;
-                    taskStatus.setCompletedCommandCount(completed);
-
-                    if (completed >= planned) {
-                        // 标记完成并停止调度
-                        taskStatus.setStatus(TaskDispatchStatusEnum.COMPLETED.getCode());
-                        taskStatus.setEndTime(System.currentTimeMillis());
-                        finishTaskDispatch(taskId);
-                    }
-                }
+            if (commandQueueService.getQueueSize(taskId) == 0) {
+                finishTaskDispatch(taskId);
             }
         } catch (Exception ex) {
             log.warn("检查计划打印数量时发生异常，taskId: {}", taskId, ex);

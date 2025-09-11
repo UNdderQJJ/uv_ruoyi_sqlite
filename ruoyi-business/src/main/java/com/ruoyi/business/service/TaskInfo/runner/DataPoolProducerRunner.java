@@ -62,14 +62,20 @@ public class DataPoolProducerRunner implements Runnable {
     @Override
     public void run() {
         log.info("数据生成池启动，任务ID: {}, 数据池ID: {}", taskId, poolId);
+
+          int printCount = taskDispatchProperties.getPlanPrintCount();// 打印数量
         
         while (running) {
+            //如果是计划打印，数据池队列等于计划打印时这停止生成
+            if (printCount != -1 && commandQueueService.getQueueSize(taskId) >= printCount) {
+                log.info("计划打印数量已满，停止生成，任务ID: {}, 数据池ID: {}", taskId, poolId);
+                break;
+            }
             try {
                 if (paused) {
                     Thread.sleep(1000); // 暂停时等待1秒
                     continue;
                 }
-                
                 fetchAndProcessData();
                 Thread.sleep(2000); // 避免CPU占用过高
                 
@@ -100,13 +106,18 @@ public class DataPoolProducerRunner implements Runnable {
             // 检查队列大小，避免队列过满
             int queueSize = commandQueueService.getQueueSize();
             int maxQueueSize = taskDispatchProperties.getCommandQueueSize();
+            int printCount = taskDispatchProperties.getPlanPrintCount();// 打印数量
+            if(printCount == -1){
+                printCount = (int) Math.floor(taskDispatchProperties.getBatchSize()*0.2);
+            }
+
             if (queueSize > maxQueueSize * 0.5) { // 队列超过50%时暂停生产
                 log.debug("指令队列已满，暂停生产，任务ID: {}, 队列大小: {}, 最大容量: {}", taskId, queueSize, maxQueueSize);
                 return;
             }
             
             // 批量查询待打印数据
-            List<DataPoolItem> items = dataPoolItemService.selectPendingItems(poolId, (int) Math.floor(taskDispatchProperties.getBatchSize()*0.2));
+            List<DataPoolItem> items = dataPoolItemService.selectPendingItems(poolId, printCount);
 
             //更新成打印中
             dataPoolItemService.updateItemsStatus(items,ItemStatus.PRINTING.getCode());

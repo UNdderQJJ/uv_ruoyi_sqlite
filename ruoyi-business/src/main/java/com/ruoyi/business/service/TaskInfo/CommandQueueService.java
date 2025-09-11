@@ -30,6 +30,11 @@ public interface CommandQueueService {
      * @return 队列大小
      */
     int getQueueSize();
+
+    /*
+     * 获取当前任务的队列大小
+     */
+    int getQueueSize(Long taskId);
     
     /**
      * 清空队列
