@@ -192,9 +192,13 @@ public class TaskDispatcherServiceImpl implements TaskDispatcherService {
                 if(deviceInfo.getStatus().equals(DeviceStatus.ONLINE_PRINTING.getCode()) || deviceInfo.getStatus().equals(DeviceStatus.ONLINE_IDLE.getCode())) {
                     deviceInfoService.updateDeviceStatus(link.getDeviceId(), DeviceStatus.ONLINE_PRINTING.getCode());
                     taskDeviceLinkService.updateDeviceStatus(taskId, link.getDeviceId(), TaskDeviceStatus.WAITING.getCode());
+                    //在设备异常的情况下只能进行状态更新
+                    deviceStatusMap.get(link.getDeviceId().toString()).setStatus(TaskDeviceStatus.WAITING.getCode());
+                }else {
+                    DeviceTaskStatus deviceTask = deviceStatusMap.get(link.getDeviceId().toString());
+                    deviceTask.setStatus(TaskDeviceStatus.ERROR.getCode());
                 }
-                //在设备异常的情况下只能进行状态更新
-                deviceStatusMap.get(link.getDeviceId().toString()).setStatus(TaskDeviceStatus.WAITING.getCode());
+
             }
 
             // 停止任务进度上报定时器
@@ -478,7 +482,7 @@ public class TaskDispatcherServiceImpl implements TaskDispatcherService {
             TaskDispatchStatus taskStatus = taskStatusMap.get(taskId);
             // 先安全地更新一次进度
             safeUpdateProgress(taskId);
-            //将此任务下的数据池数据打印中改为打印完成
+            //将此任务下的数据池数据打印中改为待打印
             dataPoolItemService.updateToPendingItem(taskStatus.getPoolId());
             // 停止定时器
             ScheduledFuture<?> future = progressUpdaters.remove(taskId);
@@ -798,6 +802,11 @@ public class TaskDispatcherServiceImpl implements TaskDispatcherService {
                 .filter(entry -> TaskDispatchStatusEnum.RUNNING.getCode().equals(entry.getValue().getStatus()))
                 .map(Map.Entry::getKey)
                 .collect(java.util.stream.Collectors.toSet());
+    }
+    
+    @Override
+    public boolean hasRunningTasks() {
+        return !taskStatusMap.isEmpty();
     }
     
     @Override

@@ -3,13 +3,16 @@ package com.ruoyi.business.service.TaskInfo.impl;
 import com.ruoyi.business.domain.TaskInfo.DeviceTaskStatus;
 import com.ruoyi.business.domain.TaskInfo.PrintCommand;
 import com.ruoyi.business.enums.PrintCommandStatusEnum;
+import com.ruoyi.business.enums.TaskDeviceStatus;
 import com.ruoyi.business.service.TaskInfo.DeviceDataHandlerService;
+import com.ruoyi.business.service.TaskInfo.ITaskDeviceLinkService;
 import com.ruoyi.business.service.TaskInfo.TaskDispatcherService;
 import com.ruoyi.business.service.TaskInfo.CommandQueueService;
 import com.ruoyi.business.service.DeviceInfo.IDeviceInfoService;
 import com.ruoyi.business.domain.DeviceInfo.DeviceInfo;
 import com.ruoyi.business.enums.DeviceStatus;
 import io.netty.channel.Channel;
+import lombok.Data;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -38,7 +41,7 @@ public class DeviceDataHandlerServiceImpl implements DeviceDataHandlerService {
     private final ConcurrentHashMap<String, DeviceStatistics> deviceStatistics = new ConcurrentHashMap<>();
     
     // 心跳超时时间（毫秒）
-    @Value("${task.dispatch.heartbeat-timeout:6000}")
+    @Value("${task.dispatch.heartbeat-timeout:5000}")
     private long heartbeatTimeout;
     
     @Autowired
@@ -55,7 +58,9 @@ public class DeviceDataHandlerServiceImpl implements DeviceDataHandlerService {
     private static final Pattern SETA_PATTERN = Pattern.compile("seta:(\\d+)(?::(.+))?");
     private static final Pattern DATA_ERROR_PATTERN = Pattern.compile("data_error");
     private static final Pattern BUFFER_COUNT_PATTERN = Pattern.compile("geta:(\\d+)");
-    
+    @Autowired
+    private ITaskDeviceLinkService iTaskDeviceLinkService;
+
     @Override
     public void handleDeviceData(String deviceId, String data) {
         // 处理数据
@@ -167,9 +172,14 @@ public class DeviceDataHandlerServiceImpl implements DeviceDataHandlerService {
     }
     
     @Override
-//    @Scheduled(fixedRate = 30000) // 每30秒检查一次心跳
+    @Scheduled(fixedRate = 2000) // 每2秒检查一次心跳，使用system:2作为心跳间隔
     public void checkHeartbeats() {
         try {
+            // 只有在有任务运行时才进行心跳检查
+            if (!dispatcher.hasRunningTasks()) {
+                return;
+            }
+            
             long currentTime = System.currentTimeMillis();
             
             for (Map.Entry<String, Channel> entry : deviceChannels.entrySet()) {
@@ -183,24 +193,38 @@ public class DeviceDataHandlerServiceImpl implements DeviceDataHandlerService {
                     continue;
                 }
                 
+                // 检查设备是否有正在运行的任务
+                DeviceTaskStatus deviceStatus = dispatcher.getDeviceTaskStatus(deviceId);
+                if (deviceStatus == null || deviceStatus.getCurrentTaskId() == null) {
+                    // 设备没有运行任务，跳过心跳检查
+                    continue;
+                }
+                
                 DeviceStatistics stats = deviceStatistics.get(deviceId);
                 if (stats != null) {
-                    long timeSinceLastHeartbeat = currentTime - stats.getLastHeartbeat();
-                    long timeSinceLastActivity = currentTime - stats.getLastActivity();
-                    
-                    // 如果设备从来没有活动过（lastActivity为0），或者空闲时间超过心跳超时
-                    if (stats.getLastActivity() == 0 || timeSinceLastActivity > heartbeatTimeout) {
-                        // 设备空闲时间过长，发送ping检查连接
-                        sendPingToDevice(deviceId, channel);
-                    }
-                    
-                    // 只有在设备有活动且心跳超时时才处理为真正的心跳超时
-                    // 这里我们使用一个更长的超时时间，比如心跳超时的2倍
-                    if (stats.getLastActivity() > 0 && timeSinceLastHeartbeat > heartbeatTimeout * 2) {
-                        log.warn("设备心跳超时，设备ID: {}, 超时时间: {}ms", deviceId, timeSinceLastHeartbeat);
-                        
-                        // 处理心跳超时
-                        handleHeartbeatTimeout(deviceId);
+                    // 使用最后一次收到system信号的时间来判断心跳超时
+                    long lastSystemSignalTime = stats.getLastSystemSignalTime();
+                    long timeSinceLastSystemSignal = currentTime - lastSystemSignalTime;
+
+                    boolean isError = TaskDeviceStatus.ERROR.getCode().equals(stats.getStatus());
+
+                    // 如果设备从来没有收到过system信号（lastSystemSignalTime为0），或者距离最后一次system信号超过心跳超时
+                    if (lastSystemSignalTime == 0 || timeSinceLastSystemSignal > heartbeatTimeout) {
+                        if (!isError || !stats.isPingSentWhileError()) {
+                            // 设备心跳超时，发送ping检查连接（ERROR态下仅一次）
+                            log.warn("设备心跳超时，设备ID: {}, 距离最后一次system信号: {}", deviceId, timeSinceLastSystemSignal);
+                            sendPingToDevice(deviceId, channel);
+                            if (isError) {
+                                stats.setPingSentWhileError(true);
+                            }
+                        }
+
+                        // 如果超时时间过长（超过2倍心跳超时），处理为真正的心跳超时（ERROR态下只处理一次）
+                        if (lastSystemSignalTime > 0 && timeSinceLastSystemSignal > heartbeatTimeout * 2) {
+                            if (!isError) {
+                                handleHeartbeatTimeout(deviceId);
+                            }
+                        }
                     }
                 }
             }
@@ -224,9 +248,11 @@ public class DeviceDataHandlerServiceImpl implements DeviceDataHandlerService {
             long currentTime = System.currentTimeMillis();
             stats.setLastHeartbeat(currentTime);
             stats.setLastActivity(currentTime); // 初始化活动时间
+            stats.setLastSystemSignalTime(0); // 初始化为0，表示还没有收到system信号
             stats.setHeartbeatCount(0);
             stats.setDataCount(0);
             stats.setErrorCount(0);
+            stats.setStatus(TaskDeviceStatus.PRINTING.getCode());
             deviceStatistics.put(deviceId, stats);
             
             log.info("注册设备通道，设备ID: {}", deviceId);
@@ -317,6 +343,32 @@ public class DeviceDataHandlerServiceImpl implements DeviceDataHandlerService {
         if (matcher.matches()) {
             String signalCode = matcher.group(1);
             if ("2".equals(signalCode)) {
+                // system:2 既是心跳信号，也是打印完成信号
+                long currentTime = System.currentTimeMillis();
+                
+                // 更新心跳时间
+                DeviceStatistics stats = deviceStatistics.get(deviceId);
+                if (stats != null) {
+                    stats.setLastHeartbeat(currentTime);
+                    stats.setLastSystemSignalTime(currentTime); // 更新最后一次system信号时间
+                    stats.setHeartbeatCount(stats.getHeartbeatCount() + 1);
+                    // 心跳恢复：重置错误限流标记与状态
+                    stats.setPingSentWhileError(false);
+                    // 若曾标记为ERROR，恢复为打印中/空闲
+                    try {
+                        DeviceTaskStatus dts = dispatcher.getDeviceTaskStatus(deviceId);
+                        Long currentTaskId = dts != null ? dts.getCurrentTaskId() : null;
+                        if (currentTaskId != null) {
+                            stats.setStatus(TaskDeviceStatus.PRINTING.getCode());
+                            updateDeviceStatus(deviceId, DeviceStatus.ONLINE_PRINTING.getCode());
+                        } else {
+                            stats.setStatus(TaskDeviceStatus.WAITING.getCode());
+                            updateDeviceStatus(deviceId, DeviceStatus.ONLINE_IDLE.getCode());
+                        }
+                    } catch (Exception ignore) {
+                    }
+                }
+                
                 handlePrintCompleted(deviceId);
                 return true;
             }
@@ -442,10 +494,13 @@ public class DeviceDataHandlerServiceImpl implements DeviceDataHandlerService {
         try {
             // 报告错误
             dispatcher.reportError(deviceId, "心跳超时");
-            
+            DeviceStatistics stats = deviceStatistics.get(deviceId);
             // 更新设备状态
-            updateDeviceStatus(deviceId, DeviceStatus.OFFLINE.getCode());
-            
+            if (!stats.getStatus().equals(TaskDeviceStatus.ERROR.getCode())) {
+                stats.setStatus(TaskDeviceStatus.ERROR.getCode());
+                updateDeviceStatus(deviceId, DeviceStatus.ERROR.getCode());
+            }
+
             // 不再主动关闭或注销通道，仅更新设备状态
             
         } catch (Exception e) {
@@ -533,6 +588,7 @@ public class DeviceDataHandlerServiceImpl implements DeviceDataHandlerService {
     /**
      * 设备统计信息内部类
      */
+    @Data
     private static class DeviceStatistics {
         private String deviceId;
         private long lastHeartbeat;
@@ -542,30 +598,8 @@ public class DeviceDataHandlerServiceImpl implements DeviceDataHandlerService {
         private Integer lastBufferCount;
         private long lastDataTime;
         private long lastActivity;
-        
-        // Getters and Setters
-        public String getDeviceId() { return deviceId; }
-        public void setDeviceId(String deviceId) { this.deviceId = deviceId; }
-        
-        public long getLastHeartbeat() { return lastHeartbeat; }
-        public void setLastHeartbeat(long lastHeartbeat) { this.lastHeartbeat = lastHeartbeat; }
-        
-        public int getHeartbeatCount() { return heartbeatCount; }
-        public void setHeartbeatCount(int heartbeatCount) { this.heartbeatCount = heartbeatCount; }
-        
-        public int getDataCount() { return dataCount; }
-        public void setDataCount(int dataCount) { this.dataCount = dataCount; }
-        
-        public int getErrorCount() { return errorCount; }
-        public void setErrorCount(int errorCount) { this.errorCount = errorCount; }
-        
-        public Integer getLastBufferCount() { return lastBufferCount; }
-        public void setLastBufferCount(Integer lastBufferCount) { this.lastBufferCount = lastBufferCount; }
-        
-        public long getLastDataTime() { return lastDataTime; }
-        public void setLastDataTime(long lastDataTime) { this.lastDataTime = lastDataTime; }
-        
-        public long getLastActivity() { return lastActivity; }
-        public void setLastActivity(long lastActivity) { this.lastActivity = lastActivity; }
+        private long lastSystemSignalTime; // 最后一次收到system信号的时间
+        private String status;
+        private boolean pingSentWhileError; // ERROR状态下是否已发送过一次ping
     }
 }

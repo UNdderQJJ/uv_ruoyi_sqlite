@@ -135,6 +135,13 @@ public interface TaskDispatcherService {
     java.util.Set<Long> getRunningTasks();
     
     /**
+     * 检查是否有正在运行的任务
+     * 
+     * @return 是否有运行中的任务
+     */
+    boolean hasRunningTasks();
+    
+    /**
      * 获取任务统计信息
      * 
      * @param taskId 任务ID
