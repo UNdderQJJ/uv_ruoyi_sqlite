@@ -50,12 +50,43 @@
 
     <!-- 新增日志 -->
     <insert id="insertSystemLog" parameterType="com.ruoyi.business.domain.SystemLog.SystemLog" useGeneratedKeys="true" keyProperty="id">
-        INSERT INTO system_log (
-            log_type, task_id, task_name, device_id, device_name, pool_id, pool_name, log_level, content
-        ) VALUES (
-           #{logType}, #{taskId}, #{taskName}, #{deviceId}, #{deviceName}, #{poolId}, #{poolName}, #{logLevel}, #{content}
-        )
-    </insert>
+    INSERT INTO system_log (
+        log_type,
+        task_id,
+        task_name,
+        device_id,
+        device_name,
+        pool_id,
+        pool_name,
+        log_level,
+        content
+    ) VALUES (
+        #{logType},
+        #{taskId},
+        <if test="taskId != null">
+            (SELECT name FROM task_info WHERE id = #{taskId})
+        </if>
+        <if test="taskId == null">
+            NULL
+        </if>,
+        #{deviceId},
+        <if test="deviceId != null">
+            (SELECT name FROM device_info WHERE id = #{deviceId})
+        </if>
+        <if test="deviceId == null">
+            NULL
+        </if>,
+        #{poolId},
+        <if test="poolId != null">
+            (SELECT pool_name FROM data_pool WHERE id = #{poolId})
+        </if>
+        <if test="poolId == null">
+            NULL
+        </if>,
+        #{logLevel},
+        #{content}
+    )
+</insert>
 
     <!-- 批量新增日志 -->
     <insert id="batchInsert">
