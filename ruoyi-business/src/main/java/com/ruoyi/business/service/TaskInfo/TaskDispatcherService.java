@@ -166,4 +166,14 @@ public interface TaskDispatcherService {
      * @return 是否发送成功
      */
     boolean sendCommandToDevice(String deviceId, String command);
+
+    /**
+     * 获取任务的数据池poolId
+     */
+    Long getPoolId(Long taskId);
+
+    /**
+     * 获取设备的任务id
+     */
+    Long getDeviceTaskId(String deviceId);
 }

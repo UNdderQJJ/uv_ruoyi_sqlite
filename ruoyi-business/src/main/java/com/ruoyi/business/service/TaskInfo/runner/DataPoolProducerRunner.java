@@ -118,14 +118,14 @@ public class DataPoolProducerRunner implements Runnable {
             
             // 批量查询待打印数据
             List<DataPoolItem> items = dataPoolItemService.selectPendingItems(poolId, printCount);
-
-            //更新成打印中
-            dataPoolItemService.updateItemsStatus(items,ItemStatus.PRINTING.getCode());
             
             if (items == null || items.isEmpty()) {
                 log.debug("没有待处理数据，任务ID: {}", taskId);
                 return;
             }
+
+            //更新成打印中
+            dataPoolItemService.updateItemsStatus(items,ItemStatus.PRINTING.getCode());
             
             log.debug("获取到 {} 条待处理数据，任务ID: {}", items.size(), taskId);
             

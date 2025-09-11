@@ -1,8 +1,11 @@
 package com.ruoyi.business.service.TaskInfo.impl;
 
+import com.ruoyi.business.domain.DataPool.DataPool;
+import com.ruoyi.business.domain.SystemLog.SystemLog;
 import com.ruoyi.business.domain.TaskInfo.*;
 import com.ruoyi.business.enums.*;
 import com.ruoyi.business.events.TaskPauseEvent;
+import com.ruoyi.business.service.SystemLog.ISystemLogService;
 import com.ruoyi.business.service.TaskInfo.*;
 import com.ruoyi.business.service.DeviceInfo.IDeviceInfoService;
 import com.ruoyi.business.domain.DeviceInfo.DeviceInfo;
@@ -65,6 +68,8 @@ public class TaskDispatcherServiceImpl implements TaskDispatcherService {
     
     // 当前任务
     private volatile TaskInfo currentTask;
+
+
     
     @Autowired
     private ApplicationEventPublisher eventPublisher;
@@ -96,10 +101,7 @@ public class TaskDispatcherServiceImpl implements TaskDispatcherService {
     private ITaskDeviceLinkService taskDeviceLinkService;
 
     @Autowired
-    private IDataPoolTemplateService iDataPoolTemplateService;
-
-    @Autowired
-    private IDeviceFileConfigService iDeviceFileConfigService;
+    private ISystemLogService systemLogService;
     
     @Autowired
     private TaskScheduler taskScheduler;
@@ -721,7 +723,31 @@ public class TaskDispatcherServiceImpl implements TaskDispatcherService {
             return false;
         }
     }
-    
+
+    /**
+     * 获取设备池ID
+     *
+     * @param taskId 任务ID
+     * @return 设备池ID
+     */
+    @Override
+    public Long getPoolId(Long taskId) {
+        TaskDispatchStatus taskStatus = taskStatusMap.get(taskId);
+        return  taskStatus != null ? taskStatus.getPoolId() : null;
+    }
+
+    /**
+     * 获取设备任务ID
+     *
+     * @param deviceId 设备ID
+     * @return 设备任务ID
+     */
+    @Override
+    public Long getDeviceTaskId(String deviceId) {
+        DeviceTaskStatus deviceStatus = deviceStatusMap.get(deviceId);
+        return deviceStatus != null ? deviceStatus.getCurrentTaskId() : null;
+    }
+
     /**
      * 通过Netty通道发送STX/ETX协议指令
      * 
@@ -735,7 +761,17 @@ public class TaskDispatcherServiceImpl implements TaskDispatcherService {
             // 使用STX/ETX协议格式发送
             byte[] commandBytes = StxEtxProtocolUtil.buildCommand(command);
             channel.writeAndFlush(Unpooled.wrappedBuffer(commandBytes));
+
             log.debug("<========= 设备ID: {}, 指令: {}", deviceId, command);
+            //记录通讯日志
+            SystemLog systemLog = new SystemLog();
+            systemLog.setLogType(SystemLogType.COMMUNICATION.getCode());
+            systemLog.setTaskId(Long.valueOf(deviceId));
+            systemLog.setDeviceId(Long.valueOf(deviceId));
+            systemLog.setLogLevel(SystemLogLevel.INFO.getCode());
+            systemLog.setContent("发送指令===>"+command);
+            systemLogService.insert(systemLog);
+
             return true;
         } catch (Exception e) {
             log.error("通过通道发送指令失败，设备ID: {}, 指令: {}", deviceId, command, e);

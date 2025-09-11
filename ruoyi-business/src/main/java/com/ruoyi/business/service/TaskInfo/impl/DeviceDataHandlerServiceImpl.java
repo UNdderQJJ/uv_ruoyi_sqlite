@@ -1,16 +1,18 @@
 package com.ruoyi.business.service.TaskInfo.impl;
 
+import com.ruoyi.business.domain.SystemLog.SystemLog;
 import com.ruoyi.business.domain.TaskInfo.DeviceTaskStatus;
 import com.ruoyi.business.domain.TaskInfo.PrintCommand;
-import com.ruoyi.business.enums.PrintCommandStatusEnum;
-import com.ruoyi.business.enums.TaskDeviceStatus;
+import com.ruoyi.business.enums.*;
+import com.ruoyi.business.service.SystemLog.ISystemLogService;
 import com.ruoyi.business.service.TaskInfo.DeviceDataHandlerService;
 import com.ruoyi.business.service.TaskInfo.ITaskDeviceLinkService;
 import com.ruoyi.business.service.TaskInfo.TaskDispatcherService;
 import com.ruoyi.business.service.TaskInfo.CommandQueueService;
 import com.ruoyi.business.service.DeviceInfo.IDeviceInfoService;
 import com.ruoyi.business.domain.DeviceInfo.DeviceInfo;
-import com.ruoyi.business.enums.DeviceStatus;
+import com.ruoyi.business.utils.StxEtxProtocolUtil;
+import io.netty.buffer.Unpooled;
 import io.netty.channel.Channel;
 import lombok.Data;
 import org.slf4j.Logger;
@@ -52,6 +54,11 @@ public class DeviceDataHandlerServiceImpl implements DeviceDataHandlerService {
     
     @Autowired
     private CommandQueueService commandQueueService;
+
+     @Autowired
+    private ISystemLogService systemLogService;
+
+
     
     // 正则表达式模式
     private static final Pattern SYSTEM_PATTERN = Pattern.compile("system:(\\d+)");
@@ -72,7 +79,19 @@ public class DeviceDataHandlerServiceImpl implements DeviceDataHandlerService {
             }
             // 更新设备统计
             updateDeviceStatistics(deviceId, data);
-            
+
+            if (!data.contains("ping:")) {
+                //记录通讯日志
+                SystemLog systemLog = new SystemLog();
+                systemLog.setLogType(SystemLogType.COMMUNICATION.getCode());
+                systemLog.setTaskId(dispatcher.getDeviceTaskId(deviceId));
+                systemLog.setDeviceId(Long.valueOf(deviceId));
+                systemLog.setPoolId(dispatcher.getPoolId(systemLog.getTaskId()));
+                systemLog.setLogLevel(SystemLogLevel.INFO.getCode());
+                systemLog.setContent("接收指令<==="+data);
+                systemLogService.insert(systemLog);
+            }
+
             // 解析并处理不同类型的设备数据
             if (data != null && !data.trim().isEmpty()) {
                 String trimmedData = data.trim();
@@ -531,8 +550,8 @@ public class DeviceDataHandlerServiceImpl implements DeviceDataHandlerService {
             if (channel != null && channel.isActive()) {
                 // 使用STX/ETX协议格式发送ping命令
                 String pingCommand = "ping";
-                byte[] commandBytes = com.ruoyi.business.utils.StxEtxProtocolUtil.buildCommand(pingCommand);
-                channel.writeAndFlush(io.netty.buffer.Unpooled.wrappedBuffer(commandBytes));
+                byte[] commandBytes = StxEtxProtocolUtil.buildCommand(pingCommand);
+                channel.writeAndFlush(Unpooled.wrappedBuffer(commandBytes));
                 
                 log.debug("向设备发送ping，设备ID: {}, 协议数据: {}", 
                          deviceId, com.ruoyi.business.utils.StxEtxProtocolUtil.toHexString(commandBytes));
