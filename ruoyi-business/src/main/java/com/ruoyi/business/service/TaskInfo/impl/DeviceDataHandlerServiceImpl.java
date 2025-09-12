@@ -84,10 +84,10 @@ public class DeviceDataHandlerServiceImpl implements DeviceDataHandlerService {
                 //记录通讯日志
                 SystemLog systemLog = new SystemLog();
                 systemLog.setLogType(SystemLogType.COMMUNICATION.getCode());
+                systemLog.setLogLevel(SystemLogLevel.INFO.getCode());
                 systemLog.setTaskId(dispatcher.getDeviceTaskId(deviceId));
                 systemLog.setDeviceId(Long.valueOf(deviceId));
                 systemLog.setPoolId(dispatcher.getPoolId(systemLog.getTaskId()));
-                systemLog.setLogLevel(SystemLogLevel.INFO.getCode());
                 systemLog.setContent("接收指令<==="+data);
                 systemLogService.insert(systemLog);
             }
@@ -122,6 +122,15 @@ public class DeviceDataHandlerServiceImpl implements DeviceDataHandlerService {
             
         } catch (Exception e) {
             log.error("处理设备数据异常，设备ID: {}, 数据: {}", deviceId, data, e);
+             //记录通讯日志
+                SystemLog systemLog = new SystemLog();
+                systemLog.setLogType(SystemLogType.COMMUNICATION.getCode());
+                systemLog.setLogLevel(SystemLogLevel.ERROR.getCode());
+                systemLog.setTaskId(dispatcher.getDeviceTaskId(deviceId));
+                systemLog.setDeviceId(Long.valueOf(deviceId));
+                systemLog.setPoolId(dispatcher.getPoolId(systemLog.getTaskId()));
+                systemLog.setContent("接收异常指令<==="+data+";"+"错误:"+e.getMessage());
+                systemLogService.insert(systemLog);
         }
     }
     
@@ -164,6 +173,21 @@ public class DeviceDataHandlerServiceImpl implements DeviceDataHandlerService {
             
             // 报告错误
             dispatcher.reportError(deviceId, errorMessage);
+
+            try {
+                //记录打印日志
+                SystemLog systemLog = new SystemLog();
+                systemLog.setLogType(SystemLogType.PRINT.getCode());
+                systemLog.setLogLevel(SystemLogLevel.ERROR.getCode());
+                systemLog.setTaskId(dispatcher.getDeviceTaskId(deviceId));
+                systemLog.setDeviceId(Long.valueOf(deviceId));
+                systemLog.setPoolId(dispatcher.getPoolId(systemLog.getTaskId()));
+                systemLog.setContent("设备错误:" + errorMessage);
+                systemLogService.insert(systemLog);
+
+            } catch (Exception e) {
+                log.warn("记录打印错误事件失败，设备ID: {}, 错误: {}", deviceId, errorMessage, e);
+            }
             
             // 更新设备状态
             updateDeviceStatus(deviceId, DeviceStatus.ERROR.getCode());
@@ -214,7 +238,7 @@ public class DeviceDataHandlerServiceImpl implements DeviceDataHandlerService {
                 
                 // 检查设备是否有正在运行的任务
                 DeviceTaskStatus deviceStatus = dispatcher.getDeviceTaskStatus(deviceId);
-                if (deviceStatus == null || deviceStatus.getCurrentTaskId() == null) {
+                if (deviceStatus == null || deviceStatus.getCurrentTaskId() == null || !deviceStatus.getStatus().equals(TaskDeviceStatus.PRINTING.getCode())) {
                     // 设备没有运行任务，跳过心跳检查
                     continue;
                 }
@@ -518,6 +542,13 @@ public class DeviceDataHandlerServiceImpl implements DeviceDataHandlerService {
             if (!stats.getStatus().equals(TaskDeviceStatus.ERROR.getCode())) {
                 stats.setStatus(TaskDeviceStatus.ERROR.getCode());
                 updateDeviceStatus(deviceId, DeviceStatus.ERROR.getCode());
+                //记录打印日志
+                SystemLog systemLog = new SystemLog();
+                systemLog.setLogType(SystemLogType.PRINT.getCode());
+                systemLog.setLogLevel(SystemLogLevel.ERROR.getCode());
+                systemLog.setTaskId(dispatcher.getDeviceTaskId(deviceId));
+                systemLog.setDeviceId(Long.valueOf(deviceId));
+                systemLog.setContent("设备心跳超时状态改为故障！");
             }
 
             // 不再主动关闭或注销通道，仅更新设备状态

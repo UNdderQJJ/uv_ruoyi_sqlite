@@ -157,9 +157,26 @@ public class TaskDispatcherServiceImpl implements TaskDispatcherService {
             startProgressUpdater(request.getTaskId());
             
             log.info("任务调度启动成功，任务ID: {}", request.getTaskId());
+
+            //记录打印日志
+            SystemLog systemLog = new SystemLog();
+            systemLog.setLogType(SystemLogType.PRINT.getCode());
+            systemLog.setLogLevel(SystemLogLevel.INFO.getCode());
+            systemLog.setTaskId(request.getTaskId());
+            systemLog.setPoolId(request.getPoolId());
+            systemLog.setContent("任务调度启动成功!");
+            systemLogService.insert(systemLog);
             
         } catch (Exception e) {
             log.error("启动任务调度失败，任务ID: {}", request.getTaskId(), e);
+            //记录打印日志
+            SystemLog systemLog = new SystemLog();
+            systemLog.setLogType(SystemLogType.PRINT.getCode());
+            systemLog.setLogLevel(SystemLogLevel.ERROR.getCode());
+            systemLog.setTaskId(request.getTaskId());
+            systemLog.setPoolId(request.getPoolId());
+            systemLog.setContent("启动任务调度失败:"+e.getMessage());
+            systemLogService.insert(systemLog);
             TaskDispatchStatus taskStatus = taskStatusMap.get(request.getTaskId());
             if (taskStatus != null) {
                 taskStatus.setStatus(TaskDispatchStatusEnum.FAILED.getCode());
@@ -173,7 +190,7 @@ public class TaskDispatcherServiceImpl implements TaskDispatcherService {
     public void stopTaskDispatch(Long taskId) {
         try {
             log.info("停止任务调度，任务ID: {}", taskId);
-            
+
             // 发布任务停止事件
             eventPublisher.publishEvent(new TaskStopEvent(this, taskId));
             
@@ -212,9 +229,26 @@ public class TaskDispatcherServiceImpl implements TaskDispatcherService {
             }
             
             log.info("任务调度已停止，任务ID: {}", taskId);
+
+                //记录打印日志
+                SystemLog systemLog = new SystemLog();
+                systemLog.setLogType(SystemLogType.PRINT.getCode());
+                systemLog.setLogLevel(SystemLogLevel.INFO.getCode());
+                systemLog.setTaskId(taskId);
+                systemLog.setPoolId(getPoolId(taskId));
+                systemLog.setContent("任务调度已停止!");
+                systemLogService.insert(systemLog);
             
         } catch (Exception e) {
             log.error("停止任务调度失败，任务ID: {}", taskId, e);
+                //记录打印日志
+                SystemLog systemLog = new SystemLog();
+                systemLog.setLogType(SystemLogType.PRINT.getCode());
+                systemLog.setLogLevel(SystemLogLevel.ERROR.getCode());
+                systemLog.setTaskId(taskId);
+                systemLog.setPoolId(getPoolId(taskId));
+                systemLog.setContent("停止任务调度失败:"+e.getMessage());
+                systemLogService.insert(systemLog);
         }
     }
 
@@ -259,10 +293,28 @@ public class TaskDispatcherServiceImpl implements TaskDispatcherService {
                 currentTask = null;
             }
 
-            log.info("任务调度完成已停止，任务ID: {}", taskId);
+            log.info("打印任务已完成，任务ID: {}", taskId);
+
+                //记录打印日志
+                SystemLog systemLog = new SystemLog();
+                systemLog.setLogType(SystemLogType.PRINT.getCode());
+                systemLog.setLogLevel(SystemLogLevel.INFO.getCode());
+                systemLog.setTaskId(taskId);
+                systemLog.setPoolId(getPoolId(taskId));
+                systemLog.setContent("打印任务已完成!");
+                systemLogService.insert(systemLog);
 
         } catch (Exception e) {
-            log.error("停止任务调度失败，任务ID: {}", taskId, e);
+            log.error("完成任务调度失败，任务ID: {}", taskId, e);
+
+                //记录打印日志
+                SystemLog systemLog = new SystemLog();
+                systemLog.setLogType(SystemLogType.PRINT.getCode());
+                systemLog.setLogLevel(SystemLogLevel.ERROR.getCode());
+                systemLog.setTaskId(taskId);
+                systemLog.setPoolId(getPoolId(taskId));
+                systemLog.setContent("打印任务完成调度失败："+e.getMessage());
+                systemLogService.insert(systemLog);
         }
     }
 
@@ -395,9 +447,28 @@ public class TaskDispatcherServiceImpl implements TaskDispatcherService {
                 // 初始化线程安全的在途指令计数器和设备锁
                 inFlightCounters.put(deviceIdStr, new AtomicInteger(0));
                 deviceLocks.put(deviceIdStr, new Object());
+
+                //记录打印日志
+                SystemLog systemLog = new SystemLog();
+                systemLog.setLogType(SystemLogType.PRINT.getCode());
+                systemLog.setLogLevel(SystemLogLevel.INFO.getCode());
+                systemLog.setTaskId(taskId);
+                systemLog.setDeviceId(deviceId);
+                systemLog.setPoolId(getPoolId(taskId));
+                systemLog.setContent("预检设备完成!");
+                systemLogService.insert(systemLog);
                 
             } catch (Exception e) {
                 log.error("预检设备异常，设备ID: {}", deviceIdStr, e);
+                //记录打印日志
+                SystemLog systemLog = new SystemLog();
+                systemLog.setLogType(SystemLogType.PRINT.getCode());
+                systemLog.setLogLevel(SystemLogLevel.ERROR.getCode());
+                systemLog.setTaskId(taskId);
+                systemLog.setDeviceId(deviceId);
+                systemLog.setPoolId(getPoolId(taskId));
+                systemLog.setContent("预检设备异常:"+e.getMessage());
+                systemLogService.insert(systemLog);
                 return false;
             }
         }
@@ -766,15 +837,25 @@ public class TaskDispatcherServiceImpl implements TaskDispatcherService {
             //记录通讯日志
             SystemLog systemLog = new SystemLog();
             systemLog.setLogType(SystemLogType.COMMUNICATION.getCode());
+            systemLog.setLogLevel(SystemLogLevel.INFO.getCode());
             systemLog.setTaskId(Long.valueOf(deviceId));
             systemLog.setDeviceId(Long.valueOf(deviceId));
-            systemLog.setLogLevel(SystemLogLevel.INFO.getCode());
+            systemLog.setPoolId(getPoolId(systemLog.getTaskId()));
             systemLog.setContent("发送指令===>"+command);
             systemLogService.insert(systemLog);
 
             return true;
         } catch (Exception e) {
             log.error("通过通道发送指令失败，设备ID: {}, 指令: {}", deviceId, command, e);
+            //记录通讯日志
+            SystemLog systemLog = new SystemLog();
+            systemLog.setLogType(SystemLogType.COMMUNICATION.getCode());
+            systemLog.setLogLevel(SystemLogLevel.ERROR.getCode());
+            systemLog.setTaskId(Long.valueOf(deviceId));
+            systemLog.setDeviceId(Long.valueOf(deviceId));
+            systemLog.setPoolId(getPoolId(systemLog.getTaskId()));
+            systemLog.setContent("发送指令失败===>"+command+";"+"错误:"+e.getMessage());
+            systemLogService.insert(systemLog);
             return false;
         }
     }

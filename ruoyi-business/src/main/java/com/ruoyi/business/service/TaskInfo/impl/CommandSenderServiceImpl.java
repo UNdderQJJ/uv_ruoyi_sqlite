@@ -1,11 +1,15 @@
 package com.ruoyi.business.service.TaskInfo.impl;
 
+import com.ruoyi.business.domain.SystemLog.SystemLog;
 import com.ruoyi.business.domain.TaskInfo.PrintCommand;
 import com.ruoyi.business.domain.TaskInfo.TaskDispatchStatus;
 import com.ruoyi.business.domain.TaskInfo.TaskInfo;
 import com.ruoyi.business.enums.ItemStatus;
+import com.ruoyi.business.enums.SystemLogLevel;
+import com.ruoyi.business.enums.SystemLogType;
 import com.ruoyi.business.events.TaskPauseEvent;
 import com.ruoyi.business.domain.TaskInfo.TaskDeviceLink;
+import com.ruoyi.business.service.SystemLog.ISystemLogService;
 import com.ruoyi.business.service.TaskInfo.*;
 import com.ruoyi.business.domain.DeviceInfo.DeviceInfo;
 import com.ruoyi.business.service.DeviceInfo.IDeviceInfoService;
@@ -68,6 +72,9 @@ public class CommandSenderServiceImpl implements CommandSenderService {
     @Autowired
     private IDataPoolItemService dataPoolItemService;
 
+    @Autowired
+    private ISystemLogService systemLogService;
+
     // 任务队列维护与状态标记调度句柄
     private final ConcurrentHashMap<Long, java.util.concurrent.ScheduledFuture<?>> queueMaintainers = new ConcurrentHashMap<>();
     
@@ -94,14 +101,35 @@ public class CommandSenderServiceImpl implements CommandSenderService {
                             boolean success = dispatcher.sendCommandToDevice(d.getId().toString(), startCmd);
                             if (success) {
                                 log.info("已发送开始指令至设备，设备ID: {}, IP: {}, 端口: {}", d.getId(), d.getIpAddress(), d.getPort());
+                                //记录打印日志
+                                SystemLog systemLog = new SystemLog();
+                                systemLog.setLogType(SystemLogType.PRINT.getCode());
+                                systemLog.setLogLevel(SystemLogLevel.INFO.getCode());
+                                systemLog.setTaskId(taskId);
+                                systemLog.setDeviceId(link.getDeviceId());
+                                systemLog.setContent("已下发开始指令至设备:"+startCmd);
+                                systemLogService.insert(systemLog);
                             } else {
                                 log.warn("发送开始指令失败，设备ID: {}, IP: {}, 端口: {}", d.getId(), d.getIpAddress(), d.getPort());
+                                 //记录打印日志
+                                SystemLog systemLog = new SystemLog();
+                                systemLog.setLogType(SystemLogType.PRINT.getCode());
+                                systemLog.setLogLevel(SystemLogLevel.ERROR.getCode());
+                                systemLog.setTaskId(taskId);
+                                systemLog.setDeviceId(link.getDeviceId());
+                                systemLog.setContent("发送开始指令失败:"+startCmd);
                             }
                         }
                     }
                 }
             } catch (Exception ex) {
                 log.warn("下发开始指令时出现异常，任务ID: {}", taskId, ex);
+                //记录打印日志
+                SystemLog systemLog = new SystemLog();
+                systemLog.setLogType(SystemLogType.PRINT.getCode());
+                systemLog.setLogLevel(SystemLogLevel.ERROR.getCode());
+                systemLog.setTaskId(taskId);
+                systemLog.setContent("下发开始指令时出现异常:"+ex.getMessage());
             }
             
             // 创建并启动Runner
@@ -163,14 +191,34 @@ public class CommandSenderServiceImpl implements CommandSenderService {
                             boolean success = dispatcher.sendCommandToDevice(d.getId().toString(), stopCmd);
                             if (success) {
                                 log.info("已发送停止指令至设备，设备ID: {}, IP: {}, 端口: {}", d.getId(), d.getIpAddress(), d.getPort());
+                                //记录打印日志
+                                SystemLog systemLog = new SystemLog();
+                                systemLog.setLogType(SystemLogType.PRINT.getCode());
+                                systemLog.setLogLevel(SystemLogLevel.INFO.getCode());
+                                systemLog.setTaskId(taskId);
+                                systemLog.setDeviceId(link.getDeviceId());
+                                systemLog.setContent("已下发停止指令至设备:"+stopCmd);
                             } else {
                                 log.warn("发送停止指令失败，设备ID: {}, IP: {}, 端口: {}", d.getId(), d.getIpAddress(), d.getPort());
+                                //记录打印日志
+                                SystemLog systemLog = new SystemLog();
+                                systemLog.setLogType(SystemLogType.PRINT.getCode());
+                                systemLog.setLogLevel(SystemLogLevel.ERROR.getCode());
+                                systemLog.setTaskId(taskId);
+                                systemLog.setDeviceId(link.getDeviceId());
+                                systemLog.setContent("下发停止指令失败:"+stopCmd);
                             }
                         }
                     }
                 }
             } catch (Exception ex) {
                 log.warn("下发停止指令时出现异常，任务ID: {}", taskId, ex);
+                //记录打印日志
+                SystemLog systemLog = new SystemLog();
+                systemLog.setLogType(SystemLogType.PRINT.getCode());
+                systemLog.setLogLevel(SystemLogLevel.ERROR.getCode());
+                systemLog.setTaskId(taskId);
+                systemLog.setContent("下发停止指令时出现异常:"+ex.getMessage());
             }
             
             // 清理资源

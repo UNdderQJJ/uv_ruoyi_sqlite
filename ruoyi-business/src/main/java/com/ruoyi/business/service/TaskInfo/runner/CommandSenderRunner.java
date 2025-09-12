@@ -1,10 +1,16 @@
 package com.ruoyi.business.service.TaskInfo.runner;
 
+import com.ruoyi.business.domain.SystemLog.SystemLog;
 import com.ruoyi.business.domain.TaskInfo.PrintCommand;
+import com.ruoyi.business.enums.SystemLogLevel;
+import com.ruoyi.business.enums.SystemLogType;
 import com.ruoyi.business.service.TaskInfo.TaskDispatcherService;
 import com.ruoyi.business.service.TaskInfo.DeviceDataHandlerService;
 import com.ruoyi.business.service.TaskInfo.CommandQueueService;
 import com.ruoyi.business.enums.PrintCommandStatusEnum;
+import com.ruoyi.business.service.SystemLog.ISystemLogService;
+import com.ruoyi.business.service.DeviceInfo.IDeviceInfoService;
+import com.ruoyi.business.domain.DeviceInfo.DeviceInfo;
 import io.netty.channel.Channel;
 import lombok.Getter;
 import org.slf4j.Logger;
@@ -160,11 +166,18 @@ public class CommandSenderRunner implements Runnable {
             // 报告指令已发送
             dispatcher.reportCommandSent(deviceId);
             sentCount.incrementAndGet();
-            
+
             log.debug("指令发送成功，设备ID: {}, 指令: {}", deviceId, commandStr);
             
         } catch (Exception e) {
             log.error("发送指令异常，设备ID: {}, 指令: {}", deviceId, command.getCommand(), e);
+            //记录打印日志
+            SystemLog systemLog = new SystemLog();
+            systemLog.setLogType(SystemLogType.PRINT.getCode());
+            systemLog.setLogLevel(SystemLogLevel.ERROR.getCode());
+            systemLog.setTaskId(taskId);
+            systemLog.setDeviceId(Long.valueOf(deviceId));
+            systemLog.setContent("发送指令异常:"+e.getMessage());
             handleSendFailure(command, "发送异常: " + e.getMessage());
         }
     }

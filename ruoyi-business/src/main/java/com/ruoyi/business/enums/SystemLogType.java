@@ -13,7 +13,7 @@ public enum SystemLogType {
     SCAN("SCAN", "扫码"),
 
     /** 通讯 */
-    COMMUNICATION("common", "通讯");
+    COMMUNICATION("COMMUN", "通讯");
 
     private final String code;
     private final String info;

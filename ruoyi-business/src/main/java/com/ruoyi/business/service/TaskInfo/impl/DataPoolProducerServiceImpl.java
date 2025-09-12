@@ -1,8 +1,12 @@
 package com.ruoyi.business.service.TaskInfo.impl;
 
+import com.ruoyi.business.domain.SystemLog.SystemLog;
+import com.ruoyi.business.enums.SystemLogLevel;
+import com.ruoyi.business.enums.SystemLogType;
 import com.ruoyi.business.events.TaskPauseEvent;
 import com.ruoyi.business.service.DataPoolTemplate.IDataPoolTemplateService;
 import com.ruoyi.business.service.DeviceFileConfig.IDeviceFileConfigService;
+import com.ruoyi.business.service.SystemLog.ISystemLogService;
 import com.ruoyi.business.service.TaskInfo.DataPoolProducerService;
 import com.ruoyi.business.service.TaskInfo.CommandQueueService;
 import com.ruoyi.business.service.TaskInfo.runner.DataPoolProducerRunner;
@@ -56,6 +60,9 @@ public class DataPoolProducerServiceImpl implements DataPoolProducerService {
     
     @Autowired
     private TaskDispatchProperties taskDispatchProperties;
+
+    @Autowired
+    private ISystemLogService systemLogService;
     
     @Override
     public void startProduction(Long taskId, Long poolId) {
@@ -71,7 +78,7 @@ public class DataPoolProducerServiceImpl implements DataPoolProducerService {
             // 创建并启动Runner
             DataPoolProducerRunner runner = new DataPoolProducerRunner(
                     taskId, poolId, commandQueueService, dataPoolItemService, taskDeviceLinkService,
-                    iDataPoolTemplateService, iDeviceFileConfigService, taskDispatchProperties);
+                    iDataPoolTemplateService, iDeviceFileConfigService, taskDispatchProperties,systemLogService);
 
             // 创建Future
             Future<?> future = taskProducerExecutor.submit(runner);
@@ -81,9 +88,26 @@ public class DataPoolProducerServiceImpl implements DataPoolProducerService {
             runningFutures.put(taskId, future);
             
             log.info("数据生产启动成功，任务ID: {}", taskId);
+
+             //记录打印日志
+            SystemLog systemLog = new SystemLog();
+            systemLog.setLogType(SystemLogType.PRINT.getCode());
+            systemLog.setLogLevel(SystemLogLevel.INFO.getCode());
+            systemLog.setTaskId(taskId);
+            systemLog.setPoolId(poolId);
+            systemLog.setContent("指令生产启动成功！");
+            systemLogService.insert(systemLog);
             
         } catch (Exception e) {
             log.error("启动数据生产失败，任务ID: {}", taskId, e);
+             //记录打印日志
+            SystemLog systemLog = new SystemLog();
+            systemLog.setLogType(SystemLogType.PRINT.getCode());
+            systemLog.setLogLevel(SystemLogLevel.ERROR.getCode());
+            systemLog.setTaskId(taskId);
+            systemLog.setPoolId(poolId);
+            systemLog.setContent("启动数据生产失败："+e.getMessage());
+            systemLogService.insert(systemLog);
             // 清理资源
             runningRunners.remove(taskId);
             runningFutures.remove(taskId);
@@ -112,9 +136,24 @@ public class DataPoolProducerServiceImpl implements DataPoolProducerService {
             runningFutures.remove(taskId);
             
             log.info("数据生产停止成功，任务ID: {}", taskId);
+            //记录打印日志
+            SystemLog systemLog = new SystemLog();
+            systemLog.setLogType(SystemLogType.PRINT.getCode());
+            systemLog.setLogLevel(SystemLogLevel.INFO.getCode());
+            systemLog.setTaskId(taskId);
+            systemLog.setContent("指令生产停止成功！");
+            systemLogService.insert(systemLog);
+
             
         } catch (Exception e) {
             log.error("停止数据生产失败，任务ID: {}", taskId, e);
+            //记录打印日志
+            SystemLog systemLog = new SystemLog();
+            systemLog.setLogType(SystemLogType.PRINT.getCode());
+            systemLog.setLogLevel(SystemLogLevel.ERROR.getCode());
+            systemLog.setTaskId(taskId);
+            systemLog.setContent("指令生产停止失败："+e.getMessage());
+            systemLogService.insert(systemLog);
         }
     }
     

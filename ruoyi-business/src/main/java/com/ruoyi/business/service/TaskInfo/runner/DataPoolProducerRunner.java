@@ -3,12 +3,16 @@ package com.ruoyi.business.service.TaskInfo.runner;
 import com.ruoyi.business.config.TaskDispatchProperties;
 import com.ruoyi.business.domain.DataPoolTemplate.DataPoolTemplate;
 import com.ruoyi.business.domain.DeviceFileConfig.DeviceFileConfig;
+import com.ruoyi.business.domain.SystemLog.SystemLog;
 import com.ruoyi.business.domain.TaskInfo.PrintCommand;
 import com.ruoyi.business.domain.DataPoolItem.DataPoolItem;
 import com.ruoyi.business.enums.ItemStatus;
+import com.ruoyi.business.enums.SystemLogLevel;
+import com.ruoyi.business.enums.SystemLogType;
 import com.ruoyi.business.service.DataPoolItem.IDataPoolItemService;
 import com.ruoyi.business.service.DataPoolTemplate.IDataPoolTemplateService;
 import com.ruoyi.business.service.DeviceFileConfig.IDeviceFileConfigService;
+import com.ruoyi.business.service.SystemLog.ISystemLogService;
 import com.ruoyi.business.service.TaskInfo.ITaskDeviceLinkService;
 import com.ruoyi.business.service.TaskInfo.CommandQueueService;
 import com.ruoyi.business.domain.TaskInfo.TaskDeviceLink;
@@ -36,6 +40,7 @@ public class DataPoolProducerRunner implements Runnable {
     private final IDataPoolTemplateService iDataPoolTemplateService;
     private final IDeviceFileConfigService iDeviceFileConfigService;
     private final TaskDispatchProperties taskDispatchProperties;
+    private final ISystemLogService systemLogService;
     
     private volatile boolean running = true;
     private volatile boolean paused = false;
@@ -48,7 +53,8 @@ public class DataPoolProducerRunner implements Runnable {
                                   ITaskDeviceLinkService taskDeviceLinkService, 
                                   IDataPoolTemplateService iDataPoolTemplateService, 
                                   IDeviceFileConfigService iDeviceFileConfigService,
-                                  TaskDispatchProperties taskDispatchProperties) {
+                                  TaskDispatchProperties taskDispatchProperties,
+                                  ISystemLogService systemLogService ) {
         this.taskId = taskId;
         this.poolId = poolId;
         this.commandQueueService = commandQueueService;
@@ -57,6 +63,7 @@ public class DataPoolProducerRunner implements Runnable {
         this.iDataPoolTemplateService = iDataPoolTemplateService;
         this.iDeviceFileConfigService = iDeviceFileConfigService;
         this.taskDispatchProperties = taskDispatchProperties;
+        this.systemLogService = systemLogService;
     }
     
     @Override
@@ -69,6 +76,14 @@ public class DataPoolProducerRunner implements Runnable {
             //如果是计划打印，数据池队列等于计划打印时这停止生成
             if (printCount != -1 && commandQueueService.getQueueSize(taskId) >= printCount) {
                 log.info("计划打印数量已满，停止生成，任务ID: {}, 数据池ID: {}", taskId, poolId);
+                //记录打印日志
+                SystemLog systemLog = new SystemLog();
+                systemLog.setLogType(SystemLogType.PRINT.getCode());
+                systemLog.setLogLevel(SystemLogLevel.INFO.getCode());
+                systemLog.setTaskId(taskId);
+                systemLog.setPoolId(poolId);
+                systemLog.setContent("计划打印数量已满，停止生成,数量:"+commandQueueService.getQueueSize(taskId));
+                systemLogService.insert(systemLog);
                 break;
             }
             try {
@@ -159,9 +174,25 @@ public class DataPoolProducerRunner implements Runnable {
                 
                 processedCount.incrementAndGet();
             }
+            //记录打印日志
+                SystemLog systemLog = new SystemLog();
+                systemLog.setLogType(SystemLogType.PRINT.getCode());
+                systemLog.setLogLevel(SystemLogLevel.INFO.getCode());
+                systemLog.setTaskId(taskId);
+                systemLog.setPoolId(poolId);
+                systemLog.setContent("指令生成数量:"+producedCount.get());
+                systemLogService.insert(systemLog);
             
         } catch (Exception e) {
             log.error("处理数据异常，任务ID: {}", taskId, e);
+                //记录打印日志
+                SystemLog systemLog = new SystemLog();
+                systemLog.setLogType(SystemLogType.PRINT.getCode());
+                systemLog.setLogLevel(SystemLogLevel.INFO.getCode());
+                systemLog.setTaskId(taskId);
+                systemLog.setPoolId(poolId);
+                systemLog.setContent("指令生成异常:"+e.getMessage());
+                systemLogService.insert(systemLog);
             throw e;
         }
     }
