@@ -109,6 +109,79 @@
         SELECT * FROM system_log WHERE id = #{id}
     </select>
 
+    <!-- 分页查询日志（支持多条件过滤和排序） -->
+    <select id="selectPageList" parameterType="com.ruoyi.business.domain.SystemLog.SystemLog" resultMap="SystemLogResult">
+        SELECT *
+        FROM system_log
+        <where>
+            <if test="logType != null and logType != ''"> AND log_type = #{logType} </if>
+            <if test="logLevel != null and logLevel != ''"> AND log_level = #{logLevel} </if>
+            <if test="taskId != null"> AND task_id = #{taskId} </if>
+            <if test="deviceId != null"> AND device_id = #{deviceId} </if>
+            <if test="poolId != null"> AND pool_id = #{poolId} </if>
+            <if test="taskName != null and taskName != ''"> AND task_name LIKE '%' || #{taskName} || '%' </if>
+            <if test="deviceName != null and deviceName != ''"> AND device_name LIKE '%' || #{deviceName} || '%' </if>
+            <if test="poolName != null and poolName != ''"> AND pool_name LIKE '%' || #{poolName} || '%' </if>
+            <if test="content != null and content != ''"> AND content LIKE '%' || #{content} || '%' </if>
+        </where>
+        ORDER BY log_time DESC
+    </select>
+
+    <!-- 游标分页查询日志（高性能，适合大数据量） -->
+    <select id="selectCursorPageList" resultMap="SystemLogResult">
+        SELECT *
+        FROM system_log
+        <where>
+            <if test="query.logType != null and query.logType != ''"> AND log_type = #{query.logType} </if>
+            <if test="query.logLevel != null and query.logLevel != ''"> AND log_level = #{query.logLevel} </if>
+            <if test="query.taskId != null"> AND task_id = #{query.taskId} </if>
+            <if test="query.deviceId != null"> AND device_id = #{query.deviceId} </if>
+            <if test="query.poolId != null"> AND pool_id = #{query.poolId} </if>
+            <if test="query.taskName != null and query.taskName != ''"> AND task_name LIKE '%' || #{query.taskName} || '%' </if>
+            <if test="query.deviceName != null and query.deviceName != ''"> AND device_name LIKE '%' || #{query.deviceName} || '%' </if>
+            <if test="query.poolName != null and query.poolName != ''"> AND pool_name LIKE '%' || #{query.poolName} || '%' </if>
+            <if test="query.content != null and query.content != ''"> AND content LIKE '%' || #{query.content} || '%' </if>
+            <!-- 游标分页条件 -->
+            <if test="cursorQuery.lastId != null">
+                AND id &lt; #{cursorQuery.lastId}
+            </if>
+            <if test="cursorQuery.lastLogTime != null and cursorQuery.lastLogTime != ''">
+                AND log_time &lt; #{cursorQuery.lastLogTime}
+            </if>
+        </where>
+        ORDER BY log_time DESC, id DESC
+        LIMIT #{cursorQuery.pageSize}
+    </select>
+
+    <!-- 查询需要归档的旧日志（限制数量，按时间倒序，便于分批处理） -->
+    <select id="selectOldLogs" resultMap="SystemLogResult">
+        SELECT *
+        FROM system_log
+        WHERE log_time &lt;= #{cutoff}
+        ORDER BY log_time ASC
+        LIMIT #{limit}
+    </select>
+
+    <!-- 确保归档表存在（仅SQLite生效，其他DB可忽略返回0） -->
+    <update id="ensureArchiveTable">
+        CREATE TABLE IF NOT EXISTS system_log_archived (
+            id INTEGER PRIMARY KEY,
+            log_time TEXT NOT NULL,
+            log_type TEXT,
+            task_id INTEGER,
+            task_name TEXT,
+            device_id INTEGER,
+            device_name TEXT,
+            pool_id INTEGER,
+            pool_name TEXT,
+            log_level TEXT NOT NULL,
+            content TEXT NOT NULL,
+            archive_time TEXT DEFAULT (datetime('now','localtime'))
+        );
+        CREATE INDEX IF NOT EXISTS idx_archived_log_time ON system_log_archived (log_time DESC);
+        CREATE INDEX IF NOT EXISTS idx_archived_log_type_level ON system_log_archived (log_type, log_level);
+    </update>
+
 </mapper>
 
 

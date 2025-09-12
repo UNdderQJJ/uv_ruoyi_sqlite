@@ -4,11 +4,16 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ruoyi.business.domain.SystemLog.SystemLog;
 import com.ruoyi.business.service.SystemLog.ISystemLogService;
 import com.ruoyi.common.core.TcpResponse;
+import com.ruoyi.common.core.page.CursorPageQuery;
+import com.ruoyi.common.core.page.CursorPageResult;
+import com.ruoyi.common.core.page.PageQuery;
+import com.ruoyi.common.core.page.PageResult;
 import com.ruoyi.common.utils.StringUtils;
 import jakarta.annotation.Resource;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * 系统日志 TCP 处理器
@@ -41,6 +46,10 @@ public class SystemLogManagementHandler {
                 return list(body);
             } else if (path.endsWith("/count")) {
                 return count(body);
+            } else if (path.endsWith("/pageList")) {
+                return pageList(body);
+            } else if (path.endsWith("/cursorPageList")) {
+                return cursorPageList(body);
             }
             return TcpResponse.error("未知的系统日志接口: " + path);
         } catch (Exception e) {
@@ -94,6 +103,78 @@ public class SystemLogManagementHandler {
         SystemLog query = StringUtils.isEmpty(body) ? new SystemLog() : objectMapper.readValue(body, SystemLog.class);
         Integer cnt = systemLogService.count(query);
         return TcpResponse.success(cnt);
+    }
+
+    /** 分页查询日志（支持多条件过滤和排序） */
+    private TcpResponse pageList(String body) throws Exception {
+        if (StringUtils.isEmpty(body)) {
+            return TcpResponse.error("请求体不能为空");
+        }
+
+        // 解析请求参数
+        @SuppressWarnings("unchecked")
+        Map<String, Object> params = objectMapper.readValue(body, Map.class);
+
+        // 构建查询条件
+        SystemLog query = objectMapper.convertValue(params, SystemLog.class);
+
+        // 构建分页参数
+        PageQuery pageQuery = new PageQuery();
+        if (params.containsKey("pageNum")) {
+            pageQuery.setPageNum((Integer) params.get("pageNum"));
+        }
+        if (params.containsKey("pageSize")) {
+            pageQuery.setPageSize((Integer) params.get("pageSize"));
+        }
+        if (params.containsKey("orderByColumn")) {
+            pageQuery.setOrderByColumn((String) params.get("orderByColumn"));
+        }
+        if (params.containsKey("isAsc")) {
+            pageQuery.setIsAsc((String) params.get("isAsc"));
+        }
+        if (params.containsKey("reasonable")) {
+            pageQuery.setReasonable((Boolean) params.get("reasonable"));
+        }
+
+        // 执行分页查询
+        PageResult<SystemLog> result = systemLogService.selectPageList(query, pageQuery);
+        return TcpResponse.success(result);
+    }
+
+    /** 游标分页查询日志（高性能，适合大数据量） */
+    private TcpResponse cursorPageList(String body) throws Exception {
+        if (StringUtils.isEmpty(body)) {
+            return TcpResponse.error("请求体不能为空");
+        }
+
+        // 解析请求参数
+        @SuppressWarnings("unchecked")
+        Map<String, Object> params = objectMapper.readValue(body, Map.class);
+        
+        // 构建查询条件
+        SystemLog query = objectMapper.convertValue(params, SystemLog.class);
+        
+        // 构建游标分页参数
+        CursorPageQuery cursorQuery = new CursorPageQuery();
+        if (params.containsKey("pageSize")) {
+            cursorQuery.setPageSize((Integer) params.get("pageSize"));
+        }
+        if (params.containsKey("lastId")) {
+            cursorQuery.setLastId(((Number) params.get("lastId")).longValue());
+        }
+        if (params.containsKey("lastLogTime")) {
+            cursorQuery.setLastLogTime((String) params.get("lastLogTime"));
+        }
+        if (params.containsKey("orderByColumn")) {
+            cursorQuery.setOrderByColumn((String) params.get("orderByColumn"));
+        }
+        if (params.containsKey("isAsc")) {
+            cursorQuery.setIsAsc((String) params.get("isAsc"));
+        }
+
+        // 执行游标分页查询
+        CursorPageResult<SystemLog> result = systemLogService.selectCursorPageList(query, cursorQuery);
+        return TcpResponse.success(result);
     }
 }
 

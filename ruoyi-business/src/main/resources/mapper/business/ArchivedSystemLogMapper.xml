@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.business.mapper.SystemLog.ArchivedSystemLogMapper">
+
+    <insert id="batchInsert">
+        INSERT INTO system_log_archived (
+            id, log_time, log_type, task_id, task_name, device_id, device_name, pool_id, pool_name, log_level, content
+        ) VALUES
+        <foreach collection="list" item="item" separator=",">
+            (#{item.id}, #{item.logTime}, #{item.logType}, #{item.taskId}, #{item.taskName}, #{item.deviceId}, #{item.deviceName}, #{item.poolId}, #{item.poolName}, #{item.logLevel}, #{item.content})
+        </foreach>
+    </insert>
+
+</mapper>
+
+

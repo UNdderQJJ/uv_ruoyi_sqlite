@@ -1,6 +1,10 @@
 package com.ruoyi.business.service.SystemLog;
 
 import com.ruoyi.business.domain.SystemLog.SystemLog;
+import com.ruoyi.common.core.page.CursorPageQuery;
+import com.ruoyi.common.core.page.CursorPageResult;
+import com.ruoyi.common.core.page.PageQuery;
+import com.ruoyi.common.core.page.PageResult;
 
 import java.util.List;
 
@@ -37,6 +41,12 @@ public interface ISystemLogService {
 
     /** 统计日志数量（支持多条件过滤） */
     Integer count(SystemLog query);
+
+    /** 分页查询日志（支持多条件过滤和排序） */
+    PageResult<SystemLog> selectPageList(SystemLog query, PageQuery pageQuery);
+
+    /** 游标分页查询日志（高性能，适合大数据量） */
+   CursorPageResult<SystemLog> selectCursorPageList(SystemLog query, CursorPageQuery cursorQuery);
 }
 
 
