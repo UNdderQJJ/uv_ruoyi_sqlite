@@ -23,6 +23,18 @@ public class SystemLogServiceImpl implements ISystemLogService {
         return systemLogMapper.insertSystemLog(log);
     }
 
+    @Override
+    public int insert(String logType, String LogLEvel, Long taskId, Long deviceId, Long poolId, String content) {
+        SystemLog log = new SystemLog();
+        log.setLogType(logType);
+        log.setLogLevel(LogLEvel);
+        log.setTaskId(taskId);
+        log.setDeviceId(deviceId);
+        log.setPoolId(poolId);
+        log.setContent(content);
+        return insert(log);
+    }
+
     /** 批量新增日志 */
     @Override
     public int batchInsert(List<SystemLog> list) {

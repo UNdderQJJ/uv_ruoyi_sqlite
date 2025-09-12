@@ -13,6 +13,16 @@ public interface ISystemLogService {
     /** 新增一条日志 */
     int insert(SystemLog log);
 
+    /** 新增一条日志
+     * @param logType 日志类型
+     * @param LogLEvel 日志级别
+     * @param taskId 任务ID
+     * @param deviceId 设备ID
+     * @param poolId 数据池ID
+     * @param content 日志内容
+     */
+    int insert(String logType,String LogLEvel,Long taskId,Long deviceId,Long poolId,String content);
+
     /** 批量新增日志 */
     int batchInsert(List<SystemLog> list);
 
