@@ -149,12 +149,11 @@ public interface IDeviceFileConfigService
      */
     public int batchInsertDeviceFileConfig(List<DeviceFileConfig> deviceFileConfigList);
 
+
     /**
-     * 复制设备文件配置到其他设备
-     * 
-     * @param sourceDeviceId 源设备ID
-     * @param targetDeviceId 目标设备ID
-     * @return 结果
+     *  复制配置文件到其他多设备
+     * @param configId 配置ID
+     * @param deviceIds 设备ID列表
      */
-    public int copyDeviceFileConfig(Long sourceDeviceId, Long targetDeviceId);
+    public boolean  copyDeviceFileConfig(Long configId,List<Long> deviceIds);
 }

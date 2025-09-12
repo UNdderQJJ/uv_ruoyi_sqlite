@@ -3,7 +3,9 @@ package com.ruoyi.business.service.DeviceFileConfig.impl;
 import java.util.List;
 import com.ruoyi.common.utils.DateUtils;
 import com.ruoyi.common.utils.StringUtils;
+import io.netty.util.internal.ObjectUtil;
 import jakarta.annotation.Resource;
+import org.apache.commons.lang3.ObjectUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import com.ruoyi.business.mapper.DeviceFileConfig.DeviceFileConfigMapper;
@@ -243,35 +245,31 @@ public class DeviceFileConfigServiceImpl implements IDeviceFileConfigService
     }
 
     /**
-     * 复制设备文件配置到其他设备
-     * 
-     * @param sourceDeviceId 源设备ID
-     * @param targetDeviceId 目标设备ID
-     * @return 结果
+     * 复制设备文件配置
+     *
+     * @param configId 设备文件配置ID
+     * @param deviceIds 设备ID列表
      */
     @Override
-    public int copyDeviceFileConfig(Long sourceDeviceId, Long targetDeviceId)
-    {
-        // 查询源设备的所有配置
-        List<DeviceFileConfig> sourceConfigs = selectDeviceFileConfigListByDeviceId(sourceDeviceId);
-        if (sourceConfigs.isEmpty()) {
-            return 0;
+    public boolean copyDeviceFileConfig(Long configId, List<Long> deviceIds) {
+        //查询需要复制的设备文件配置
+        DeviceFileConfig config = selectDeviceFileConfigById(configId);
+        if (ObjectUtils.isNotEmpty( config)) {
+            //遍历设备ID列表，复制设备文件配置
+            for (Long deviceId : deviceIds) {
+                DeviceFileConfig configOne;
+                configOne = config;
+                configOne.setId(null);
+                configOne.setDeviceId(deviceId);
+                //清除其他设备的默认配置
+                clearDefaultByDeviceId(deviceId);
+                //设置该设备为默认配置
+                configOne.setIsDefault(1);
+                insertDeviceFileConfig(configOne);
+            }
+            return true;
+        }else {
+            return false;
         }
-
-        // 复制配置到目标设备
-        int result = 0;
-        for (DeviceFileConfig sourceConfig : sourceConfigs) {
-            DeviceFileConfig targetConfig = new DeviceFileConfig();
-            targetConfig.setDeviceId(targetDeviceId);
-            targetConfig.setFileName(sourceConfig.getFileName());
-            targetConfig.setVariableName(sourceConfig.getVariableName());
-            targetConfig.setVariableType(sourceConfig.getVariableType());
-            targetConfig.setFixedContent(sourceConfig.getFixedContent());
-            targetConfig.setIsDefault(0); // 新复制的配置不是默认配置
-            targetConfig.setDescription("从设备" + sourceDeviceId + "复制: " + sourceConfig.getDescription());
-            
-            result += insertDeviceFileConfig(targetConfig);
-        }
-        return result;
     }
 }

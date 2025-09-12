@@ -56,4 +56,5 @@ public class DeviceFileConfig extends BaseEntity
     /** 批量操作时的ID数组 */
     private Long[] ids;
 
+    private Long[] deviceIds;
 }

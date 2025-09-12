@@ -1,5 +1,6 @@
 package com.ruoyi.tcp.business.DeviceFileConfig;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ruoyi.business.domain.DeviceFileConfig.DeviceFileConfig;
 import com.ruoyi.business.service.DeviceFileConfig.IDeviceFileConfigService;
@@ -11,6 +12,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
+import java.util.Arrays;
 import java.util.List;
 
 /**
@@ -67,9 +69,10 @@ public class DeviceFileConfigManagementHandler {
                 return countDeviceFileConfigs(body);
             } else if (path.equals("/business/deviceFileConfig/countByDevice")) {
                 return countDeviceFileConfigsByDevice();
-            }  else if (path.equals("/business/deviceFileConfig/copyToDevice")) {
-                return copyDeviceFileConfigToDevice(body);
-            } else {
+            } else if (path.equals("/business/deviceFileConfig/copyConfig")) {
+                return copyDeviceFileConfig(body);
+            }
+            else {
                 return TcpResponse.error("未知的设备文件配置请求路径: " + path);
             }
         } catch (Exception e) {
@@ -400,31 +403,24 @@ public class DeviceFileConfigManagementHandler {
         }
     }
 
-    /**
-     * 复制设备文件配置到其他设备
-     */
-    private TcpResponse copyDeviceFileConfigToDevice(String body) {
-        try {
-            DeviceFileConfig deviceFileConfig = objectMapper.readValue(body, DeviceFileConfig.class);
-            Long sourceDeviceId = deviceFileConfig.getDeviceId();
-            Long targetDeviceId = deviceFileConfig.getId(); // 使用id字段存储目标设备ID
-            
-            if (sourceDeviceId == null) {
-                return TcpResponse.error("源设备ID不能为空");
-            }
-            if (targetDeviceId == null) {
-                return TcpResponse.error("目标设备ID不能为空");
-            }
-
-            int result = deviceFileConfigService.copyDeviceFileConfig(sourceDeviceId, targetDeviceId);
-            if (result > 0) {
-                return TcpResponse.success("复制设备文件配置成功，共复制" + result + "条配置");
-            } else {
-                return TcpResponse.error("复制设备文件配置失败");
-            }
-        } catch (Exception e) {
-            log.error("复制设备文件配置异常", e);
-            return TcpResponse.error("复制设备文件配置异常: " + e.getMessage());
-        }
+/** 复制文件配置到多设备
+ *
+ */
+private TcpResponse copyDeviceFileConfig(String body) throws JsonProcessingException {
+    DeviceFileConfig deviceFileConfig = objectMapper.readValue(body, DeviceFileConfig.class);
+    Long configId = deviceFileConfig.getId();
+    if (configId == null) {
+        return TcpResponse.error("配置ID不能为空");
     }
+    List<Long> deviceIds = Arrays.asList(deviceFileConfig.getDeviceIds());
+    if (deviceIds.isEmpty()) {
+        return TcpResponse.error("设备ID列表不能为空");
+    }
+    //复制文件配置
+    boolean result = deviceFileConfigService.copyDeviceFileConfig(configId,deviceIds);
+    if (!result) {
+        return TcpResponse.error("同步文件配置失败");
+    }
+    return TcpResponse.success("同步文件配置成功");
+}
 }
