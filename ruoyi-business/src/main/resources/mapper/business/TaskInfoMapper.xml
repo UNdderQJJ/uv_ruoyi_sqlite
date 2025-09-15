@@ -44,7 +44,7 @@
                 AND pool_id = #{poolId}
             </if>
         </where>
-        ORDER BY update_time DESC
+        ORDER BY create_time DESC
     </select>
 
     <!-- 统计任务数量（按条件） -->

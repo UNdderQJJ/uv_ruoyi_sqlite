@@ -22,7 +22,7 @@ public class StxEtxProtocolUtil {
      */
     public static byte[] buildCommand(String command) {
         byte[] commandBytes = command.getBytes(StandardCharsets.UTF_8);
-        byte[] result = new byte[commandBytes.length + 4]; // STX + 0x05 + command + ETX
+        byte[] result = new byte[commandBytes.length + 3]; // STX + 0x05 + command + ETX
         
         int index = 0;
         result[index++] = STX;

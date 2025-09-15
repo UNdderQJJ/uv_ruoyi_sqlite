@@ -82,13 +82,13 @@
             <if test="deviceId != null">AND device_id = #{deviceId}</if>
             <if test="status != null">AND status = #{status}</if>
         </where>
-        ORDER BY update_time DESC
+        ORDER BY create_time DESC
     </select>
 
     <select id="listByTaskId" parameterType="com.ruoyi.business.domain.TaskInfo.TaskDeviceLink" resultType="com.ruoyi.business.domain.TaskInfo.TaskDeviceLink">
         SELECT * FROM task_device_link
         WHERE task_id = #{taskId} AND del_flag = 0
-        ORDER BY update_time DESC
+        ORDER BY create_time DESC
     </select>
 
 </mapper>

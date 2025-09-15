@@ -88,11 +88,11 @@ public class DataPoolProducerRunner implements Runnable {
             }
             try {
                 if (paused) {
-                    Thread.sleep(1000); // 暂停时等待1秒
+                    Thread.sleep(500); // 暂停时等待1秒
                     continue;
                 }
                 fetchAndProcessData();
-                Thread.sleep(2000); // 避免CPU占用过高
+                Thread.sleep(1000); // 避免CPU占用过高
                 
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
@@ -123,7 +123,7 @@ public class DataPoolProducerRunner implements Runnable {
             int maxQueueSize = taskDispatchProperties.getCommandQueueSize();
             int printCount = taskDispatchProperties.getPlanPrintCount();// 打印数量
             if(printCount == -1){
-                printCount = (int) Math.floor(taskDispatchProperties.getBatchSize()*0.2);
+                printCount = taskDispatchProperties.getBatchSize();
             }
 
             if (queueSize > maxQueueSize * 0.5) { // 队列超过50%时暂停生产

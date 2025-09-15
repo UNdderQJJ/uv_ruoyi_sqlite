@@ -344,10 +344,11 @@ public class UDiskFileReaderService {
      * @param completed 是否完成
      */
     private void updateFileReadCompleted(DataPool dataPool, boolean completed) {
-        dataPool.setFileReadCompleted(completed ? "1" : "0");
-        dataPoolService.updateDataPoolStatus(dataPool.getId(),PoolStatus.WINING.getCode());
-        dataPool.setStatus(PoolStatus.WINING.getCode());
-        dataPoolService.updateDataPool(dataPool);
+        DataPool newdataPool = new DataPool();
+        newdataPool.setId(dataPool.getId());
+        newdataPool.setFileReadCompleted(completed ? "1" : "0");
+        newdataPool.setStatus(PoolStatus.WINING.getCode());
+        dataPoolService.updateDataPool(newdataPool);
         log.info("数据池 {} 的文件读取完成标志已更新为 {}", dataPool.getPoolName(), completed);
     }
     

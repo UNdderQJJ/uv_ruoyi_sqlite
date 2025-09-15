@@ -144,9 +144,6 @@ public class TaskInfoManagementHandler {
                         taskInfoService.updateTaskInfo(taskInfo);
                         log.info("[TaskCreation] 任务设备名称已保存: {}", deviceNamesStr);
                     }
-                    
-                    // 执行任务创建后的完整流程
-                    executeTaskCreationWorkflow(taskInfo, map);
 
                 }
             } catch (Exception e) {

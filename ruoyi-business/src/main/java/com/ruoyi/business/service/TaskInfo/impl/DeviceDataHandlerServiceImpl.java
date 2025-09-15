@@ -75,7 +75,7 @@ public class DeviceDataHandlerServiceImpl implements DeviceDataHandlerService {
         try {
             // 打印原始数据（ASCII格式）
             if (data != null) {
-                log.info("=========> 设备ID: {} 接收的数据: {}",deviceId, data);
+                log.info("=========> 设备ID: {} 接收指令<===: {}",deviceId, data);
             }
             // 更新设备统计
             updateDeviceStatistics(deviceId, data);
@@ -215,7 +215,7 @@ public class DeviceDataHandlerServiceImpl implements DeviceDataHandlerService {
     }
     
     @Override
-    @Scheduled(fixedRate = 2000) // 每2秒检查一次心跳，使用system:2作为心跳间隔
+//    @Scheduled(fixedRate = 2000) // 每2秒检查一次心跳，使用system:2作为心跳间隔
     public void checkHeartbeats() {
         try {
             // 只有在有任务运行时才进行心跳检查

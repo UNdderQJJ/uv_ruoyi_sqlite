@@ -64,8 +64,8 @@ public class DeviceConnectionManager {
                     protected void initChannel(SocketChannel ch) {
                         ch.pipeline()
                                 // 空闲状态检测
-                                // writer idle 20s -> trigger ping; no reader/all idle close
-                                .addLast(new IdleStateHandler(0, 20, 0, TimeUnit.SECONDS))
+                                // writer idle 60s -> trigger ping; no reader/all idle close
+                                .addLast(new IdleStateHandler(0, 60, 0, TimeUnit.SECONDS))
                                 // STX/ETX协议解码器
                                 .addLast(new StxEtxFrameDecoder())
                                 // 字符串编解码器
