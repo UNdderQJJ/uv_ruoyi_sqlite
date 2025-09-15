@@ -9,6 +9,7 @@ import com.ruoyi.business.service.DataPool.type.TcpClient.tcp.TcpServerManager;
 import com.ruoyi.business.service.DataPool.type.TcpServer.tcp.TcpClientManager;
 import com.ruoyi.business.service.DataPool.type.UDisk.UDiskDataSchedulerService;
 import com.ruoyi.business.service.DataPool.type.WebSocket.WebSocketManager;
+import com.ruoyi.business.service.common.DataIngestionService;
 import jakarta.annotation.Resource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -46,6 +47,9 @@ public class DataSourceLifecycleService {
     @Resource
     private DataPoolSchedulerService dataPoolSchedulerService;
 
+    @Resource
+    private DataIngestionService dataIngestionService;
+
     /**
      * 启动指定数据池的数据源
      * @param poolId 数据池ID
@@ -60,7 +64,7 @@ public class DataSourceLifecycleService {
         String sourceType = dataPool.getSourceType();
 
         if (PoolStatus.RUNNING.getCode().equals(dataPool.getStatus())) {
-            throw new RuntimeException("数据池已处于运行状态，无法重新启动数据源");
+            return  "数据已运行!";
         }
 
         // 更新数据池状态为运行中
@@ -132,6 +136,9 @@ public class DataSourceLifecycleService {
 
         // 停止调度
         dataPoolSchedulerService.stopDataPoolScheduler(poolId);
+
+        //更新数据池数据
+        dataIngestionService.ingestItems(poolId, null);
 
         switch (sourceType) {
             case "U_DISK":

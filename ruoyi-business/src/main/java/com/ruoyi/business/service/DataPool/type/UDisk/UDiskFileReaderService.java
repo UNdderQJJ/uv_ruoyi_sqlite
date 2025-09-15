@@ -45,39 +45,21 @@ public class UDiskFileReaderService {
      * @return 新读取的数据量
      */
     public int readDataIfBelowThreshold(DataPool dataPool, int threshold, int batchSize) {
-        // 检查数据池类型是否为U盘类型
-        if (!"U_DISK".equals(dataPool.getSourceType())) {
-            log.error("数据池类型不是U盘类型: {}", dataPool.getSourceType());
-            return 0;
-        }
-        
-        // 检查文件是否已经读取完成
-        if ("1".equals(dataPool.getFileReadCompleted())) {
-            log.debug("数据池 {} 的文件已经读取完成，无需再次读取", dataPool.getPoolName());
-            return 0;
-        }
-        
-        // 检查待打印数据量是否低于阈值
-        if (dataPool.getPendingCount() > threshold) {
-            log.debug("数据池 {} 待打印数据量 {} 未低于阈值 {}, 无需读取", 
-                    dataPool.getPoolName(), dataPool.getPendingCount(), threshold);
-            return 0;
-        }
-        
+
         // 解析U盘配置
         UDiskSourceConfig config;
         try {
             config = JSON.parseObject(dataPool.getSourceConfigJson(), UDiskSourceConfig.class);
         } catch (Exception e) {
             log.error("解析U盘配置失败: {}", e.getMessage());
-            return 0;
+            throw  new IllegalStateException("解析U盘配置失败: " + e.getMessage());
         }
         
         // 获取文件路径
         String filePath = config.getFilePath();
         if (StringUtils.isEmpty(filePath)) {
             log.error("文件路径为空");
-            return 0;
+            throw new IllegalStateException("文件路径为空");
         }
         
         // 检查文件是否存在
@@ -86,7 +68,7 @@ public class UDiskFileReaderService {
             log.error("文件不存在或不是一个文件: {}", filePath);
             // 更新连接状态为断开
             dataPoolService.updateConnectionState(dataPool.getId(), ConnectionState.DISCONNECTED.getCode());
-            return 0;
+            throw  new IllegalStateException("文件不存在或不是一个文件: " + filePath);
         }
         
         // 根据文件类型调用不同的读取方法
@@ -99,7 +81,7 @@ public class UDiskFileReaderService {
             readCount = readTextFile(dataPool, config, batchSize);
         } else {
             log.error("不支持的文件类型: {}", filePath);
-            return 0;
+            throw new IllegalStateException("不支持的文件类型: " + filePath);
         }
         
         // 统一入库服务已在内部处理计数更新，这里只记录日志
@@ -339,7 +321,7 @@ public class UDiskFileReaderService {
     
     /**
      * 更新数据池的文件读取完成标志
-     * 
+     *
      * @param dataPool 数据池对象
      * @param completed 是否完成
      */

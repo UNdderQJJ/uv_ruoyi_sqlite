@@ -72,6 +72,13 @@ public class UDiskDataSchedulerService {
 
         //获取阈值
         int threshold =  getThresholdFromConfig(dataPool);
+
+           // 检查待打印数据量是否低于阈值
+        if (dataPool.getPendingCount() > threshold) {
+            log.debug("数据池 {} 待打印数据量 {} 未低于阈值 {}, 无需读取",
+                    dataPool.getPoolName(), dataPool.getPendingCount(), threshold);
+           return "数据池"+dataPool.getPoolName()+"的待打印数据量"+dataPool.getPendingCount()+"未低于阈值"+threshold;
+        }
         
         log.info("触发数据池 {} 读取数据, 批次大小: {}", dataPool.getPoolName(), actualBatchSize);
         
