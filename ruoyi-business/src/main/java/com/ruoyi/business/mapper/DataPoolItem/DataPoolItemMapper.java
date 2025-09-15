@@ -200,4 +200,18 @@ public interface DataPoolItemMapper {
      * @param poolId 数据池ID
      */
     void updateToPendingItem(Long poolId);
+
+    /**
+     * 统计非待打印的数据项数量
+     * @param id 数据项ID
+     */
+    int  countByNotPending(Long id);
+
+    /**
+     * 统计指定状态的数据项数量
+     * @param poolId 数据池ID
+     * @param status 状态
+     * @return 数据项数量
+     */
+    int countIntStatus(Long poolId, String status);
 }

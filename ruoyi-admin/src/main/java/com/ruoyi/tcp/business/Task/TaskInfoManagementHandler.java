@@ -2,12 +2,15 @@ package com.ruoyi.tcp.business.Task;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.ruoyi.business.domain.DataPool.DataPool;
 import com.ruoyi.business.domain.TaskInfo.TaskInfo;
 import com.ruoyi.business.enums.DeviceStatus;
+import com.ruoyi.business.enums.ItemStatus;
 import com.ruoyi.business.enums.TaskStatus;
 import com.ruoyi.business.domain.TaskInfo.TaskDeviceLink;
 import com.ruoyi.business.enums.TaskDeviceStatus;
 import com.ruoyi.business.service.DataPool.DataSourceLifecycleService;
+import com.ruoyi.business.service.DataPool.IDataPoolService;
 import com.ruoyi.business.service.TaskInfo.ITaskDeviceLinkService;
 import com.ruoyi.business.service.DeviceInfo.IDeviceInfoService;
 import com.ruoyi.business.domain.DeviceInfo.DeviceInfo;
@@ -27,6 +30,8 @@ import org.slf4j.LoggerFactory;
 import org.springframework.security.core.parameters.P;
 import org.springframework.stereotype.Component;
 
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -52,7 +57,10 @@ public class TaskInfoManagementHandler {
     private IDeviceInfoService deviceInfoService;
 
     @Resource
-    private DataSourceLifecycleService dataSourceLifecycleService;
+    private IDataPoolService dataPoolService;
+
+    @Resource
+    private IDataPoolItemService dataPoolItemService;
 
     @Resource
     private TaskDispatcherService taskDispatcherService;
@@ -77,7 +85,9 @@ public class TaskInfoManagementHandler {
                 return get(body);
             } else if (path.endsWith("/list")) {
                 return list(body);
-            } else if (path.endsWith("/count")) {
+            } else if (path.endsWith("/pageList")) {
+                return pageList(body);
+            }else if (path.endsWith("/count")) {
                 return count(body);
             } else if (path.endsWith("/start")) {
                 return startDispatch(body);
@@ -91,6 +101,10 @@ public class TaskInfoManagementHandler {
                 return getDispatchStatus(body);
             } else if (path.endsWith("/getTaskStatistics")) {
                 return getTaskStatistics(body);
+            } else if (path.endsWith("/getTodayProductivity")) {
+                return getTodayProductivity();
+            } else if (path.endsWith("/getQualityRate")) {
+                return getQualityRate();
             }
             return TcpResponse.error("未知的任务中心接口: " + path);
         } catch (Exception e) {
@@ -111,8 +125,9 @@ public class TaskInfoManagementHandler {
                 // 允许 body 中包含字段: deviceIds, assignedQuantity, deviceFileConfigId, poolTemplateId
                 MapWrapper map = objectMapper.readValue(StringUtils.isEmpty(body) ? "{}" : body, MapWrapper.class);
                 if (map.deviceIds != null && map.deviceIds.length > 0) {
-                    List<TaskDeviceLink> links = new java.util.ArrayList<>();
-                    List<String> deviceNames = new java.util.ArrayList<>(); // 收集设备名称
+                    List<TaskDeviceLink> links = new ArrayList<>();
+                    List<String> deviceNames = new ArrayList<>(); // 收集设备名称
+                    List<String> deviceIds = new ArrayList<>(); // 收集设备ID
                     
                     for (Long deviceId : map.deviceIds) {
                         TaskDeviceLink link = new TaskDeviceLink();
@@ -124,6 +139,7 @@ public class TaskInfoManagementHandler {
                             if (di != null) {
                                 link.setDeviceName(di.getName());
                                 deviceNames.add(di.getName()); // 收集设备名称
+                                deviceIds.add(deviceId.toString());
                             }
                         } catch (Exception ignore) { }
                         link.setDeviceFileConfigId(map.deviceFileConfigId);
@@ -139,7 +155,9 @@ public class TaskInfoManagementHandler {
                     // 将设备名称用逗号分隔存储到任务中
                     if (!deviceNames.isEmpty()) {
                         String deviceNamesStr = String.join(",", deviceNames);
+                        String deviceIdsStr = String.join(",", deviceIds);
                         taskInfo.setDeviceName(deviceNamesStr);
+                        taskInfo.setDeviceId(deviceIdsStr);
                         // 更新任务信息，保存设备名称
                         taskInfoService.updateTaskInfo(taskInfo);
                         log.info("[TaskCreation] 任务设备名称已保存: {}", deviceNamesStr);
@@ -271,8 +289,19 @@ public class TaskInfoManagementHandler {
         return TcpResponse.success(data);
     }
 
-    /** 列表查询（分页格式，支持 name/status/poolId 过滤） */
+    /** 列表查询（不分页格式，支持 name/status/poolId 筛选） */
     private TcpResponse list(String body) throws Exception {
+         TaskInfo query = new TaskInfo();
+        if (StringUtils.isNotEmpty(body)) {
+            query = objectMapper.readValue(body, TaskInfo.class);
+        }
+        List<TaskInfo> data = taskInfoService.selectTaskInfoList(query);
+        return TcpResponse.success(data);
+    }
+
+
+    /** 列表查询（分页格式，支持 name/status/poolId 过滤） */
+    private TcpResponse pageList(String body) throws Exception {
         if (StringUtils.isEmpty(body)) {
             return TcpResponse.error("请求体不能为空");
         }
@@ -402,6 +431,73 @@ public class TaskInfoManagementHandler {
         var statistics = taskDispatcherService.getTaskStatistics(id);
         return TcpResponse.success(statistics);
     }
+
+    /** 今日计划/实际产量 **/
+    private TcpResponse getTodayProductivity() {
+        Map<String,Integer> result = new HashMap<>();
+        //今日计划数量
+        int plannedQuantity = 0;
+        //实际生产数量
+        int completedQuantity = 0;
+        //查询所有任务
+        List<TaskInfo> taskInfoList = taskInfoService.selectTaskInfoList(new TaskInfo());
+
+        if(taskInfoList.isEmpty()){
+            return TcpResponse.success(result);
+        }
+        for (TaskInfo taskInfo : taskInfoList){
+            //为故障的任务直接跳过
+            if(taskInfo.getStatus().equals(TaskStatus.ERROR.getCode())){
+                continue;
+            }
+            //查询数据池表
+            DataPool pool = dataPoolService.selectDataPoolById(taskInfo.getPoolId());
+            if(taskInfo.getPlannedQuantity() == -1){
+                plannedQuantity += pool.getTotalCount();
+            }else {
+                plannedQuantity += taskInfo.getPlannedQuantity();
+            }
+            completedQuantity += taskInfo.getCompletedQuantity();
+        }
+        //今日计划数量
+        result.put("plannedQuantity",plannedQuantity);
+        //实际生产数量
+        result.put("completedQuantity",completedQuantity);
+
+        return TcpResponse.success(result);
+    }
+
+
+    /**合格率**/
+    private TcpResponse getQualityRate() {
+       //合格率等于除去待打印的数据/成功数据
+        //除去待打印数据
+        int passedQuantity = 0;
+        //已完成数据
+        int failedQuantity = 0;
+        //合格率
+        double qualityRate;
+        //查询所有任务
+        List<TaskInfo> taskInfoList = taskInfoService.selectTaskInfoList(new TaskInfo());
+
+        for (TaskInfo taskInfo : taskInfoList){
+            //为故障的任务直接跳过
+            if(taskInfo.getStatus().equals(TaskStatus.ERROR.getCode())){
+               continue;
+            }
+            DataPool pool = dataPoolService.selectDataPoolById(taskInfo.getPoolId());
+            //查询不包含待打印的数据
+            passedQuantity += dataPoolItemService.countByNotPending(pool.getId());
+            //查询成功的数据
+            failedQuantity += dataPoolItemService.countByStatus(pool.getId(), ItemStatus.PRINTED.getCode());
+        }
+            //获取合格率保留四舍五入4位小数
+            qualityRate= (double) passedQuantity /failedQuantity;
+            qualityRate = Math.round(qualityRate * 10000) / 100.0;
+
+        return TcpResponse.success(qualityRate);
+    }
+
 }
 
 

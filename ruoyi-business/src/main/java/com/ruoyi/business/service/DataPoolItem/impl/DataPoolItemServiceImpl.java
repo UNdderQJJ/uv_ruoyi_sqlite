@@ -440,6 +440,11 @@ public void updateDataPoolItemsStatus(List<DataPoolItem> itemList, String status
         return dataPoolItemMapper.countByStatus(poolId);
     }
 
+    @Override
+    public int countByStatus(Long poolId, String status) {
+        return  dataPoolItemMapper.countIntStatus(poolId, status);
+    }
+
     /**
      * 获取数据池统计信息
      * 
@@ -571,5 +576,10 @@ public void updateDataPoolItemsStatus(List<DataPoolItem> itemList, String status
     @Override
     public void updateToPendingItem(Long poolId) {
         dataPoolItemMapper.updateToPendingItem(poolId);
+    }
+
+    @Override
+    public int countByNotPending(Long id) {
+      return  dataPoolItemMapper.countByNotPending(id);
     }
 }

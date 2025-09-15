@@ -215,6 +215,16 @@ public interface IDataPoolItemService {
      */
     public List<Map<String, Object>> countByStatus(Long poolId);
 
+     /**
+     * 统计各状态的数据量
+     *
+     * @param poolId 数据池ID（可选）
+      * @param status 状态
+     * @return 状态统计结果
+     */
+    public int countByStatus(Long poolId,String status);
+
+
     /**
      * 获取数据池统计信息
      * 
@@ -264,4 +274,12 @@ public interface IDataPoolItemService {
      * @param poolId 数据池ID
      */
     void updateToPendingItem(Long poolId);
+
+    /**
+     * 统计非待打印的数据项数量
+     *
+     * @param id 数据项ID
+     * @return 非待打印的数据项数量
+     */
+    int countByNotPending(Long id);
 }
