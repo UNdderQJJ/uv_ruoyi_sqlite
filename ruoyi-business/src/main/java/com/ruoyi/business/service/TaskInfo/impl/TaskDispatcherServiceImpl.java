@@ -5,6 +5,7 @@ import com.ruoyi.business.domain.SystemLog.SystemLog;
 import com.ruoyi.business.domain.TaskInfo.*;
 import com.ruoyi.business.enums.*;
 import com.ruoyi.business.events.TaskPauseEvent;
+import com.ruoyi.business.service.DataPool.DataSourceLifecycleService;
 import com.ruoyi.business.service.SystemLog.ISystemLogService;
 import com.ruoyi.business.service.TaskInfo.*;
 import com.ruoyi.business.service.DeviceInfo.IDeviceInfoService;
@@ -14,10 +15,12 @@ import com.ruoyi.business.service.DeviceInfo.DeviceCommandService;
 import com.ruoyi.business.events.TaskStartEvent;
 import com.ruoyi.business.events.TaskStopEvent;
 import com.ruoyi.business.events.CommandCompletedEvent;
+import com.ruoyi.business.service.TaskInfo.runner.DataPoolProducerRunner;
 import com.ruoyi.business.utils.StxEtxProtocolUtil;
 import com.ruoyi.common.exception.ServiceException;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.Channel;
+import jakarta.annotation.Resource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -105,6 +108,10 @@ public class TaskDispatcherServiceImpl implements TaskDispatcherService {
     
     @Autowired
     private TaskScheduler taskScheduler;
+
+    @Resource
+    private DataSourceLifecycleService dataSourceLifecycleService;
+
     
     @Override
     public void startNewTask(TaskDispatchRequest request) {
@@ -124,6 +131,7 @@ public class TaskDispatcherServiceImpl implements TaskDispatcherService {
             taskStatus.setPlannedPrintCount(request.getPrintCount());
             taskStatusMap.put(request.getTaskId(), taskStatus);
             taskDispatchProperties.setPlanPrintCount(request.getPrintCount());//设置计划打印数量
+            taskDispatchProperties.setOriginalCount(request.getOriginalCount());//设置已完成的原始数量
             
             // 2. 执行预检
             if (!executePreFlightChecks(request.getTaskId(), request.getDeviceIds())) {
@@ -132,6 +140,9 @@ public class TaskDispatcherServiceImpl implements TaskDispatcherService {
                 taskStatus.setEndTime(System.currentTimeMillis());
                 return;
             }
+            // 2.1. 启动数据池，进行数据获取填充进热数据库
+            dataSourceLifecycleService.startDataSource(request.getPoolId());
+
              // 3. 更新任务状态为运行中
             taskStatus.setStatus(TaskDispatchStatusEnum.RUNNING.getCode());
             // 更新任务状态
@@ -222,6 +233,9 @@ public class TaskDispatcherServiceImpl implements TaskDispatcherService {
 
             // 停止任务进度上报定时器
             stopProgressUpdater(taskId);
+
+            // 停止数据源
+            dataSourceLifecycleService.stopDataSource(getPoolId(taskId));
             
             // 清空当前任务
             if (currentTask != null && currentTask.getId().equals(taskId)) {
@@ -274,7 +288,7 @@ public class TaskDispatcherServiceImpl implements TaskDispatcherService {
                 //在设备正常的情况下可以进行状态更新
                 if(deviceInfo.getStatus().equals(DeviceStatus.ONLINE_PRINTING.getCode()) || deviceInfo.getStatus().equals(DeviceStatus.ONLINE_IDLE.getCode())) {
                     deviceInfoService.updateDeviceStatus(link.getDeviceId(), DeviceStatus.ONLINE_IDLE.getCode());
-                    taskDeviceLinkService.updateDeviceStatus(taskId, link.getDeviceId(), TaskDeviceStatus.WAITING.getCode());
+                    taskDeviceLinkService.updateDeviceStatus(taskId, link.getDeviceId(), TaskDeviceStatus.COMPLETED.getCode());
                 }
                 //在设备异常的情况下只能进行状态更新
                 deviceStatusMap.get(link.getDeviceId().toString()).setStatus(TaskDeviceStatus.WAITING.getCode());
@@ -287,6 +301,9 @@ public class TaskDispatcherServiceImpl implements TaskDispatcherService {
 
             // 停止任务进度上报定时器
             stopProgressUpdater(taskId);
+
+            // 停止数据源
+            dataSourceLifecycleService.stopDataSource(getPoolId(taskId));
 
             // 清空当前任务
             if (currentTask != null && currentTask.getId().equals(taskId)) {
@@ -657,9 +674,10 @@ public class TaskDispatcherServiceImpl implements TaskDispatcherService {
         eventPublisher.publishEvent(new CommandCompletedEvent(this, taskId, deviceId));
 
         // 检查计划打印数量：-1 表示无限，查询数据队列数量，如果为0则完成任务
+        TaskDispatchStatus taskStatus = taskStatusMap.get(taskId);
         try {
             if (commandQueueService.getQueueSize(taskId) == 0) {
-                finishTaskDispatch(taskId);
+//                finishTaskDispatch(taskId);
             }
         } catch (Exception ex) {
             log.warn("检查计划打印数量时发生异常，taskId: {}", taskId, ex);
@@ -833,7 +851,7 @@ public class TaskDispatcherServiceImpl implements TaskDispatcherService {
             byte[] commandBytes = StxEtxProtocolUtil.buildCommand(command);
             channel.writeAndFlush(Unpooled.wrappedBuffer(commandBytes));
 
-            log.debug("<========= 设备ID: {}, 指令: {}", deviceId, command);
+            log.debug("设备ID: {}, 发送指令===>: {}", deviceId, command);
             //记录通讯日志
             SystemLog systemLog = new SystemLog();
             systemLog.setLogType(SystemLogType.COMMUNICATION.getCode());

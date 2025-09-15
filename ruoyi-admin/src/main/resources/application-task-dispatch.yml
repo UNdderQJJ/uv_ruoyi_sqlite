@@ -2,15 +2,15 @@
 task:
   dispatch:
     # 批处理大小
-    batch-size: 1000
+    batch-size: 1500
     # 预加载数量
     preload-count: 20
     # 心跳超时时间（毫秒）
     heartbeat-timeout: 60000
     # 最大重试次数
-    max-retry-count: 3
+    max-retry-count: 1
     # 指令队列大小
-    command-queue-size: 1000
+    command-queue-size: 3000
     # 线程池配置
     thread-pool:
       # 生成池线程池

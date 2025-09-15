@@ -37,15 +37,16 @@ public class DataIngestionService {
      */
     @Transactional(rollbackFor = Exception.class)
     public void ingestItems(Long poolId, List<String> items) {
-        if (items == null || items.isEmpty()) {
-            return;
-        }
+
         // 入库前统计旧值
         var before = dataPoolItemService.getDataPoolStatistics(poolId);
         Long oldTotal = ((Integer) before.getOrDefault("totalCount", 0)).longValue();
         Long oldPending = ((Integer) before.getOrDefault("pendingCount", 0)).longValue();
 
-        int inserted = dataPoolItemService.batchAddDataItems(poolId, items);
+        int inserted = 0;
+        if (items != null && !items.isEmpty()) {
+            inserted = dataPoolItemService.batchAddDataItems(poolId, items);
+        }
 
         // 入库后统计新值
         var after = dataPoolItemService.getDataPoolStatistics(poolId);
@@ -84,7 +85,7 @@ public class DataIngestionService {
         
         // 转换为字符串列表
         List<String> stringItems = items.stream()
-                .map(item -> convertItemToString(item))
+                .map(this::convertItemToString)
                 .toList();
         
         ingestItems(poolId, stringItems);

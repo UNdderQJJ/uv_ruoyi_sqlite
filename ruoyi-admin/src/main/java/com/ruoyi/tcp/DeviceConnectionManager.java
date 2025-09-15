@@ -1,6 +1,7 @@
 package com.ruoyi.tcp;
 
 import com.ruoyi.business.domain.DeviceInfo.DeviceInfo;
+import com.ruoyi.business.enums.DeviceStatus;
 import com.ruoyi.business.service.DeviceInfo.IDeviceInfoService;
 import com.ruoyi.business.service.TaskInfo.DeviceDataHandlerService;
 import io.netty.bootstrap.Bootstrap;
@@ -123,38 +124,37 @@ public class DeviceConnectionManager {
 
             ChannelFuture future = bootstrap.connect(device.getIpAddress(), device.getPort());
 
-            future.addListener(new ChannelFutureListener() {
-                @Override
-                public void operationComplete(ChannelFuture future) {
-                    if (future.isSuccess()) {
-                        Channel channel = future.channel();
+            future.addListener((ChannelFutureListener) future1 -> {
+                if (future1.isSuccess()) {
+                    Channel channel = future1.channel();
 
-                        // 设置设备ID到Channel属性中
-                        AttributeKey<String> deviceIdKey = AttributeKey.valueOf("deviceId");
-                        channel.attr(deviceIdKey).set(device.getId().toString());
+                    // 设置设备ID到Channel属性中
+                    AttributeKey<String> deviceIdKey = AttributeKey.valueOf("deviceId");
+                    channel.attr(deviceIdKey).set(device.getId().toString());
 
-                        // 注册设备通道
-                        deviceDataHandlerService.registerDeviceChannel(device.getId().toString(), channel);
+                    // 注册设备通道
+                    deviceDataHandlerService.registerDeviceChannel(device.getId().toString(), channel);
 
-                        log.info("设备连接成功: {} ({}:{})", device.getName(), device.getIpAddress(), device.getPort());
+                    log.info("设备连接成功: {} ({}:{})", device.getName(), device.getIpAddress(), device.getPort());
 
-                        // 更新设备状态为在线
-                        deviceInfoService.updateDeviceStatus(device.getId(), "ONLINE_IDLE");
-
-                        // 发送初始ping建立心跳
-                        sendInitialPing(channel, device.getId().toString());
-
-                    } else {
-                        log.error("设备连接失败: {} ({}:{}), 原因: {}",
-                                device.getName(), device.getIpAddress(), device.getPort(),
-                                future.cause().getMessage());
-
-                        // 更新设备状态为离线
-                        deviceInfoService.updateDeviceStatus(device.getId(), "OFFLINE");
-
-                        // 延迟重试连接
-                        scheduleReconnect(device);
+                    //不等于在线打印 更新设备状态为在线
+                    if (!device.getStatus().equals(DeviceStatus.ONLINE_PRINTING.getCode())) {
+                        deviceInfoService.updateDeviceStatus(device.getId(), DeviceStatus.ONLINE_IDLE.getCode());
                     }
+
+                    // 发送初始ping建立心跳
+                    sendInitialPing(channel, device.getId().toString());
+
+                } else {
+                    log.error("设备连接失败: {} ({}:{}), 原因: {}",
+                            device.getName(), device.getIpAddress(), device.getPort(),
+                            future1.cause().getMessage());
+
+                    // 更新设备状态为离线
+                    deviceInfoService.updateDeviceStatus(device.getId(), "OFFLINE");
+
+                    // 延迟重试连接
+                    scheduleReconnect(device);
                 }
             });
 

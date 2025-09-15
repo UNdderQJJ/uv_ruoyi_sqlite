@@ -26,7 +26,10 @@ public class TaskDispatchProperties {
     private Integer commandQueueSize = 1000;
 
     /** 计划打印数量 */
-    private Integer planPrintCount;
+    private Integer planPrintCount = 0;
+
+    /** 原已完成数量 */
+    private Integer originalCount = 0;
     
     /** 线程池配置 */
     private ThreadPoolConfig threadPool = new ThreadPoolConfig();
