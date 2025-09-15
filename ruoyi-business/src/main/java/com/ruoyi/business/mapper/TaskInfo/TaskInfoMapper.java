@@ -17,6 +17,9 @@ public interface TaskInfoMapper {
     /** 查询任务列表（可按条件过滤） */
     List<TaskInfo> selectTaskInfoList(TaskInfo query);
 
+    /** 查询任务列表（分页格式） */
+    List<TaskInfo> selectTaskInfoPageList(TaskInfo query);
+
     /** 统计任务数量（可按条件过滤） */
     Integer countTaskInfo(TaskInfo query);
 

@@ -2,6 +2,8 @@ package com.ruoyi.business.service.DeviceInfo;
 
 import java.util.List;
 import com.ruoyi.business.domain.DeviceInfo.DeviceInfo;
+import com.ruoyi.common.core.page.PageQuery;
+import com.ruoyi.common.core.page.PageResult;
 
 /**
  * 设备信息Service接口
@@ -34,6 +36,14 @@ public interface IDeviceInfoService
      * @return 设备信息集合
      */
     public List<DeviceInfo> selectDeviceInfoList(DeviceInfo deviceInfo);
+
+    /**
+     * 分页查询设备信息列表
+     * @param deviceInfo 查询条件
+     * @param pageQuery 分页参数
+     * @return 分页结果
+     */
+    public PageResult<DeviceInfo> selectDeviceInfoPageList(DeviceInfo deviceInfo, PageQuery pageQuery);
 
     /**
      * 根据设备类型查询设备列表

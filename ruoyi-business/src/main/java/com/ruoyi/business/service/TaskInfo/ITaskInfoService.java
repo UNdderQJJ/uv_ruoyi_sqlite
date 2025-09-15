@@ -2,6 +2,8 @@ package com.ruoyi.business.service.TaskInfo;
 
 import com.ruoyi.business.domain.TaskInfo.TaskInfo;
 import com.ruoyi.business.enums.TaskStatus;
+import com.ruoyi.common.core.page.PageQuery;
+import com.ruoyi.common.core.page.PageResult;
 
 import java.util.List;
 
@@ -25,6 +27,9 @@ public interface ITaskInfoService {
 
     /** 查询任务列表（可过滤） */
     List<TaskInfo> selectTaskInfoList(TaskInfo query);
+
+    /** 查询任务列表（分页格式） */
+    PageResult<TaskInfo> selectTaskInfoPageList(TaskInfo query, PageQuery pageQuery);
 
     /** 统计任务数量（可过滤） */
     Integer countTaskInfo(TaskInfo query);

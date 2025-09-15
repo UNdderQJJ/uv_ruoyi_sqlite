@@ -47,6 +47,34 @@
         ORDER BY create_time DESC
     </select>
 
+    <!-- 分页查询任务列表 -->
+    <select id="selectTaskInfoPageList" parameterType="com.ruoyi.business.domain.TaskInfo.TaskInfo" resultMap="TaskInfoResult">
+        SELECT *
+        FROM task_info
+        <where>
+            del_flag = 0
+            <if test="name != null and name != ''">
+                AND name LIKE '%' || #{name} || '%'
+            </if>
+            <if test="status != null">
+                AND status = #{status}
+            </if>
+            <if test="poolId != null">
+                AND pool_id = #{poolId}
+            </if>
+            <if test="deviceName != null and deviceName != ''">
+                AND device_name LIKE '%' || #{deviceName} || '%'
+            </if>
+            <if test="poolName != null and poolName != ''">
+                AND pool_name LIKE '%' || #{poolName} || '%'
+            </if>
+            <if test="description != null and description != ''">
+                AND description LIKE '%' || #{description} || '%'
+            </if>
+        </where>
+        ORDER BY create_time DESC
+    </select>
+
     <!-- 统计任务数量（按条件） -->
     <select id="countTaskInfo" parameterType="com.ruoyi.business.domain.TaskInfo.TaskInfo" resultType="int">
         SELECT COUNT(1)

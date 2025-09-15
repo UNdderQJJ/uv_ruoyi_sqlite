@@ -1,5 +1,6 @@
 package com.ruoyi.tcp.business.Task;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ruoyi.business.domain.TaskInfo.TaskInfo;
 import com.ruoyi.business.enums.DeviceStatus;
@@ -16,6 +17,8 @@ import com.ruoyi.business.service.DataPoolItem.IDataPoolItemService;
 import com.ruoyi.business.service.TaskInfo.TaskDispatcherService;
 import com.ruoyi.business.domain.TaskInfo.TaskDispatchRequest;
 import com.ruoyi.common.core.TcpResponse;
+import com.ruoyi.common.core.page.PageQuery;
+import com.ruoyi.common.core.page.PageResult;
 import com.ruoyi.common.utils.StringUtils;
 import jakarta.annotation.Resource;
 import org.apache.commons.lang3.ObjectUtils;
@@ -25,6 +28,7 @@ import org.springframework.security.core.parameters.P;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * 任务中心 TaskInfo TCP 处理器
@@ -150,51 +154,6 @@ public class TaskInfoManagementHandler {
         return TcpResponse.error("新增任务失败");
     }
 
-
-
-    /**
-     * 执行任务创建后的完整工作流程
-     * 使用新的任务调度架构
-     */
-    private void executeTaskCreationWorkflow(TaskInfo taskInfo, MapWrapper map) {
-        try {
-            log.info("[TaskCreationWorkflow] 开始执行任务创建后的工作流程，任务ID: {}", taskInfo.getId());
-            
-            // 1. 启动数据池，进行数据获取填充进热数据库
-            if (map.poolTemplateId != null) {
-                try {
-                    String result = dataSourceLifecycleService.startDataSource(taskInfo.getPoolId());
-                    log.info("[TaskCreationWorkflow] 启动数据池结果：{}", result);
-                } catch (Exception e) {
-                    log.error("[TaskCreationWorkflow] 启动数据池异常，ID: {}", taskInfo.getPoolId(), e);
-                }
-            }
-            
-            // 2. 创建任务调度请求
-            TaskDispatchRequest request = new TaskDispatchRequest();
-            request.setTaskId(taskInfo.getId());
-            request.setDeviceIds(map.deviceIds);
-            request.setPoolId(taskInfo.getPoolId());
-            request.setPreloadCount(taskInfo.getPreloadDataCount());
-            request.setBatchSize(1000);
-            request.setTaskName(taskInfo.getName());
-            request.setDescription(taskInfo.getDescription());
-            request.setDeviceFileConfigId(map.deviceFileConfigId);
-            request.setPoolTemplateId(map.poolTemplateId);
-            request.setAssignedQuantity(taskInfo.getPreloadDataCount());
-            request.setOriginalCount(taskInfo.getCompletedQuantity());
-            request.setPrintCount(taskInfo.getPlannedQuantity());
-            
-            // 3. 启动任务调度
-            taskDispatcherService.startNewTask(request);
-            
-            log.info("[TaskCreationWorkflow] 任务调度已启动，任务ID: {}", taskInfo.getId());
-            
-        } catch (Exception e) {
-            log.error("[TaskCreationWorkflow] 执行任务创建后工作流程异常，任务ID: {}", taskInfo.getId(), e);
-        }
-    }
-
     /**
      * 用于解析创建任务时的扩展字段
      */
@@ -312,11 +271,42 @@ public class TaskInfoManagementHandler {
         return TcpResponse.success(data);
     }
 
-    /** 列表查询（支持 name/status/poolId 过滤） */
+    /** 列表查询（分页格式，支持 name/status/poolId 过滤） */
     private TcpResponse list(String body) throws Exception {
-        TaskInfo query = StringUtils.isEmpty(body) ? new TaskInfo() : objectMapper.readValue(body, TaskInfo.class);
-        List<TaskInfo> list = taskInfoService.selectTaskInfoList(query);
-        return TcpResponse.success(list);
+        if (StringUtils.isEmpty(body)) {
+            return TcpResponse.error("请求体不能为空");
+        }
+
+        // 解析请求参数
+        Map<String, Object> params = objectMapper.readValue(body, new TypeReference<>() {});
+        
+        // 构建查询条件
+        TaskInfo query = objectMapper.convertValue(params, TaskInfo.class);
+        
+        // 构建分页参数
+        PageQuery pageQuery = new PageQuery();
+        if (params.containsKey("pageNum")) {
+            pageQuery.setPageNum((Integer) params.get("pageNum"));
+        }
+        if (params.containsKey("pageSize")) {
+            pageQuery.setPageSize((Integer) params.get("pageSize"));
+        }
+        if (params.containsKey("orderByColumn")) {
+            pageQuery.setOrderByColumn((String) params.get("orderByColumn"));
+        }
+        if (params.containsKey("isAsc")) {
+            pageQuery.setIsAsc((String) params.get("isAsc"));
+        }
+        if (params.containsKey("reasonable")) {
+            pageQuery.setReasonable((Boolean) params.get("reasonable"));
+        }
+
+        // 执行分页查询
+        PageResult<TaskInfo> result = taskInfoService.selectTaskInfoPageList(query, pageQuery);
+        
+        log.info("[TaskInfoManagement] 任务列表查询成功，总数: {}, 当前页: {}, 每页: {}", 
+            result.getTotal(), result.getPageNum(), result.getPageSize());
+        return TcpResponse.success("查询成功", result);
     }
 
     /** 统计数量（支持过滤） */
@@ -342,6 +332,15 @@ public class TaskInfoManagementHandler {
     private TcpResponse startDispatch(String body) throws Exception {
         Long id = parseId(body);;
         TaskInfo taskInfo = taskInfoService.selectTaskInfoById(id);
+
+        // 判断任务是否已经启动
+        if(taskInfo.getStatus().equals(TaskStatus.RUNNING.getCode())){
+            return TcpResponse.error("任务已经启动");
+        }
+        // 判断任务是否已经完成
+        if(taskInfo.getStatus().equals(TaskStatus.COMPLETED.getCode())){
+            return TcpResponse.error("任务已完成");
+        }
 
         TaskDeviceLink query = new TaskDeviceLink();
         query.setTaskId(id);

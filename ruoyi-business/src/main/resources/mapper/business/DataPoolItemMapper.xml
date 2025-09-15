@@ -61,6 +61,19 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         <if test="limit != null">limit #{limit}</if>
     </select>
 
+    <!-- 分页查询待打印数据项 -->
+    <select id="selectPendingItemsPage" parameterType="com.ruoyi.business.domain.DataPoolItem.DataPoolItem" resultMap="DataPoolItemResult">
+        <include refid="selectDataPoolItemVo"/>
+        where del_flag = '0'
+        <if test="status != null">and status = #{status}</if>
+        <if test="poolId != null">and pool_id = #{poolId}</if>
+        <if test="deviceId != null and deviceId != ''">and device_id = #{deviceId}</if>
+        <if test="itemData != null and itemData != ''">and item_data like concat('%', #{itemData}, '%')</if>
+        <if test="printCount != null">and print_count = #{printCount}</if>
+        <if test="receivedTime != null">and received_time = #{receivedTime}</if>
+        order by received_time asc
+    </select>
+
     <update id="lockDataPoolItem">
         update data_pool_item
         set status = 'PRINTING',

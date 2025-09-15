@@ -1,6 +1,8 @@
 package com.ruoyi.business.service.DataPoolItem;
 
 import com.ruoyi.business.domain.DataPoolItem.DataPoolItem;
+import com.ruoyi.common.core.page.PageQuery;
+import com.ruoyi.common.core.page.PageResult;
 
 import java.util.List;
 import java.util.Map;
@@ -53,6 +55,15 @@ public interface IDataPoolItemService {
      * @return 待打印数据项列表
      */
     public List<DataPoolItem> selectPendingItems(Long poolId, Integer limit);
+
+    /**
+     * 获取待打印的数据项（分页格式）
+     * 
+     * @param queryItem 查询条件
+     * @param pageQuery 分页参数
+     * @return 分页结果
+     */
+    public PageResult<DataPoolItem> selectPendingItemsPage(DataPoolItem queryItem, PageQuery pageQuery);
 
     /**
      * 批量更新数据项状态于关联设备

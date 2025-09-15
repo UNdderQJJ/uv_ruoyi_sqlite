@@ -1,10 +1,14 @@
 package com.ruoyi.business.service.TaskInfo.impl;
 
+import com.github.pagehelper.Page;
 import com.ruoyi.business.domain.TaskInfo.TaskInfo;
 import com.ruoyi.business.enums.TaskStatus;
 import com.ruoyi.business.mapper.TaskInfo.TaskInfoMapper;
 import com.ruoyi.business.service.TaskInfo.ITaskInfoService;
+import com.ruoyi.common.core.page.PageQuery;
+import com.ruoyi.common.core.page.PageResult;
 import com.ruoyi.common.exception.ServiceException;
+import com.ruoyi.common.utils.PageQueryUtils;
 import jakarta.annotation.Resource;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -64,6 +68,34 @@ public class TaskInfoServiceImpl implements ITaskInfoService {
     @Override
     public List<TaskInfo> selectTaskInfoList(TaskInfo query) {
         return taskInfoMapper.selectTaskInfoList(query);
+    }
+
+    /** 查询任务列表（分页格式） */
+    @Override
+    public PageResult<TaskInfo> selectTaskInfoPageList(TaskInfo query, PageQuery pageQuery) {
+        long startTime = System.currentTimeMillis();
+        try {
+            // 启动分页
+            PageQueryUtils.startPage(pageQuery);
+            
+            // 执行查询
+            List<TaskInfo> list = taskInfoMapper.selectTaskInfoPageList(query);
+            
+            // 获取分页信息
+            Page<TaskInfo> page = (Page<TaskInfo>) list;
+            
+            // 构建分页结果
+            return PageResult.of(list, page.getTotal(), pageQuery);
+        } finally {
+            // 清理分页
+            PageQueryUtils.clearPage();
+            
+            // 性能监控
+            long duration = System.currentTimeMillis() - startTime;
+            if (duration > 3000) { // 超过3秒记录警告
+                System.out.println("任务列表分页查询耗时: " + duration + "ms");
+            }
+        }
     }
 
     /** 统计任务数量（可过滤） */

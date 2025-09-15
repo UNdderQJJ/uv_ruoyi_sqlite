@@ -53,6 +53,14 @@ public interface DataPoolItemMapper {
     public List<DataPoolItem> selectPendingItems(Long poolId, Integer limit);
 
     /**
+     * 获取待打印的数据项（分页格式）
+     * 
+     * @param queryItem 查询条件
+     * @return 待打印数据项列表
+     */
+    public List<DataPoolItem> selectPendingItemsPage(DataPoolItem queryItem);
+
+    /**
      * 锁定数据项（设置状态为PRINTING并设置deviceId）
      * 
      * @param id 数据项ID

@@ -2,7 +2,12 @@ package com.ruoyi.business.service.DeviceInfo.impl;
 
 
 import java.util.List;
+import com.github.pagehelper.Page;
+import com.ruoyi.business.domain.TaskInfo.TaskInfo;
+import com.ruoyi.common.core.page.PageQuery;
+import com.ruoyi.common.core.page.PageResult;
 import com.ruoyi.common.utils.DateUtils;
+import com.ruoyi.common.utils.PageQueryUtils;
 import com.ruoyi.common.utils.StringUtils;
 import jakarta.annotation.Resource;
 import org.springframework.stereotype.Service;
@@ -56,6 +61,36 @@ public class DeviceInfoServiceImpl implements IDeviceInfoService
     public List<DeviceInfo> selectDeviceInfoList(DeviceInfo deviceInfo)
     {
         return deviceInfoMapper.selectDeviceInfoList(deviceInfo);
+    }
+
+    /**
+     * 分页查询设备信息列表
+     */
+    @Override
+    public PageResult<DeviceInfo> selectDeviceInfoPageList(DeviceInfo deviceInfo, PageQuery pageQuery) {
+        long startTime = System.currentTimeMillis();
+        try {
+            // 启动分页
+            PageQueryUtils.startPage(pageQuery);
+
+            // 执行查询
+             List<DeviceInfo> list = deviceInfoMapper.selectDeviceInfoList(deviceInfo);
+
+            // 获取分页信息
+            Page<DeviceInfo> page = (Page<DeviceInfo>) list;
+
+            // 构建分页结果
+            return PageResult.of(list, page.getTotal(), pageQuery);
+        } finally {
+            // 清理分页
+            PageQueryUtils.clearPage();
+
+            // 性能监控
+            long duration = System.currentTimeMillis() - startTime;
+            if (duration > 3000) { // 超过3秒记录警告
+                System.out.println("设备列表分页查询耗时: " + duration + "ms");
+            }
+        }
     }
 
     /**

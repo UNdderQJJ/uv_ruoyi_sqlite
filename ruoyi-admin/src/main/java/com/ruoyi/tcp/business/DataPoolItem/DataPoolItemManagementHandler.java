@@ -6,6 +6,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ruoyi.business.domain.DataPoolItem.DataPoolItem;
 import com.ruoyi.business.service.DataPoolItem.IDataPoolItemService;
 import com.ruoyi.common.core.TcpResponse;
+import com.ruoyi.common.core.page.PageQuery;
+import com.ruoyi.common.core.page.PageResult;
 import com.ruoyi.common.utils.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -336,18 +338,44 @@ public class DataPoolItemManagementHandler {
     }
 
     /**
-     * 获取待打印数据
+     * 获取待打印数据（分页格式）
      */
     private TcpResponse getPendingItems(String body) throws JsonProcessingException {
-        DataPoolItem queryItem = objectMapper.readValue(body, DataPoolItem.class);
+        if (StringUtils.isEmpty(body)) {
+            return TcpResponse.error("请求体不能为空");
+        }
+
+        // 解析请求参数
+        Map<String, Object> params = objectMapper.readValue(body, new TypeReference<>() {
+        });
         
-        Long poolId = queryItem.getPoolId();
-        Integer limit = queryItem.getPrintCount(); // 复用printCount字段作为limit
+        // 构建查询条件
+        DataPoolItem queryItem = objectMapper.convertValue(params, DataPoolItem.class);
         
-        List<DataPoolItem> items = dataPoolItemService.selectPendingItems(poolId, limit);
+        // 构建分页参数
+        PageQuery pageQuery = new PageQuery();
+        if (params.containsKey("pageNum")) {
+            pageQuery.setPageNum((Integer) params.get("pageNum"));
+        }
+        if (params.containsKey("pageSize")) {
+            pageQuery.setPageSize((Integer) params.get("pageSize"));
+        }
+        if (params.containsKey("orderByColumn")) {
+            pageQuery.setOrderByColumn((String) params.get("orderByColumn"));
+        }
+        if (params.containsKey("isAsc")) {
+            pageQuery.setIsAsc((String) params.get("isAsc"));
+        }
+        if (params.containsKey("reasonable")) {
+            pageQuery.setReasonable((Boolean) params.get("reasonable"));
+        }
+
+        // 执行分页查询
+        PageResult<DataPoolItem> result = dataPoolItemService.selectPendingItemsPage(queryItem, pageQuery);
         
-        log.info("[DataPoolItemManagement] 获取待打印数据成功，数量: {}", items.size());
-        return TcpResponse.success("获取待打印数据成功", items);
+        log.info("[DataPoolItemManagement] 获取待打印数据成功，总数: {}, 当前页: {}, 每页: {}", 
+            result.getTotal(), result.getPageNum(), result.getPageSize());
+        return TcpResponse.success("获取待打印数据成功", result);
     }
 
     /**

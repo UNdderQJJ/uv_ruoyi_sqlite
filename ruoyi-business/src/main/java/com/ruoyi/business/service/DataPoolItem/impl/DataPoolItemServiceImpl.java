@@ -1,10 +1,14 @@
 package com.ruoyi.business.service.DataPoolItem.impl;
 
+import com.github.pagehelper.Page;
 import com.ruoyi.business.domain.DataPoolItem.DataPoolItem;
 import com.ruoyi.business.enums.ItemStatus;
 import com.ruoyi.business.mapper.DataPoolItem.DataPoolItemMapper;
 import com.ruoyi.business.service.DataPoolItem.IDataPoolItemService;
+import com.ruoyi.common.core.page.PageQuery;
+import com.ruoyi.common.core.page.PageResult;
 import com.ruoyi.common.utils.DateUtils;
+import com.ruoyi.common.utils.PageQueryUtils;
 import com.ruoyi.common.utils.StringUtils;
 import jakarta.annotation.Resource;
 import org.springframework.stereotype.Service;
@@ -77,6 +81,40 @@ public class DataPoolItemServiceImpl implements IDataPoolItemService {
     @Override
     public List<DataPoolItem> selectPendingItems(Long poolId, Integer limit) {
         return dataPoolItemMapper.selectPendingItems(poolId, limit);
+    }
+
+    /**
+     * 获取待打印的数据项（分页格式）
+     * 
+     * @param queryItem 查询条件
+     * @param pageQuery 分页参数
+     * @return 分页结果
+     */
+    @Override
+    public PageResult<DataPoolItem> selectPendingItemsPage(DataPoolItem queryItem, PageQuery pageQuery) {
+        long startTime = System.currentTimeMillis();
+        try {
+            // 启动分页
+            PageQueryUtils.startPage(pageQuery);
+            
+            // 执行查询
+            List<DataPoolItem> list = dataPoolItemMapper.selectPendingItemsPage(queryItem);
+            
+            // 获取分页信息
+            Page<DataPoolItem> page = (Page<DataPoolItem>) list;
+            
+            // 构建分页结果
+            return PageResult.of(list, page.getTotal(), pageQuery);
+        } finally {
+            // 清理分页
+            PageQueryUtils.clearPage();
+            
+            // 性能监控
+            long duration = System.currentTimeMillis() - startTime;
+            if (duration > 3000) { // 超过3秒记录警告
+                System.out.println("待打印数据分页查询耗时: " + duration + "ms");
+            }
+        }
     }
 
 /**

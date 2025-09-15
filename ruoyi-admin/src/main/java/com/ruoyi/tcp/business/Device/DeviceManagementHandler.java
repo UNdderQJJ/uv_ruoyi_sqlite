@@ -1,5 +1,6 @@
 package com.ruoyi.tcp.business.Device;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ruoyi.business.domain.DeviceInfo.DeviceInfo;
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -10,6 +11,8 @@ import com.ruoyi.business.service.DeviceInfo.DeviceCommandService;
 import com.ruoyi.business.service.DeviceInfo.DeviceConfigService;
 import com.ruoyi.business.service.DeviceInfo.IDeviceInfoService;
 import com.ruoyi.common.core.TcpResponse;
+import com.ruoyi.common.core.page.PageQuery;
+import com.ruoyi.common.core.page.PageResult;
 import com.ruoyi.common.utils.StringUtils;
 
 import org.apache.commons.lang3.ObjectUtils;
@@ -117,17 +120,46 @@ public class DeviceManagementHandler {
     }
 
     /**
-     * 查询设备列表
+     * 查询设备列表（分页格式）
      */
     private TcpResponse listDevices(String body) {
         try {
-            DeviceInfo deviceInfo = null;
-            if (body != null && !body.trim().isEmpty()) {
-                // 如果有请求体，则解析查询条件
-                deviceInfo = objectMapper.readValue(body, DeviceInfo.class);
+            if (body == null || body.trim().isEmpty()) {
+                return TcpResponse.error("请求体不能为空");
             }
-            List<DeviceInfo> list = deviceInfoService.selectDeviceInfoList(deviceInfo);
-            return TcpResponse.success(list);
+
+            // 解析请求参数
+            Map<String, Object> params = objectMapper.readValue(body, new TypeReference<>() {});
+
+            // 构建查询条件
+            DeviceInfo deviceInfo = objectMapper.convertValue(params, DeviceInfo.class);
+
+            // 构建分页参数
+            PageQuery pageQuery = new PageQuery();
+            Object pageNumObj = params.get("pageNum");
+            if (pageNumObj instanceof Integer) {
+                pageQuery.setPageNum((Integer) pageNumObj);
+            }
+            Object pageSizeObj = params.get("pageSize");
+            if (pageSizeObj instanceof Integer) {
+                pageQuery.setPageSize((Integer) pageSizeObj);
+            }
+            Object orderByColumnObj = params.get("orderByColumn");
+            if (orderByColumnObj instanceof String) {
+                pageQuery.setOrderByColumn((String) orderByColumnObj);
+            }
+            Object isAscObj = params.get("isAsc");
+            if (isAscObj instanceof String) {
+                pageQuery.setIsAsc((String) isAscObj);
+            }
+            Object reasonableObj = params.get("reasonable");
+            if (reasonableObj instanceof Boolean) {
+                pageQuery.setReasonable((Boolean) reasonableObj);
+            }
+
+            // 执行分页查询
+            PageResult<DeviceInfo> result = deviceInfoService.selectDeviceInfoPageList(deviceInfo, pageQuery);
+            return TcpResponse.success(result);
         } catch (Exception e) {
             log.error("查询设备列表异常", e);
             return TcpResponse.error("查询设备列表异常: " + e.getMessage());

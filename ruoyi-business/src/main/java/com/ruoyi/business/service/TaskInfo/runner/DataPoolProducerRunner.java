@@ -70,11 +70,12 @@ public class DataPoolProducerRunner implements Runnable {
     public void run() {
         log.info("数据生成池启动，任务ID: {}, 数据池ID: {}", taskId, poolId);
 
-          int printCount = taskDispatchProperties.getPlanPrintCount();// 打印数量
+          int printCount = taskDispatchProperties.getPlanPrintCount();//待打印数量
+          int originalCount = taskDispatchProperties.getPlanPrintCount() - taskDispatchProperties.getOriginalCount();//已打印数量
         
         while (running) {
             //如果是计划打印，数据池队列等于计划打印时这停止生成
-            if (printCount != -1 && commandQueueService.getQueueSize(taskId) >= printCount) {
+            if (printCount != -1 && commandQueueService.getQueueSize(taskId) >= originalCount) {
                 log.info("计划打印数量已满，停止生成，任务ID: {}, 数据池ID: {}", taskId, poolId);
                 //记录打印日志
                 SystemLog systemLog = new SystemLog();
@@ -121,9 +122,14 @@ public class DataPoolProducerRunner implements Runnable {
             // 检查队列大小，避免队列过满
             int queueSize = commandQueueService.getQueueSize();
             int maxQueueSize = taskDispatchProperties.getCommandQueueSize();
-            int printCount = taskDispatchProperties.getPlanPrintCount();// 打印数量
+            int printCount = taskDispatchProperties.getPlanPrintCount();//待打印数量
+            int originalCount = taskDispatchProperties.getPlanPrintCount() - taskDispatchProperties.getOriginalCount();//已打印数量
+            //需打印数量
+            int batchSize;
             if(printCount == -1){
-                printCount = taskDispatchProperties.getBatchSize();
+                batchSize = taskDispatchProperties.getBatchSize();
+            }else {
+                batchSize = originalCount;
             }
 
             if (queueSize > maxQueueSize * 0.5) { // 队列超过50%时暂停生产
@@ -132,7 +138,7 @@ public class DataPoolProducerRunner implements Runnable {
             }
             
             // 批量查询待打印数据
-            List<DataPoolItem> items = dataPoolItemService.selectPendingItems(poolId, printCount);
+            List<DataPoolItem> items = dataPoolItemService.selectPendingItems(poolId, batchSize);
             
             if (items == null || items.isEmpty()) {
                 log.debug("没有待处理数据，任务ID: {}", taskId);
