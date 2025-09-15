@@ -2,6 +2,7 @@ package com.ruoyi.tcp.business.Task;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ruoyi.business.domain.TaskInfo.TaskInfo;
+import com.ruoyi.business.enums.DeviceStatus;
 import com.ruoyi.business.enums.TaskStatus;
 import com.ruoyi.business.domain.TaskInfo.TaskDeviceLink;
 import com.ruoyi.business.enums.TaskDeviceStatus;
@@ -20,6 +21,7 @@ import jakarta.annotation.Resource;
 import org.apache.commons.lang3.ObjectUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.security.core.parameters.P;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
@@ -44,12 +46,6 @@ public class TaskInfoManagementHandler {
 
     @Resource
     private IDeviceInfoService deviceInfoService;
-
-    @Resource
-    private DeviceCommandService deviceCommandService;
-
-    @Resource
-    private IDataPoolItemService dataPoolItemService;
 
     @Resource
     private DataSourceLifecycleService dataSourceLifecycleService;
@@ -276,7 +272,30 @@ public class TaskInfoManagementHandler {
     private TcpResponse delete(String body) throws Exception {
         // body: {"ids":[1,2,3]}
         Long[] ids = objectMapper.readValue(body, Long[].class);
-        int rows = taskInfoService.deleteTaskInfoByIds(ids);
+        //判断是否正在运行中
+        for(Long taskId :ids){
+            TaskInfo taskInfo = taskInfoService.selectTaskInfoById(taskId);
+            if(taskInfo.getStatus().equals(TaskStatus.RUNNING.getCode())){
+                return TcpResponse.error("任务正在运行中，无法删除！");
+            }
+        }
+
+         int rows = taskInfoService.deleteTaskInfoByIds(ids);
+        //删除后将相应的设备置为空闲，且故障的不做改变
+        for (Long taskId : ids){
+            List<TaskDeviceLink> links = taskDeviceLinkService.listByTaskId(taskId);
+            if(ObjectUtils.isEmpty( links)){
+                return TcpResponse.success(rows);
+            }
+            for (TaskDeviceLink link : links) {
+                // 如果设备已经故障，则不处理
+                if(link.getStatus().equals(TaskDeviceStatus.ERROR.getCode())){
+                    continue;
+                }
+                // 将设备状态置为空闲
+                deviceInfoService.updateDeviceStatus(link.getDeviceId(), DeviceStatus.ONLINE_IDLE.getCode());
+            }
+        }
         return TcpResponse.success(rows);
     }
 
