@@ -87,6 +87,8 @@ public class UDiskDataSchedulerService {
         try {
             readCount = uDiskFileReaderService.readDataIfBelowThreshold(dataPool, threshold, actualBatchSize);
         } catch (Exception e) {
+            //更新数据池为故障
+            dataPoolService.updateDataPoolStatus(poolId, PoolStatus.ERROR.getCode());
             // 更新连接状态为断开
             throw new IllegalStateException("文件读取出错"+e.getMessage());
         }

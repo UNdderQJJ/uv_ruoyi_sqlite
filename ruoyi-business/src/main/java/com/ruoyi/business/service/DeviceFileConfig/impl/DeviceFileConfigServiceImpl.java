@@ -1,6 +1,10 @@
 package com.ruoyi.business.service.DeviceFileConfig.impl;
 
 import java.util.List;
+
+import com.ruoyi.business.domain.DeviceInfo.DeviceInfo;
+import com.ruoyi.business.service.DeviceInfo.IDeviceInfoService;
+import com.ruoyi.business.service.DeviceInfo.impl.DeviceInfoServiceImpl;
 import com.ruoyi.common.utils.DateUtils;
 import com.ruoyi.common.utils.StringUtils;
 import jakarta.annotation.Resource;
@@ -21,6 +25,9 @@ public class DeviceFileConfigServiceImpl implements IDeviceFileConfigService
 {
     @Resource
     private DeviceFileConfigMapper deviceFileConfigMapper;
+
+    @Resource
+    private IDeviceInfoService deviceInfoService;
 
     /**
      * 查询设备文件配置
@@ -284,7 +291,14 @@ public class DeviceFileConfigServiceImpl implements IDeviceFileConfigService
         }
         
         if (deviceIds.size() == 1) {
-            return true; // 单个设备认为配置一致
+            List<DeviceFileConfig> firstDeviceConfigs = selectDefaultDeviceFileConfigListByDeviceId(deviceIds.get(0));
+            //如果有默认配置，则认为配置一致
+            if (!firstDeviceConfigs.isEmpty()) {
+                return true;
+            }else {
+                DeviceInfo deviceInfo = deviceInfoService.selectDeviceInfoById(deviceIds.get(0));
+               throw  new RuntimeException("请先设置"+deviceInfo.getName()+"设备默认文件配置");
+            }
         }
         
         // 获取第一个设备的默认配置作为基准
@@ -304,7 +318,8 @@ public class DeviceFileConfigServiceImpl implements IDeviceFileConfigService
                     }
                 }
                 if (!foundMatch) {
-                    return false; // 找不到匹配的配置
+                    DeviceInfo deviceInfo = deviceInfoService.selectDeviceInfoById(deviceIds.get(i));
+                    throw new RuntimeException("设备" + deviceInfo.getName() + "的默认文件配置与其他的不一致！");
                 }
             }
         }

@@ -127,7 +127,12 @@ public class TaskInfoManagementHandler {
         taskInfo.setStatus(TaskStatus.PENDING.getCode());//待开始
         //校验所有设备模版是否一致
         List<Long> deviceIdList = List.of(map.deviceIds);
-        boolean isConsistent = deviceFileConfigService.checkDeviceFileConfig(deviceIdList);
+        boolean isConsistent = false;
+        try {
+            isConsistent = deviceFileConfigService.checkDeviceFileConfig(deviceIdList);
+        } catch (Exception e) {
+            throw new RuntimeException(e.getMessage());
+        }
         if (!isConsistent){
             return TcpResponse.error("设备模版变量名称不一致，请检查设备模版是否一致");
         }
@@ -210,7 +215,12 @@ public class TaskInfoManagementHandler {
         if (map.deviceIds != null) {
             //校验所有设备模版是否一致
             List<Long> deviceIdList = List.of(map.deviceIds);
-            boolean isConsistent = deviceFileConfigService.checkDeviceFileConfig(deviceIdList);
+            boolean isConsistent = false;
+            try {
+                isConsistent = deviceFileConfigService.checkDeviceFileConfig(deviceIdList);
+            } catch (Exception e) {
+                throw new RuntimeException(e.getMessage());
+            }
             if (!isConsistent) {
                 return TcpResponse.error("设备模版变量名称不一致，请检查设备模版是否一致");
             }
@@ -305,10 +315,10 @@ public class TaskInfoManagementHandler {
             for (TaskDeviceLink link : links) {
                 // 如果设备已经故障，则不处理
                 if(link.getStatus().equals(TaskDeviceStatus.ERROR.getCode())){
-                    continue;
+                     deviceInfoService.removeCurrentTask(link.getDeviceId(),DeviceStatus.ERROR.getCode());
                 }
-                // 将设备状态置为空闲
-                deviceInfoService.updateDeviceStatus(link.getDeviceId(), DeviceStatus.ONLINE_IDLE.getCode());
+                //移除设备任务,设置设备状态为空闲
+                deviceInfoService.removeCurrentTask(link.getDeviceId(),DeviceStatus.ONLINE_IDLE.getCode());
             }
         }
         return TcpResponse.success(rows);
@@ -431,7 +441,11 @@ public class TaskInfoManagementHandler {
             request.setOriginalCount(taskInfo.getCompletedQuantity());
             request.setPrintCount(taskInfo.getPlannedQuantity());
 
-        taskDispatcherService.startNewTask(request);
+        try {
+            taskDispatcherService.startNewTask(request);
+        } catch (Exception e) {
+            throw new RuntimeException(e.getMessage());
+        }
         return TcpResponse.success("任务调度启动成功");
     }
 

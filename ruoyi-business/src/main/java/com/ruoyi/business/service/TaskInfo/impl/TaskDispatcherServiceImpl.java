@@ -141,9 +141,13 @@ public class TaskDispatcherServiceImpl implements TaskDispatcherService {
                 return;
             }
             // 2.1. 启动数据池，进行数据获取填充进热数据库
-            dataSourceLifecycleService.startDataSource(request.getPoolId());
+            try {
+                dataSourceLifecycleService.startDataSource(request.getPoolId());
+            } catch (Exception e) {
+                throw new RuntimeException(e.getMessage());
+            }
 
-             // 3. 更新任务状态为运行中
+            // 3. 更新任务状态为运行中
             taskStatus.setStatus(TaskDispatchStatusEnum.RUNNING.getCode());
             // 更新任务状态
             taskInfoService.updateTaskStatus(request.getTaskId(), TaskStatus.RUNNING);
@@ -194,6 +198,7 @@ public class TaskDispatcherServiceImpl implements TaskDispatcherService {
                 taskStatus.setErrorMessage(e.getMessage());
                 taskStatus.setEndTime(System.currentTimeMillis());
             }
+            throw new  RuntimeException(e.getMessage());
         }
     }
     
@@ -211,7 +216,6 @@ public class TaskDispatcherServiceImpl implements TaskDispatcherService {
                 taskStatus.setStatus(TaskDispatchStatusEnum.STOPPED.getCode());
                 taskStatus.setEndTime(System.currentTimeMillis());
             }
-
             // 更新任务状态
             taskInfoService.updateTaskStatus(taskId, TaskStatus.STOPPED);
             //更新设备状态
@@ -228,9 +232,7 @@ public class TaskDispatcherServiceImpl implements TaskDispatcherService {
                     DeviceTaskStatus deviceTask = deviceStatusMap.get(link.getDeviceId().toString());
                     deviceTask.setStatus(TaskDeviceStatus.ERROR.getCode());
                 }
-
             }
-
             // 停止任务进度上报定时器
             stopProgressUpdater(taskId);
 
