@@ -98,13 +98,19 @@
 
     <!-- 新增任务 -->
     <insert id="insertTaskInfo" parameterType="com.ruoyi.business.domain.TaskInfo.TaskInfo" useGeneratedKeys="true" keyProperty="id">
-        INSERT INTO task_info (
-            name, status, device_name,device_id, device_type, pool_id,pool_template_id, pool_name, planned_quantity, completed_quantity, preload_data_count, description, del_flag, create_time, update_time
-        ) VALUES (
-            #{name}, #{status}, #{deviceName},#{deviceId},#{deviceType}, #{poolId},#{poolTemplateId} #{poolName}, #{plannedQuantity}, #{completedQuantity}, #{preloadDataCount}, #{description},
-            COALESCE(#{delFlag}, 0), COALESCE(#{createTime}, datetime('now','localtime')), COALESCE(datetime(#{updateTime} / 1000, 'unixepoch', 'localtime'), datetime('now', 'localtime'))
-        )
-    </insert>
+    INSERT INTO task_info (
+        name, status, device_name, device_id, device_type,
+        pool_id, pool_template_id, pool_name, planned_quantity,
+        completed_quantity, preload_data_count, description,
+        del_flag, create_time
+    ) VALUES (
+        #{name}, #{status}, #{deviceName}, #{deviceId}, #{deviceType},
+        #{poolId}, #{poolTemplateId}, #{poolName}, #{plannedQuantity},
+        #{completedQuantity}, #{preloadDataCount}, #{description},
+        COALESCE(#{delFlag}, 0),
+        COALESCE(#{createTime}, datetime('now', 'localtime'))
+    )
+</insert>
 
     <!-- 更新任务 -->
     <update id="updateTaskInfo" parameterType="com.ruoyi.business.domain.TaskInfo.TaskInfo">
@@ -113,13 +119,16 @@
             <if test="name != null">name = #{name},</if>
             <if test="status != null">status = #{status},</if>
             <if test="deviceName != null">device_name = #{deviceName},</if>
+            <if test="deviceId != null">device_id = #{deviceId},</if>
+            <if test="deviceType != null">device_type = #{deviceType},</if>
             <if test="poolId != null">pool_id = #{poolId},</if>
+            <if test="poolTemplateId != null">pool_template_id = #{poolTemplateId},</if>
             <if test="poolName != null">pool_name = #{poolName},</if>
             <if test="plannedQuantity != null">planned_quantity = #{plannedQuantity},</if>
             <if test="completedQuantity != null">completed_quantity = #{completedQuantity},</if>
             <if test="preloadDataCount != null">preload_data_count = #{preloadDataCount},</if>
             <if test="description != null">description = #{description},</if>
-            update_time = COALESCE(datetime(#{updateTime} / 1000, 'unixepoch', 'localtime'), datetime('now', 'localtime'))
+            update_time = COALESCE(#{updateTime}, datetime('now','localtime'))
         </set>
         WHERE id = #{id} AND del_flag = 0
     </update>

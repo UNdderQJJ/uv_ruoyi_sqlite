@@ -21,6 +21,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         <result property="parity"    column="parity"    />
         <result property="status"    column="status"    />
         <result property="currentTaskId"    column="current_task_id"    />
+        <result property="currentTaskName"    column="current_task_name"    />
         <result property="isEnabled"    column="is_enabled"    />
         <result property="lastHeartbeatTime"    column="last_heartbeat_time"    />
         <result property="parameters"    column="parameters"    />
@@ -33,7 +34,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
     </resultMap>
 
     <sql id="selectDeviceInfoVo">
-        select id, device_uuid, name, device_type, model, location, connection_type, ip_address, port, serial_port, baud_rate, data_bits, stop_bits, parity, status, current_task_id, is_enabled, last_heartbeat_time, parameters, description, create_by, create_time, update_by, update_time, del_flag from device_info
+        select id, device_uuid, name, device_type, model, location, connection_type, ip_address, port, serial_port, baud_rate, data_bits, stop_bits, parity, status, current_task_id, current_task_name, is_enabled, last_heartbeat_time, parameters, description, create_by, create_time, update_by, update_time, del_flag from device_info
     </sql>
 
     <select id="selectDeviceInfoList" parameterType="DeviceInfo" resultMap="DeviceInfoResult">
@@ -54,6 +55,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="parity != null  and parity != ''"> and parity = #{parity}</if>
             <if test="status != null  and status != ''"> and status = #{status}</if>
             <if test="currentTaskId != null "> and current_task_id = #{currentTaskId}</if>
+             <if test="currentTaskName != null  and currentTaskName != ''"> and current_task_name like concat('%', #{currentTaskName}, '%')</if>
             <if test="isEnabled != null "> and is_enabled = #{isEnabled}</if>
             <if test="lastHeartbeatTime != null "> and last_heartbeat_time = #{lastHeartbeatTime}</if>
             <if test="parameters != null  and parameters != ''"> and parameters = #{parameters}</if>
@@ -143,6 +145,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="parity != null">parity,</if>
             <if test="status != null">status,</if>
             <if test="currentTaskId != null">current_task_id,</if>
+            <if test="currentTaskName != null">current_task_name,</if>
             <if test="isEnabled != null">is_enabled,</if>
             <if test="lastHeartbeatTime != null">last_heartbeat_time,</if>
             <if test="parameters != null">parameters,</if>
@@ -169,6 +172,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="parity != null">#{parity},</if>
             <if test="status != null">#{status},</if>
             <if test="currentTaskId != null">#{currentTaskId},</if>
+            <if test="currentTaskName != null">#{currentTaskName},</if>
             <if test="isEnabled != null">#{isEnabled},</if>
             <if test="lastHeartbeatTime != null">#{lastHeartbeatTime},</if>
             <if test="parameters != null">#{parameters},</if>
@@ -199,6 +203,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="parity != null">parity = #{parity},</if>
             <if test="status != null">status = #{status},</if>
             <if test="currentTaskId != null">current_task_id = #{currentTaskId},</if>
+            <if test="currentTaskName != null">current_task_name = #{currentTaskName},</if>
             <if test="isEnabled != null">is_enabled = #{isEnabled},</if>
             <if test="lastHeartbeatTime != null">last_heartbeat_time = #{lastHeartbeatTime},</if>
             <if test="parameters != null">parameters = #{parameters},</if>
@@ -218,7 +223,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
     </update>
 
     <update id="updateDeviceCurrentTask" parameterType="DeviceInfo" >
-        update device_info set current_task_id = #{currentTaskId}, update_by = #{updateBy}, update_time = datetime('now','localtime') where id = #{id}
+        update device_info set status = #{status},current_task_id = #{currentTaskId},current_task_name = #{currentTaskName}, update_by = #{updateBy}, update_time = datetime('now','localtime') where id = #{id}
     </update>
 
     <update id="deleteDeviceInfoById" parameterType="Long">
@@ -230,5 +235,8 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         <foreach item="id" collection="array" open="(" separator="," close=")">
             #{id}
         </foreach>
+    </update>
+    <update id="removeCurrentTask">
+        update device_info set status ='ONLINE_IDLE',current_task_id = null,current_task_name = null, update_time = datetime('now','localtime') where current_task_id = #{taskId}
     </update>
 </mapper>

@@ -158,4 +158,9 @@ public interface DeviceInfoMapper
      * @return 设备状态统计结果
      */
     public List<DeviceInfo> countDeviceInfoByStatus();
+
+    /** 为相应设备移除当前任务
+     * @param taskId 任务ID
+     */
+    void removeCurrentTask(Long taskId);
 }

@@ -3,10 +3,8 @@ package com.ruoyi.business.service.DeviceFileConfig.impl;
 import java.util.List;
 import com.ruoyi.common.utils.DateUtils;
 import com.ruoyi.common.utils.StringUtils;
-import io.netty.util.internal.ObjectUtil;
 import jakarta.annotation.Resource;
 import org.apache.commons.lang3.ObjectUtils;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import com.ruoyi.business.mapper.DeviceFileConfig.DeviceFileConfigMapper;
 import com.ruoyi.business.domain.DeviceFileConfig.DeviceFileConfig;
@@ -271,5 +269,62 @@ public class DeviceFileConfigServiceImpl implements IDeviceFileConfigService
         }else {
             return false;
         }
+    }
+
+    /**
+     * 检查设备默认文件配置是否一致
+     *
+     * @param deviceIds 设备ID列表
+     * @return true表示配置一致，false表示配置不一致
+     */
+    @Override
+    public boolean checkDeviceFileConfig(List<Long> deviceIds) {
+        if (deviceIds == null || deviceIds.isEmpty()) {
+            return true; // 空列表认为配置一致
+        }
+        
+        if (deviceIds.size() == 1) {
+            return true; // 单个设备认为配置一致
+        }
+        
+        // 获取第一个设备的默认配置作为基准
+        List<DeviceFileConfig> firstDeviceConfigs = selectDefaultDeviceFileConfigListByDeviceId(deviceIds.get(0));
+
+        // 比较其他设备的默认配置与第一个设备是否一致
+        for (int i = 1; i < deviceIds.size(); i++) {
+            List<DeviceFileConfig> otherConfigs = selectDefaultDeviceFileConfigListByDeviceId(deviceIds.get(i));
+
+            // 比较每个配置的详细信息
+            for (DeviceFileConfig firstConfig : firstDeviceConfigs) {
+                boolean foundMatch = false;
+                for (DeviceFileConfig otherConfig : otherConfigs) {
+                    if (isConfigEqual(firstConfig, otherConfig)) {
+                        foundMatch = true;
+                        break;
+                    }
+                }
+                if (!foundMatch) {
+                    return false; // 找不到匹配的配置
+                }
+            }
+        }
+        
+        return true; // 所有设备的默认配置都一致
+    }
+
+    /**
+     * 比较两个设备文件配置是否相等（排除设备ID和主键ID）
+     *
+     * @param config1 配置1
+     * @param config2 配置2
+     * @return true表示相等，false表示不相等
+     */
+    private boolean isConfigEqual(DeviceFileConfig config1, DeviceFileConfig config2) {
+        if (config1 == null || config2 == null) {
+            return config1 == config2;
+        }
+        
+        return StringUtils.equals(config1.getVariableName(), config2.getVariableName()) && // 变量名称和变量类型相等
+               StringUtils.equals(config1.getVariableType(), config2.getVariableType());
     }
 }

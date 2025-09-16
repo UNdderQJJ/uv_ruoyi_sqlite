@@ -4,6 +4,8 @@ package com.ruoyi.business.service.DeviceInfo.impl;
 import java.util.List;
 import com.github.pagehelper.Page;
 import com.ruoyi.business.domain.TaskInfo.TaskInfo;
+import com.ruoyi.business.enums.DeviceStatus;
+import com.ruoyi.business.service.TaskInfo.ITaskInfoService;
 import com.ruoyi.common.core.page.PageQuery;
 import com.ruoyi.common.core.page.PageResult;
 import com.ruoyi.common.utils.DateUtils;
@@ -26,6 +28,9 @@ public class DeviceInfoServiceImpl implements IDeviceInfoService
 {
     @Resource
     private DeviceInfoMapper deviceInfoMapper;
+
+    @Resource
+    private ITaskInfoService taskInfoService;
 
     /**
      * 查询设备信息
@@ -236,9 +241,11 @@ public class DeviceInfoServiceImpl implements IDeviceInfoService
     @Override
     public int updateDeviceCurrentTask(Long id, Long taskId)
     {
+        TaskInfo taskInfo = taskInfoService.selectTaskInfoById(taskId);
         DeviceInfo deviceInfo = new DeviceInfo();
         deviceInfo.setId(id);
         deviceInfo.setCurrentTaskId(taskId);
+        deviceInfo.setCurrentTaskName(taskInfo.getName());
         deviceInfo.setUpdateTime(DateUtils.getNowDate());
         return deviceInfoMapper.updateDeviceCurrentTask(deviceInfo);
     }
@@ -345,5 +352,35 @@ public class DeviceInfoServiceImpl implements IDeviceInfoService
             result += enableDevice(id, isEnabled);
         }
         return result;
+    }
+
+    /**
+     * 更新设备当前任务
+     *
+     * @param deviceIds 设备ID数组
+     * @param taskId 任务ID
+     */
+    @Override
+    public void updateCurrentTask(List<String> deviceIds, Long taskId) {
+        for(String deviceId : deviceIds){
+            TaskInfo taskInfo = taskInfoService.selectTaskInfoById(taskId);
+            //为设备绑定任务
+            DeviceInfo deviceInfo = new DeviceInfo();
+            deviceInfo.setId(Long.parseLong(deviceId));
+            deviceInfo.setStatus(DeviceStatus.ONLINE_PRINTING.getCode());
+            deviceInfo.setCurrentTaskId(taskId);
+            deviceInfo.setCurrentTaskName(taskInfo.getName());
+            deviceInfoMapper.updateDeviceCurrentTask(deviceInfo);
+        }
+    }
+
+    /**
+     * 为相应设备移除当前任务
+     *
+     * @param taskId 任务ID
+     */
+    @Override
+    public void removeCurrentTask(Long taskId) {
+        deviceInfoMapper.removeCurrentTask(taskId);
     }
 }

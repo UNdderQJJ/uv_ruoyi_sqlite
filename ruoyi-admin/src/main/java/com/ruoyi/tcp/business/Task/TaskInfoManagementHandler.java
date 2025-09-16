@@ -3,6 +3,7 @@ package com.ruoyi.tcp.business.Task;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ruoyi.business.domain.DataPool.DataPool;
+import com.ruoyi.business.domain.DeviceFileConfig.DeviceFileConfig;
 import com.ruoyi.business.domain.TaskInfo.TaskInfo;
 import com.ruoyi.business.enums.DeviceStatus;
 import com.ruoyi.business.enums.ItemStatus;
@@ -11,6 +12,7 @@ import com.ruoyi.business.domain.TaskInfo.TaskDeviceLink;
 import com.ruoyi.business.enums.TaskDeviceStatus;
 import com.ruoyi.business.service.DataPool.DataSourceLifecycleService;
 import com.ruoyi.business.service.DataPool.IDataPoolService;
+import com.ruoyi.business.service.DeviceFileConfig.IDeviceFileConfigService;
 import com.ruoyi.business.service.TaskInfo.ITaskDeviceLinkService;
 import com.ruoyi.business.service.DeviceInfo.IDeviceInfoService;
 import com.ruoyi.business.domain.DeviceInfo.DeviceInfo;
@@ -65,6 +67,9 @@ public class TaskInfoManagementHandler {
     @Resource
     private TaskDispatcherService taskDispatcherService;
 
+    @Resource
+    private IDeviceFileConfigService deviceFileConfigService;
+
 
 
 
@@ -116,15 +121,23 @@ public class TaskInfoManagementHandler {
     /** 新增任务（支持同时添加关联设备） */
     private TcpResponse create(String body) throws Exception {
         TaskInfo taskInfo = objectMapper.readValue(StringUtils.isEmpty(body) ? "{}" : body, TaskInfo.class);
+        // 允许 body 中包含字段: deviceIds
+        MapWrapper map = objectMapper.readValue(StringUtils.isEmpty(body) ? "{}" : body, MapWrapper.class);
+        taskInfo.setCompletedQuantity(0);//初始化完成数量为0
         taskInfo.setStatus(TaskStatus.PENDING.getCode());//待开始
+        //校验所有设备模版是否一致
+        List<Long> deviceIdList = List.of(map.deviceIds);
+        boolean isConsistent = deviceFileConfigService.checkDeviceFileConfig(deviceIdList);
+        if (!isConsistent){
+            return TcpResponse.error("设备模版变量名称不一致，请检查设备模版是否一致");
+        }
         int rows = taskInfoService.insertTaskInfo(taskInfo);
 
         if (rows > 0) {
             // 解析可选的 deviceIds 数组，用于创建 task_device_link 关联
             try {
-                // 允许 body 中包含字段: deviceIds, assignedQuantity, deviceFileConfigId, poolTemplateId
-                MapWrapper map = objectMapper.readValue(StringUtils.isEmpty(body) ? "{}" : body, MapWrapper.class);
                 if (map.deviceIds != null && map.deviceIds.length > 0) {
+
                     List<TaskDeviceLink> links = new ArrayList<>();
                     List<String> deviceNames = new ArrayList<>(); // 收集设备名称
                     List<String> deviceIds = new ArrayList<>(); // 收集设备ID
@@ -142,15 +155,20 @@ public class TaskInfoManagementHandler {
                                 deviceIds.add(deviceId.toString());
                             }
                         } catch (Exception ignore) { }
+
                         link.setDeviceFileConfigId(map.deviceFileConfigId);
-                        link.setPoolTemplateId(map.poolTemplateId);
+                        link.setPoolTemplateId(taskInfo.getPoolTemplateId());
                         link.setAssignedQuantity(taskInfo.getPreloadDataCount());//提前下发的数据条数
                         link.setCompletedQuantity(0);
                         link.setStatus(TaskDeviceStatus.WAITING.getCode());//等待
                         link.setDelFlag(0);
                         links.add(link);
                     }
+                    // 批量创建关联
                     taskDeviceLinkService.batchCreateLinks(links);
+
+                    //更新设备当前任务
+                    deviceInfoService.updateCurrentTask(deviceIds, taskInfo.getId());
                     
                     // 将设备名称用逗号分隔存储到任务中
                     if (!deviceNames.isEmpty()) {
@@ -186,15 +204,26 @@ public class TaskInfoManagementHandler {
     /** 更新任务（支持增加或减少设备关联） */
     private TcpResponse update(String body) throws Exception {
         TaskInfo taskInfo = objectMapper.readValue(body, TaskInfo.class);
+
+         MapWrapper map = objectMapper.readValue(body, MapWrapper.class);
+        // 如果提供了 deviceIds，则更新设备关联
+        if (map.deviceIds != null) {
+            //校验所有设备模版是否一致
+            List<Long> deviceIdList = List.of(map.deviceIds);
+            boolean isConsistent = deviceFileConfigService.checkDeviceFileConfig(deviceIdList);
+            if (!isConsistent) {
+                return TcpResponse.error("设备模版变量名称不一致，请检查设备模版是否一致");
+            }
+        }
+
         int rows = taskInfoService.updateTaskInfo(taskInfo);
         
         if (rows > 0) {
             // 解析可选的设备关联更新参数
             try {
-                MapWrapper map = objectMapper.readValue(body, MapWrapper.class);
-                
-                // 如果提供了 deviceIds，则更新设备关联
-                if (map.deviceIds != null) {
+                //清除设备的当前任务
+                deviceInfoService.removeCurrentTask(taskInfo.getId());
+
                     // 先删除该任务的所有现有设备关联
                     taskDeviceLinkService.deleteByTaskId(taskInfo.getId());
                     
@@ -202,6 +231,7 @@ public class TaskInfoManagementHandler {
                     if (map.deviceIds.length > 0) {
                         List<TaskDeviceLink> links = new java.util.ArrayList<>();
                         List<String> deviceNames = new java.util.ArrayList<>(); // 收集设备名称
+                        List<String> deviceIds = new java.util.ArrayList<>();
                         
                         for (Long deviceId : map.deviceIds) {
                             TaskDeviceLink link = new TaskDeviceLink();
@@ -213,22 +243,30 @@ public class TaskInfoManagementHandler {
                                 if (di != null) {
                                     link.setDeviceName(di.getName());
                                     deviceNames.add(di.getName()); // 收集设备名称
+                                    deviceIds.add(deviceId.toString());
                                 }
                             } catch (Exception ignore) { }
                             link.setDeviceFileConfigId(map.deviceFileConfigId);
-                            link.setPoolTemplateId(map.poolTemplateId);
-                            link.setAssignedQuantity(map.assignedQuantity);
+                            link.setPoolTemplateId(taskInfo.getPoolTemplateId());
+                            link.setAssignedQuantity(taskInfo.getPreloadDataCount());
                             link.setCompletedQuantity(0);
                             link.setStatus(TaskDeviceStatus.WAITING.getCode());//等待
                             link.setDelFlag(0);
                             links.add(link);
                         }
+                        // 批量创建关联
                         taskDeviceLinkService.batchCreateLinks(links);
+
+                        // 更新设备当前任务
+                        deviceInfoService.updateCurrentTask(deviceIds, taskInfo.getId());
                         
                         // 更新任务中的设备名称
                         String deviceNamesStr = String.join(",", deviceNames);
+                        String deviceIdsStr = String.join(",", deviceIds);
                         taskInfo.setDeviceName(deviceNamesStr);
+                        taskInfo.setDeviceId(deviceIdsStr);
                         taskInfoService.updateTaskInfo(taskInfo);
+
                         log.info("[TaskUpdate] 任务设备名称已更新: {}", deviceNamesStr);
                     } else {
                         // 如果 deviceIds 为空数组，清空设备名称
@@ -236,7 +274,7 @@ public class TaskInfoManagementHandler {
                         taskInfoService.updateTaskInfo(taskInfo);
                         log.info("[TaskUpdate] 任务设备名称已清空");
                     }
-                }
+
             } catch (Exception e) {
                 log.warn("更新任务设备关联时发生非致命异常: {}", e.getMessage());
             }

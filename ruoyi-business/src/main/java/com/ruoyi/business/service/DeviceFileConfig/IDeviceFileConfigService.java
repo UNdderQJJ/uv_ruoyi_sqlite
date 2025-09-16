@@ -156,4 +156,11 @@ public interface IDeviceFileConfigService
      * @param deviceIds 设备ID列表
      */
     public boolean  copyDeviceFileConfig(Long configId,List<Long> deviceIds);
+
+    /**
+     * 检查设备文件配置是否一致
+     * @param deviceIds 设备ID列表
+     * @return true表示配置一致，false表示配置不一致
+     */
+    boolean checkDeviceFileConfig(List<Long> deviceIds);
 }

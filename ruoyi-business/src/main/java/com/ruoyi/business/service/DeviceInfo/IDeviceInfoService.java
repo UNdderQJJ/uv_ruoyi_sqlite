@@ -188,4 +188,19 @@ public interface IDeviceInfoService
      * @return 结果
      */
     public int batchEnableDevice(Long[] ids, Integer isEnabled);
+
+    /**
+     * 更新设备当前任务
+     *
+     * @param deviceIds 设备ID数组
+     * @param id 任务ID
+     * @return 结果
+     */
+    void updateCurrentTask(List<String> deviceIds, Long id);
+
+    /**
+     * 为相应设备移除当前任务
+     * @param taskId 任务id
+     */
+    void removeCurrentTask(Long taskId);
 }
