@@ -239,4 +239,6 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
     <update id="removeCurrentTask">
         update device_info set status ='ONLINE_IDLE',current_task_id = null,current_task_name = null, update_time = datetime('now','localtime') where current_task_id = #{taskId}
     </update>
+    <update id="removeCurrentTaskStatus">
+        update device_info set status =#{status},current_task_id = null,current_task_name = null, update_time = datetime('now','localtime') where id = #{deviceId}   </update>
 </mapper>

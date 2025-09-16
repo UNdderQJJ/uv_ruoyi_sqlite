@@ -383,4 +383,15 @@ public class DeviceInfoServiceImpl implements IDeviceInfoService
     public void removeCurrentTask(Long taskId) {
         deviceInfoMapper.removeCurrentTask(taskId);
     }
+
+    /**
+     * 为相应设备移除当前任务
+     *
+     * @param deviceId 设备ID
+     * @param status 设备状态
+     */
+    @Override
+    public void removeCurrentTask(Long deviceId, String status) {
+        deviceInfoMapper.removeCurrentTaskStatus(deviceId, status);
+    }
 }

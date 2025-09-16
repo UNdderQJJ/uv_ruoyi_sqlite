@@ -163,4 +163,10 @@ public interface DeviceInfoMapper
      * @param taskId 任务ID
      */
     void removeCurrentTask(Long taskId);
+
+    /** 为相应设备移除当前任务
+     * @param deviceId 设备ID
+     * @param status 设备状态
+     */
+    void removeCurrentTaskStatus(Long deviceId, String status);
 }

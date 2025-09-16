@@ -203,4 +203,11 @@ public interface IDeviceInfoService
      * @param taskId 任务id
      */
     void removeCurrentTask(Long taskId);
+
+    /**
+     * 为相应设备移除当前任务
+     * @param deviceId 设备id
+     * @param status 设备状态
+     */
+    void removeCurrentTask(Long deviceId,String status);
 }
