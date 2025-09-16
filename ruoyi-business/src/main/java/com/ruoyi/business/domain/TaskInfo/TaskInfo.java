@@ -34,9 +34,24 @@ public class TaskInfo extends BaseEntity {
     private String deviceName;
 
     /**
+     * 关联的设备id
+     */
+    private String deviceId;
+
+    /**
+     * 设备类型 （打印机，扫描仪）
+     */
+    private String deviceType;
+
+    /**
      * 关联的数据池ID
      */
     private Long poolId;
+
+    /**
+     * 数据池模版ID
+     */
+    private Long poolTemplateId;
 
     /**
      * 数据池名称（冗余便于展示）

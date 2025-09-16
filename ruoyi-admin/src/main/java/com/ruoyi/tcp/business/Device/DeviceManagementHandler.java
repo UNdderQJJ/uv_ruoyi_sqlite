@@ -715,7 +715,9 @@ public class DeviceManagementHandler {
             }
             boolean ok = deviceConnectionService.testTcpReachable(device.getIpAddress(), device.getPort(), 3000);
             String newStatus = ok ? DeviceStatus.ONLINE_IDLE.getCode() : DeviceStatus.ERROR.getCode();
-            deviceInfoService.updateDeviceStatus(device.getId(), newStatus);
+            if (!device.getStatus().equals(DeviceStatus.ONLINE_PRINTING.getCode())) {
+                deviceInfoService.updateDeviceStatus(device.getId(), newStatus);
+            }
             return TcpResponse.success(ok ? "连接成功" : "连接失败");
         } catch (Exception e) {
             log.error("连接设备异常", e);

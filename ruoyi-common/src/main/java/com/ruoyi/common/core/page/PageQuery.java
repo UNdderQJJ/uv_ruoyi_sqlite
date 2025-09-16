@@ -78,13 +78,13 @@ public class PageQuery {
             pageSize = 10;
         }
         // 限制最大页面大小，防止性能问题
-        if (pageSize > 100) {
-            pageSize = 100;
+        if (pageSize > 1000) {
+            pageSize = 1000;
         }
-        // 限制最大页码，防止深度分页性能问题
-        if (pageNum > 1000) {
-            pageNum = 1000;
-        }
+//        // 限制最大页码，防止深度分页性能问题
+//        if (pageNum > 10000) {
+//            pageNum = 10000;
+//        }
         if (isAsc == null || (!"asc".equals(isAsc) && !"desc".equals(isAsc))) {
             isAsc = "asc";
         }
