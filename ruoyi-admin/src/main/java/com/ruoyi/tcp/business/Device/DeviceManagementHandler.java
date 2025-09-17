@@ -1,12 +1,11 @@
 package com.ruoyi.tcp.business.Device;
 
-import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ruoyi.business.domain.DeviceInfo.DeviceInfo;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.ruoyi.business.enums.DeviceConfigKey;
 import com.ruoyi.business.enums.DeviceStatus;
-import com.ruoyi.business.service.DeviceInfo.DeviceConnectionService;
+import com.ruoyi.tcp.DeviceConnectionManager;
 import com.ruoyi.business.service.DeviceInfo.DeviceCommandService;
 import com.ruoyi.business.service.DeviceInfo.DeviceConfigService;
 import com.ruoyi.business.service.DeviceInfo.IDeviceInfoService;
@@ -43,7 +42,7 @@ public class DeviceManagementHandler {
     private DeviceCommandService deviceCommandService;
 
     @Autowired
-    private DeviceConnectionService deviceConnectionService;
+    private DeviceConnectionManager deviceConnectionManager;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -713,12 +712,16 @@ public class DeviceManagementHandler {
             if (device == null) {
                 return TcpResponse.error("设备不存在");
             }
-            boolean ok = deviceConnectionService.testTcpReachable(device.getIpAddress(), device.getPort(), 3000);
+            boolean ok = deviceConnectionManager.sendCommandViaRegisteredChannel(device.getId().toString(), "get_currfile");
             String newStatus = ok ? DeviceStatus.ONLINE_IDLE.getCode() : DeviceStatus.ERROR.getCode();
             if (!device.getStatus().equals(DeviceStatus.ONLINE_PRINTING.getCode())) {
                 deviceInfoService.updateDeviceStatus(device.getId(), newStatus);
             }
-            return TcpResponse.success(ok ? "连接成功" : "连接失败");
+            if(ok){
+                return TcpResponse.success("连接成功");
+            }else {
+                return TcpResponse.error("连接失败");
+            }
         } catch (Exception e) {
             log.error("连接设备异常", e);
             return TcpResponse.error("连接设备异常: " + e.getMessage());
@@ -751,7 +754,7 @@ public class DeviceManagementHandler {
             if (device == null) {
                 return TcpResponse.error("设备不存在");
             }
-            boolean ok = deviceConnectionService.testTcpReachable(device.getIpAddress(), device.getPort(), 2000);
+            boolean ok = deviceConnectionManager.sendCommandViaRegisteredChannel(device.getId().toString(), "ping");
             return TcpResponse.success(ok);
         } catch (Exception e) {
             log.error("Ping设备异常", e);

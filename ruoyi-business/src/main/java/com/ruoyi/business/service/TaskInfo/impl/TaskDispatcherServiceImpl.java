@@ -21,6 +21,7 @@ import com.ruoyi.common.exception.ServiceException;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.Channel;
 import jakarta.annotation.Resource;
+import org.apache.commons.lang3.ObjectUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -138,7 +139,6 @@ public class TaskDispatcherServiceImpl implements TaskDispatcherService {
                 taskStatus.setStatus(TaskDispatchStatusEnum.FAILED.getCode());
                 taskStatus.setErrorMessage("预检失败");
                 taskStatus.setEndTime(System.currentTimeMillis());
-                return;
             }
             // 2.1. 启动数据池，进行数据获取填充进热数据库
             try {
@@ -433,7 +433,14 @@ public class TaskDispatcherServiceImpl implements TaskDispatcherService {
                     log.warn("设备不存在，设备ID: {}", deviceIdStr);
                     return false;
                 }
-                
+
+                 // 1.5 连接检测 - 必须存在活跃通道
+                Object ch = getDeviceChannel(deviceIdStr);
+                if (!(ch instanceof Channel) || !((Channel) ch).isActive()) {
+                    log.warn("设备未连接或通道不活跃，设备ID: {}", deviceIdStr);
+                   throw new RuntimeException(deviceInfo.getName()+"设备未连接");
+                }
+
                 // 2. 健康检查 - 发送诊断指令
                 if (!sendDiagnosticCommand(deviceIdStr)) {
                     log.warn("设备健康检查失败，设备ID: {}", deviceIdStr);
@@ -488,7 +495,7 @@ public class TaskDispatcherServiceImpl implements TaskDispatcherService {
                 systemLog.setPoolId(getPoolId(taskId));
                 systemLog.setContent("预检设备异常:"+e.getMessage());
                 systemLogService.insert(systemLog);
-                return false;
+                throw  new RuntimeException(e.getMessage());
             }
         }
         
@@ -823,8 +830,14 @@ public class TaskDispatcherServiceImpl implements TaskDispatcherService {
      */
     @Override
     public Long getPoolId(Long taskId) {
+        if (ObjectUtils.isEmpty(taskId) || ObjectUtils.isEmpty(taskStatusMap.get(taskId))){
+            return null;
+        }
         TaskDispatchStatus taskStatus = taskStatusMap.get(taskId);
-        return  taskStatus != null ? taskStatus.getPoolId() : null;
+        if(ObjectUtils.isEmpty(taskStatus)){
+            return null;
+        }
+        return taskStatus.getPoolId();
     }
 
     /**
@@ -835,6 +848,9 @@ public class TaskDispatcherServiceImpl implements TaskDispatcherService {
      */
     @Override
     public Long getDeviceTaskId(String deviceId) {
+        if(ObjectUtils.isEmpty(deviceId) || ObjectUtils.isEmpty(deviceStatusMap.get(deviceId))){
+            return null;
+        }
         DeviceTaskStatus deviceStatus = deviceStatusMap.get(deviceId);
         return deviceStatus != null ? deviceStatus.getCurrentTaskId() : null;
     }

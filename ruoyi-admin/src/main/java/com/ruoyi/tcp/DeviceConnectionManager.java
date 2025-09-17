@@ -6,6 +6,7 @@ import com.ruoyi.business.service.DeviceInfo.IDeviceInfoService;
 import com.ruoyi.business.service.TaskInfo.DeviceDataHandlerService;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.buffer.ByteBuf;
+import io.netty.buffer.Unpooled;
 import io.netty.channel.*;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
@@ -16,7 +17,6 @@ import io.netty.handler.timeout.IdleState;
 import io.netty.handler.timeout.IdleStateEvent;
 import io.netty.handler.timeout.IdleStateHandler;
 import io.netty.util.AttributeKey;
-import java.nio.charset.StandardCharsets;
 import java.util.List;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
@@ -27,6 +27,8 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.util.concurrent.TimeUnit;
+import java.nio.charset.StandardCharsets;
+import com.ruoyi.business.utils.StxEtxProtocolUtil;
 
 /**
  * 设备连接管理器
@@ -65,8 +67,8 @@ public class DeviceConnectionManager {
                     protected void initChannel(SocketChannel ch) {
                         ch.pipeline()
                                 // 空闲状态检测
-                                // writer idle 60s -> trigger ping; no reader/all idle close
-                                .addLast(new IdleStateHandler(0, 60, 0, TimeUnit.SECONDS))
+                                // writer idle 20s -> trigger ping; no reader/all idle close
+                                .addLast(new IdleStateHandler(0, 20, 0, TimeUnit.SECONDS))
                                 // STX/ETX协议解码器
                                 .addLast(new StxEtxFrameDecoder())
                                 // 字符串编解码器
@@ -160,6 +162,38 @@ public class DeviceConnectionManager {
 
         } catch (Exception e) {
             log.error("连接设备异常: {} ({}:{})", device.getName(), device.getIpAddress(), device.getPort(), e);
+        }
+    }
+
+
+    /**
+     * 通过已注册的设备通道发送命令（异步发送，不等待业务响应）。
+     *
+     * @param deviceId 设备ID（与注册时一致的字符串）
+     * @param command  纯文本命令（内部按STX/ETX协议封装）
+     * @return 是否成功写入到通道
+     */
+    public boolean sendCommandViaRegisteredChannel(String deviceId, String command) {
+        try {
+            Object ch = deviceDataHandlerService.getDeviceChannel(deviceId);
+            if (!(ch instanceof Channel)) {
+                log.warn("未找到已注册通道或类型不匹配，设备ID: {}", deviceId);
+                return false;
+            }
+            Channel channel = (Channel) ch;
+            if (!channel.isActive()) {
+                log.warn("设备通道不活跃，设备ID: {}", deviceId);
+                return false;
+            }
+
+            byte[] payload = StxEtxProtocolUtil.buildCommand(command);
+            // 使用底层字节发送，避免额外字符串编码器影响
+            channel.writeAndFlush(Unpooled.wrappedBuffer(payload));
+            log.debug("已通过注册通道发送命令，设备ID: {}，命令: {}", deviceId, command);
+            return true;
+        } catch (Exception e) {
+            log.error("通过注册通道发送命令异常，设备ID: {}", deviceId, e);
+            return false;
         }
     }
 
