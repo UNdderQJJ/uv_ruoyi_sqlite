@@ -138,6 +138,8 @@ public class TaskInfoManagementHandler {
         }
         int rows = taskInfoService.insertTaskInfo(taskInfo);
 
+        List<DeviceFileConfig> deviceFileConfig = deviceFileConfigService.selectDefaultDeviceFileConfigListByDeviceId(deviceIdList.get(0));
+
         if (rows > 0) {
             // 解析可选的 deviceIds 数组，用于创建 task_device_link 关联
             try {
@@ -161,7 +163,7 @@ public class TaskInfoManagementHandler {
                             }
                         } catch (Exception ignore) { }
 
-                        link.setDeviceFileConfigId(map.deviceFileConfigId);
+                        link.setDeviceFileConfigId(deviceFileConfig.get(0).getId());
                         link.setPoolTemplateId(taskInfo.getPoolTemplateId());
                         link.setAssignedQuantity(taskInfo.getPreloadDataCount());//提前下发的数据条数
                         link.setCompletedQuantity(0);
@@ -211,22 +213,23 @@ public class TaskInfoManagementHandler {
         TaskInfo taskInfo = objectMapper.readValue(body, TaskInfo.class);
 
          MapWrapper map = objectMapper.readValue(body, MapWrapper.class);
+
+          List<Long> deviceIdList = List.of(map.deviceIds);
         // 如果提供了 deviceIds，则更新设备关联
-        if (map.deviceIds != null) {
-            //校验所有设备模版是否一致
-            List<Long> deviceIdList = List.of(map.deviceIds);
-            boolean isConsistent = false;
-            try {
-                isConsistent = deviceFileConfigService.checkDeviceFileConfig(deviceIdList);
-            } catch (Exception e) {
-                throw new RuntimeException(e.getMessage());
-            }
-            if (!isConsistent) {
-                return TcpResponse.error("设备模版变量名称不一致，请检查设备模版是否一致");
-            }
+        //校验所有设备模版是否一致
+        boolean isConsistent = false;
+        try {
+            isConsistent = deviceFileConfigService.checkDeviceFileConfig(deviceIdList);
+        } catch (Exception e) {
+            throw new RuntimeException(e.getMessage());
+        }
+        if (!isConsistent) {
+            return TcpResponse.error("设备模版变量名称不一致，请检查设备模版是否一致");
         }
 
         int rows = taskInfoService.updateTaskInfo(taskInfo);
+
+         List<DeviceFileConfig> deviceFileConfig = deviceFileConfigService.selectDefaultDeviceFileConfigListByDeviceId(deviceIdList.get(0));
         
         if (rows > 0) {
             // 解析可选的设备关联更新参数
@@ -256,7 +259,7 @@ public class TaskInfoManagementHandler {
                                     deviceIds.add(deviceId.toString());
                                 }
                             } catch (Exception ignore) { }
-                            link.setDeviceFileConfigId(map.deviceFileConfigId);
+                            link.setDeviceFileConfigId(deviceFileConfig.get(0).getId());
                             link.setPoolTemplateId(taskInfo.getPoolTemplateId());
                             link.setAssignedQuantity(taskInfo.getPreloadDataCount());
                             link.setCompletedQuantity(0);
