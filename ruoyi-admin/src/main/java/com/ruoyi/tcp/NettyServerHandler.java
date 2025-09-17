@@ -10,6 +10,7 @@ import com.ruoyi.tcp.system.AuthManagementHandler;
 import com.ruoyi.tcp.system.MenuManagementHandler;
 import com.ruoyi.tcp.system.RoleManagementHandler;
 import com.ruoyi.tcp.system.UserManagementHandler;
+import com.ruoyi.tcp.system.VersionManagementHandler;
 import com.ruoyi.tcp.business.DataPool.DataPoolManagementHandler;
 import com.ruoyi.tcp.business.DataPoolItem.DataPoolItemManagementHandler;
 import com.ruoyi.tcp.business.ArchivedDataPool.ArchivedDataPoolItemManagementHandler;
@@ -97,6 +98,10 @@ public class NettyServerHandler extends SimpleChannelInboundHandler<String> {
     // 注入系统日志处理器
     @Autowired
     private SystemLogManagementHandler systemLogManagementHandler;
+
+    // 注入版本管理处理器
+    @Autowired
+    private VersionManagementHandler versionManagementHandler;
 
     // 注入Spring的TaskExecutor，用于异步处理业务逻辑
     @Resource
@@ -201,6 +206,9 @@ public class NettyServerHandler extends SimpleChannelInboundHandler<String> {
         } else if (path.startsWith("/business/systemLog/")) {
             // 系统日志相关请求
             response = systemLogManagementHandler.handleSystemLogRequest(path, body);
+        } else if (path.startsWith("/version/")) {
+            // 版本管理相关请求
+            response = versionManagementHandler.handleVersionRequest(path, body);
         } else {
             log.warn("[Netty-Handler] 客户端 [{}] 请求了未知的路径: {}", clientAddress, path);
             response = TcpResponse.error("请求的路径不存在: " + path);
