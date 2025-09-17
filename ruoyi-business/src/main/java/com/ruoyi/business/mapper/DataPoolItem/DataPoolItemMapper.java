@@ -129,7 +129,7 @@ public interface DataPoolItemMapper {
     public int updateDataPoolItem(DataPoolItem dataPoolItem);
 
     /**
-     * 删除数据池热数据
+     * 真删除数据池热数据
      * 
      * @param id 数据池热数据主键
      * @return 结果

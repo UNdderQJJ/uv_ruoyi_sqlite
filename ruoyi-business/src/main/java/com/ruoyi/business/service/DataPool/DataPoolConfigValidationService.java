@@ -74,8 +74,8 @@ public class DataPoolConfigValidationService {
 
             // 验证时间间隔配置
             if (dataFetchInterval != null) {
-                if (dataFetchInterval < 1000) {
-                    result.addError("数据获取间隔时间不能少于1000毫秒（1秒）");
+                if (dataFetchInterval < 100) {
+                    result.addError("数据获取间隔时间不能少于100毫秒（0.1秒）");
                 } else if (dataFetchInterval > 3600000) {
                     result.addError("数据获取间隔时间不能超过3600000毫秒（1小时）");
                 }

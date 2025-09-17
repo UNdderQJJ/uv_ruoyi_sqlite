@@ -196,7 +196,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
     </update>
 
     <delete id="deleteDataPoolItemById" parameterType="Long">
-        update data_pool_item set del_flag = '2', update_time = now() where id = #{id}
+        delete from data_pool_item where id = #{id}
     </delete>
 
     <delete id="deleteDataPoolItemByIds" parameterType="Long">

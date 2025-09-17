@@ -187,7 +187,6 @@ public class DataPoolManagementHandler
             return TcpResponse.error("缺少必要参数: 数据源类型");
         }
 
-        int result = dataPoolService.insertDataPool(dataPool);
 
         //判断数据源是否填写正确
         DataPoolConfigValidationService.ValidationResult validationResult =
@@ -199,7 +198,9 @@ public class DataPoolManagementHandler
         if (!validationResult.isValid()) {
             return TcpResponse.error("数据源配置无效: " + validationResult.getErrorMessage());
         }
-        
+
+        //创建数据源
+        int result = dataPoolService.insertDataPool(dataPool);
         if (result > 0) {
             var responseData = new HashMap<String, Object>();
             responseData.put("id", dataPool.getId());

@@ -175,6 +175,7 @@ public class UDiskFileReaderService {
             
         } catch (Exception e) {
             log.error("读取Excel文件失败: {}", e.getMessage(), e);
+            throw new RuntimeException("读取Excel文件失败");
         }
         
         return 0;

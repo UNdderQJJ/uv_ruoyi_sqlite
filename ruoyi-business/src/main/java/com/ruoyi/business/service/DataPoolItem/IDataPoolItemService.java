@@ -192,7 +192,7 @@ public interface IDataPoolItemService {
     public int deleteDataPoolItemByIds(Long[] ids);
 
     /**
-     * 删除数据池热数据信息
+     * 真删除数据池热数据信息
      * 
      * @param id 数据池热数据主键
      * @return 结果
