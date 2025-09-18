@@ -19,6 +19,7 @@ import com.ruoyi.tcp.business.Device.DeviceManagementHandler;
 import com.ruoyi.tcp.business.DeviceFileConfig.DeviceFileConfigManagementHandler;
 import com.ruoyi.tcp.business.Task.TaskInfoManagementHandler;
 import com.ruoyi.tcp.business.SystemLog.SystemLogManagementHandler;
+import com.ruoyi.tcp.business.DataInspect.DataInspectManagementHandler;
 import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
@@ -98,6 +99,10 @@ public class NettyServerHandler extends SimpleChannelInboundHandler<String> {
     // 注入系统日志处理器
     @Autowired
     private SystemLogManagementHandler systemLogManagementHandler;
+
+    // 注入产品质检处理器
+    @Autowired
+    private DataInspectManagementHandler dataInspectManagementHandler;
 
     // 注入版本管理处理器
     @Autowired
@@ -206,6 +211,9 @@ public class NettyServerHandler extends SimpleChannelInboundHandler<String> {
         } else if (path.startsWith("/business/systemLog/")) {
             // 系统日志相关请求
             response = systemLogManagementHandler.handleSystemLogRequest(path, body);
+        } else if (path.startsWith("/business/dataInspect/")) {
+            // 产品质检相关请求
+            response = dataInspectManagementHandler.handleRequest(path, body);
         } else if (path.startsWith("/version/")) {
             // 版本管理相关请求
             response = versionManagementHandler.handleVersionRequest(path, body);
