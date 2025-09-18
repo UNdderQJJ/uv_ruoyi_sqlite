@@ -28,6 +28,7 @@ public class ParsingRuleEngineService {
         if (StringUtils.isBlank(raw) || ruleConfig == null || StringUtils.isBlank(ruleConfig.getRuleType())) {
             return result;
         }
+        raw = raw.trim();// 去除首尾空格
         try {
             String type = ruleConfig.getRuleType();
             String expr = ruleConfig.getExpression();
@@ -84,5 +85,60 @@ public class ParsingRuleEngineService {
             log.error("解析规则执行失败: {}", e.getMessage(), e);
             return new ArrayList<>();
         }
+    }
+    
+    /**
+     * 判断字符串是否为HEX格式，如果是则转换为ASCII
+     * @param input 输入字符串
+     * @return 如果是HEX格式则返回ASCII字符串，否则返回原字符串
+     */
+    public String convertHexToAsciiIfNeeded(String input) {
+        if (StringUtils.isBlank(input)) {
+            return input;
+        }
+        
+        try {
+            // 去除空格和换行符
+            String cleanInput = input.replaceAll("\\s+", "");
+            
+            // 检查是否为有效的HEX字符串
+            if (isValidHex(cleanInput)) {
+                // 确保长度为偶数
+                if (cleanInput.length() % 2 != 0) {
+                    cleanInput = "0" + cleanInput;
+                }
+                
+                // 转换为ASCII
+                StringBuilder ascii = new StringBuilder();
+                for (int i = 0; i < cleanInput.length(); i += 2) {
+                    String hexPair = cleanInput.substring(i, i + 2);
+                    int decimal = Integer.parseInt(hexPair, 16);
+                    ascii.append((char) decimal);
+                }
+                
+                log.debug("HEX转换成功: {} -> {}", input, ascii);
+                return ascii.toString();
+            } else {
+                log.debug("输入不是有效的HEX格式，返回原字符串: {}", input);
+                return input;
+            }
+        } catch (Exception e) {
+            log.error("HEX转换失败: {}", e.getMessage(), e);
+            return input;
+        }
+    }
+    
+    /**
+     * 判断字符串是否为有效的HEX格式
+     * @param input 输入字符串
+     * @return true如果是有效的HEX格式，否则false
+     */
+    private boolean isValidHex(String input) {
+        if (StringUtils.isBlank(input)) {
+            return false;
+        }
+        
+        // 检查是否只包含0-9和A-F（不区分大小写）
+        return input.matches("^[0-9A-Fa-f]+$");
     }
 }

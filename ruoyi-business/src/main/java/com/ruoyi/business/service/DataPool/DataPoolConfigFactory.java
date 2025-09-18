@@ -115,7 +115,7 @@ public class DataPoolConfigFactory {
         config.setThreshold(threshold);
         config.setSubscribeTopic(subscribeTopic);
         config.setPublishTopic(publishTopic);
-        config.setRequestPayload(requestPayload);
+        config.setRequestCommand(requestPayload);
         return config;
     }
 

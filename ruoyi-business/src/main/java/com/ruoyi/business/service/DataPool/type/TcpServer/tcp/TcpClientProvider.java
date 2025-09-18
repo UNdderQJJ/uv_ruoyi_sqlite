@@ -190,6 +190,10 @@ public class TcpClientProvider {
         log.debug("[TcpClientProvider] 收到数据: {}", data);
         
         try {
+
+            // 处理十六进制数据
+            data = parsingRuleEngineService.convertHexToAsciiIfNeeded(data);
+
             // 解析数据
             List<String> items = parsingRuleEngineService.extractItems(data, parsingRuleConfig);
             

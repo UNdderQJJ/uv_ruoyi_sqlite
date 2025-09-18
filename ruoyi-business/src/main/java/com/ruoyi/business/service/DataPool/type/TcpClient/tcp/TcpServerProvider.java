@@ -268,7 +268,9 @@ public class TcpServerProvider {
         
         try {
             log.debug("接收到数据: {}, 数据池ID: {}", responseData, poolId);
-            
+
+            // 处理十六进制数据
+            responseData = parsingRuleEngineService.convertHexToAsciiIfNeeded(responseData);
             // 解析数据
             List<String> items = parsingRuleEngineService.extractItems(responseData, parsingRuleConfig);
             if (items == null || items.isEmpty()) {

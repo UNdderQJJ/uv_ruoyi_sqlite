@@ -345,7 +345,7 @@ public class HttpProvider {
             if (responseBody != null && responseBody.contains("\"code\"")) {
                 try {
                     // 尝试解析JSON响应，检查是否有错误码
-                    com.alibaba.fastjson2.JSONObject jsonResponse = com.alibaba.fastjson2.JSON.parseObject(responseBody);
+                    JSONObject jsonResponse = JSON.parseObject(responseBody);
                     Integer code = jsonResponse.getInteger("code");
                     String msg = jsonResponse.getString("msg");
                     

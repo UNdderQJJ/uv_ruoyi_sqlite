@@ -174,9 +174,12 @@ public class WebSocketProvider {
     private void handleMessage(String message) {
         try {
             log.debug("[WebSocketProvider] 收到WebSocket消息: poolId={}, message={}", poolId, message);
-            
+
+            // 处理十六进制数据
+            message = parsingRuleEngineService.convertHexToAsciiIfNeeded(message);
             // 处理接收到的消息
             processMessage(message);
+
             
         } catch (Exception e) {
             log.error("[WebSocketProvider] 处理WebSocket消息失败: poolId={}", poolId, e);

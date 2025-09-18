@@ -229,7 +229,9 @@ public class MqttProvider {
             String payload = new String(publish.getPayloadAsBytes(), StandardCharsets.UTF_8);
             log.debug("[MqttProvider] 收到MQTT消息: poolId={}, topic={}, payload={}", 
                     poolId, topic, payload);
-            
+
+            // 处理十六进制数据
+            payload = parsingRuleEngineService.convertHexToAsciiIfNeeded(payload);
             // 处理接收到的消息
             processMessage(payload);
             
@@ -254,8 +256,8 @@ public class MqttProvider {
         
         try {
             String topic = triggerConfig.getPublishTopic();
-            String payload = triggerConfig.getRequestPayload() != null ? 
-                           triggerConfig.getRequestPayload() : "";
+            String payload = triggerConfig.getRequestCommand() != null ?
+                           triggerConfig.getRequestCommand() : "";
             
             var publishFuture = mqttClient.publishWith()
                     .topic(topic)
