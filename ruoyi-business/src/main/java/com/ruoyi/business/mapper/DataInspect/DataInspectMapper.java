@@ -1,6 +1,7 @@
 package com.ruoyi.business.mapper.DataInspect;
 
 import com.ruoyi.business.domain.DataInspect.DataInspect;
+import com.ruoyi.business.domain.DataPoolItem.DataPoolItem;
 
 import java.util.List;
 
@@ -20,6 +21,10 @@ public interface DataInspectMapper {
     int update(DataInspect entity);
 
     int deleteById(Long id);
+
+    void batchInsertDataInspect(List<DataInspect> toInsert);
+
+    void deleteByIdList(List<Long> idList);
 }
 
 

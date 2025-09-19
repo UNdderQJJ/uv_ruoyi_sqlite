@@ -7,11 +7,15 @@
         <result property="itemId" column="item_id" />
         <result property="itemData" column="item_data" />
         <result property="poolId" column="pool_id" />
+        <result property="poolName" column="pool_name" />
         <result property="taskId" column="task_id" />
+        <result property="taskName" column="task_name" />
         <result property="printDeviceId" column="print_device_id" />
+        <result property="printDeviceName" column="print_device_name" />
         <result property="printTime" column="print_time" />
         <result property="inspectStatus" column="inspect_status" />
         <result property="scanDeviceId" column="scan_device_id" />
+        <result property="printDeviceName" column="print_device_name" />
         <result property="scannedContent" column="scanned_content" />
         <result property="scanTime" column="scan_time" />
         <result property="createBy" column="create_by" />
@@ -22,8 +26,8 @@
     </resultMap>
 
     <sql id="Base_Column_List">
-        Id, item_id, item_data, pool_id, task_id, print_device_id, print_time,
-        inspect_status, scan_device_id, scanned_content, scan_time, create_time, update_time
+        Id, item_id, item_data, pool_id,pool_name, task_id, task_name, print_device_id, print_device_name, print_time,
+        inspect_status, scan_device_id,scan_device_name, scanned_content, scan_time, create_time, update_time
     </sql>
 
     <select id="selectById" parameterType="long" resultMap="DataInspectResult">
@@ -40,10 +44,17 @@
         <where>
             <if test="itemId != null">AND item_id = #{itemId}</if>
             <if test="itemData != null and itemData != ''">AND item_data = #{itemData}</if>
+            <if test="poolName != null and poolName != ''">AND pool_name = #{poolName}</if>
             <if test="poolId != null">AND pool_id = #{poolId}</if>
+            <if test="taskName != null and taskName != ''">AND task_name = #{taskName}</if>
             <if test="taskId != null">AND task_id = #{taskId}</if>
+            <if test="printDeviceName != null and printDeviceName != ''">AND print_device_name = #{printDeviceName}</if>
             <if test="printDeviceId != null">AND print_device_id = #{printDeviceId}</if>
             <if test="inspectStatus != null and inspectStatus != ''">AND inspect_status = #{inspectStatus}</if>
+            <if test="scanDeviceId != null">AND scan_device_id = #{scanDeviceId}</if>
+            <if test="scanDeviceName != null and scanDeviceName != ''">AND scan_device_name = #{scanDeviceName}</if>
+            <if test="printTime != null">AND print_time &gt;= #{printTime}</if>
+            <if test="scanTime != null">AND scan_time &gt;= #{scanTime}</if>
             <if test="createTime != null">AND create_time &gt;= #{createTime}</if>
             <if test="updateTime != null">AND update_time &lt;= #{updateTime}</if>
         </where>
@@ -52,14 +63,40 @@
 
     <insert id="insert" parameterType="com.ruoyi.business.domain.DataInspect.DataInspect" useGeneratedKeys="true" keyProperty="id">
         INSERT INTO data_inspect (
-            item_id, item_data, pool_id, task_id, print_device_id, print_time,
+            item_id, item_data, pool_id,pool_name, task_id, task_name, print_device_id, print_device_name, print_time,
             inspect_status, scan_device_id, scanned_content, scan_time, create_time, update_time
         ) VALUES (
-            #{itemId}, #{itemData}, #{poolId}, #{taskId}, #{printDeviceId}, #{printTime},
+            #{itemId}, #{itemData}, #{poolId},
+            (SELECT pool_name FROM data_pool WHERE id = #{poolId}),
+            #{taskId},
+            (SELECT name FROM task_info WHERE id = #{taskId}),
+            #{printDeviceId},
+            (SELECT name FROM device_info WHERE id = #{printDeviceId}),
+            #{printTime},
             #{inspectStatus}, #{scanDeviceId}, #{scannedContent}, #{scanTime},
             COALESCE(#{createTime}, datetime('now','localtime')),
             COALESCE(#{updateTime}, datetime('now','localtime'))
         )
+    </insert>
+    
+    <insert id="batchInsertDataInspect">
+        INSERT INTO data_inspect (
+            item_id, item_data, pool_id,pool_name, task_id, task_name, print_device_id, print_device_name, print_time,
+            inspect_status, create_time, update_time
+        ) VALUES
+        <foreach item="item" collection="list" separator=",">
+            (
+                #{item.itemId}, #{item.itemData}, #{item.poolId},
+                (SELECT pool_name FROM data_pool WHERE id = #{item.poolId}),
+                #{item.taskId},
+                (SELECT name FROM task_info WHERE id = #{item.taskId}),
+                #{item.printDeviceId},
+                (SELECT name FROM device_info WHERE id = #{item.printDeviceId}),
+                #{item.printTime}, #{item.inspectStatus},
+                COALESCE(#{item.createTime}, datetime('now','localtime')),
+                COALESCE(#{item.updateTime}, datetime('now','localtime'))
+            )
+        </foreach>
     </insert>
 
     <update id="update" parameterType="com.ruoyi.business.domain.DataInspect.DataInspect">
@@ -82,6 +119,12 @@
 
     <delete id="deleteById" parameterType="long">
         DELETE FROM data_inspect WHERE Id = #{id}
+    </delete>
+    <delete id="deleteByIdList">
+        DELETE FROM data_inspect WHERE Id IN
+        <foreach item="item" collection="list" separator="," open="(" close=")">
+            #{item}
+        </foreach>
     </delete>
 
 </mapper>

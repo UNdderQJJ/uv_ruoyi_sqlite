@@ -1,6 +1,7 @@
 package com.ruoyi.business.service.DataInspect;
 
 import com.ruoyi.business.domain.DataInspect.DataInspect;
+import com.ruoyi.business.domain.DataPoolItem.DataPoolItem;
 import com.ruoyi.common.core.page.PageQuery;
 import com.ruoyi.common.core.page.PageResult;
 
@@ -45,4 +46,14 @@ public interface IDataInspectService {
      * 删除
      */
     int deleteById(Long id);
+
+    /**
+     * 批量插入
+     */
+    void batchInsertDataInspect(List<DataInspect> toInsert);
+
+    /**
+     * 批量删除
+     */
+    void deleteByIdList(List<Long> IdList);
 }

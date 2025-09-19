@@ -1,16 +1,23 @@
 package com.ruoyi.tcp.business.DataInspect;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ruoyi.business.domain.DataInspect.DataInspect;
+import com.ruoyi.business.domain.DataPoolItem.DataPoolItem;
+import com.ruoyi.business.enums.ItemStatus;
 import com.ruoyi.business.service.DataInspect.IDataInspectService;
+import com.ruoyi.business.service.DataPoolItem.IDataPoolItemService;
 import com.ruoyi.common.core.TcpResponse;
 import com.ruoyi.common.core.page.PageQuery;
 import com.ruoyi.common.core.page.PageResult;
 import com.ruoyi.common.utils.StringUtils;
 import jakarta.annotation.Resource;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
+import org.springframework.util.ObjectUtils;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -20,6 +27,7 @@ import java.util.Map;
  * 路径前缀: /business/dataInspect/*
  * 提供质检记录的增删改查接口，入参出参均为 JSON。
  */
+@Slf4j
 @Component
 public class DataInspectManagementHandler {
 
@@ -28,6 +36,9 @@ public class DataInspectManagementHandler {
 
     @Resource
     private IDataInspectService dataInspectService;
+
+    @Resource
+    private IDataPoolItemService dataPoolItemService;
 
     /**
      * 质检接口统一入口，根据 path 分派到具体方法。
@@ -46,6 +57,8 @@ public class DataInspectManagementHandler {
                 return getByItemData(body);
             } else if (path.endsWith("/list")) {
                 return list(body);
+            } else if (path.endsWith("/recycle")) {
+                return recycle(body);
             }
             return TcpResponse.error("未知的质检接口: " + path);
         } catch (Exception e) {
@@ -123,6 +136,47 @@ public class DataInspectManagementHandler {
 
         PageResult<DataInspect> result = dataInspectService.selectPageList(query, pageQuery);
         return TcpResponse.success(result);
+    }
+
+    /** 手动回收  */
+    private  TcpResponse recycle(String body) throws JsonProcessingException {
+         // 解析参数
+        Map<String, Object> params = objectMapper.readValue(body, new TypeReference<>() {});
+        //获取ids
+        List<Long> idList =List.of((Long) params.get("ids"));
+        //获取itemId
+        List<Long> itemIdList =List.of((Long) params.get("itemIds"));
+
+        if(ObjectUtils.isEmpty(idList) && ObjectUtils.isEmpty(itemIdList)){
+            return TcpResponse.success("请选择需要回收的数据！");
+        }
+
+        //批量更新打印数据状态
+        List<DataPoolItem> updateItems = new ArrayList<>();
+        DataPoolItem updateItem = new DataPoolItem();
+        for (Long id : itemIdList){
+            updateItem.setId(id);
+            updateItems.add(updateItem);
+        }
+        try {
+            //批量更新为打印中
+            dataPoolItemService.updateItemsStatus(updateItems, ItemStatus.PENDING.getCode());
+        } catch (Exception e) {
+             log.error("批量更新数据项状态异常", e);
+            throw new RuntimeException(e);
+
+        }
+
+        try {
+            //将质检记录中的删除
+            dataInspectService.deleteByIdList(idList);
+        } catch (Exception e) {
+             log.error("批量删除数据项质检记录异常", e);
+            throw new RuntimeException(e);
+        }
+
+
+        return  TcpResponse.success("回收成功！");
     }
 }
 

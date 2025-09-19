@@ -2,11 +2,13 @@ package com.ruoyi.business.service.DataInspect.impl;
 
 import com.github.pagehelper.Page;
 import com.ruoyi.business.domain.DataInspect.DataInspect;
+import com.ruoyi.business.domain.DataPoolItem.DataPoolItem;
 import com.ruoyi.business.mapper.DataInspect.DataInspectMapper;
 import com.ruoyi.business.service.DataInspect.IDataInspectService;
 import com.ruoyi.common.core.page.PageQuery;
 import com.ruoyi.common.core.page.PageResult;
 import com.ruoyi.common.utils.PageQueryUtils;
+import jakarta.annotation.Resource;
 import org.springframework.stereotype.Service;
 import org.springframework.beans.factory.annotation.Autowired;
 
@@ -18,7 +20,7 @@ import java.util.List;
 @Service
 public class DataInspectServiceImpl implements IDataInspectService {
 
-    @Autowired
+    @Resource
     private DataInspectMapper dataInspectMapper;
 
     @Override
@@ -62,6 +64,16 @@ public class DataInspectServiceImpl implements IDataInspectService {
     @Override
     public int deleteById(Long id) {
         return dataInspectMapper.deleteById(id);
+    }
+
+    @Override
+    public void batchInsertDataInspect(List<DataInspect> toInsert) {
+        dataInspectMapper.batchInsertDataInspect(toInsert);
+    }
+
+    @Override
+    public void deleteByIdList(List<Long> IdList) {
+        dataInspectMapper.deleteByIdList(IdList);
     }
 }
 
