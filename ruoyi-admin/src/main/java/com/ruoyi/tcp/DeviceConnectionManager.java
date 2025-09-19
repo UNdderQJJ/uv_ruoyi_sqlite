@@ -177,13 +177,13 @@ public class DeviceConnectionManager {
         try {
             Object ch = deviceDataHandlerService.getDeviceChannel(deviceId);
             if (!(ch instanceof Channel)) {
-                log.warn("未找到已注册通道或类型不匹配，设备ID: {}", deviceId);
-                return false;
+                log.warn("未找到已注册通道或类型不匹配，尝试重新连接，设备ID: {}", deviceId);
+                return tryReconnectAndSend(deviceId, command);
             }
             Channel channel = (Channel) ch;
             if (!channel.isActive()) {
-                log.warn("设备通道不活跃，设备ID: {}", deviceId);
-                return false;
+                log.warn("设备通道不活跃，尝试重新连接，设备ID: {}", deviceId);
+                return tryReconnectAndSend(deviceId, command);
             }
 
             byte[] payload = StxEtxProtocolUtil.buildCommand(command);
@@ -193,6 +193,47 @@ public class DeviceConnectionManager {
             return true;
         } catch (Exception e) {
             log.error("通过注册通道发送命令异常，设备ID: {}", deviceId, e);
+            return false;
+        }
+    }
+
+    /**
+     * 尝试重新连接设备并发送命令
+     */
+    private boolean tryReconnectAndSend(String deviceId, String command) {
+        try {
+            // 获取设备信息
+            DeviceInfo device = deviceInfoService.selectDeviceInfoById(Long.valueOf(deviceId));
+            if (device == null) {
+                log.error("设备不存在，无法重连，设备ID: {}", deviceId);
+                return false;
+            }
+
+            // 尝试重新连接
+            connectDevice(device);
+            
+            // 等待连接建立（最多等待5秒）
+            int maxWaitTime = 50; // 5秒，每次等待100ms
+            for (int i = 0; i < maxWaitTime; i++) {
+                Thread.sleep(100);
+                Object ch = deviceDataHandlerService.getDeviceChannel(deviceId);
+                if (ch instanceof Channel) {
+                    Channel channel = (Channel) ch;
+                    if (channel.isActive()) {
+                        log.info("设备重连成功，设备ID: {}", deviceId);
+                        // 重连成功后发送命令
+                        byte[] payload = StxEtxProtocolUtil.buildCommand(command);
+                        channel.writeAndFlush(Unpooled.wrappedBuffer(payload));
+                        log.debug("重连后发送命令成功，设备ID: {}，命令: {}", deviceId, command);
+                        return true;
+                    }
+                }
+            }
+            
+            log.error("设备重连超时，设备ID: {}", deviceId);
+            return false;
+        } catch (Exception e) {
+            log.error("重连设备异常，设备ID: {}", deviceId, e);
             return false;
         }
     }
