@@ -203,9 +203,9 @@ public interface DataPoolItemMapper {
 
     /**
      * 统计非待打印的数据项数量
-     * @param id 数据项ID
+     * @param poolId 数据项ID
      */
-    int  countByNotPending(Long id);
+    int  countByNotPending(Long poolId);
 
     /**
      * 统计指定状态的数据项数量
@@ -214,4 +214,11 @@ public interface DataPoolItemMapper {
      * @return 数据项数量
      */
     int countIntStatus(Long poolId, String status);
+
+    /**
+     * 统计待打印的数据项数量
+     * @param poolId 数据池ID
+     * @return 数据项数量
+     */
+    int countByPending(Long poolId);
 }

@@ -57,4 +57,11 @@ public interface DataPoolMapper
      * @return 结果
      */
     public int deleteDataPoolByIds(Long[] ids);
+
+    /**
+     * 更新数据池待打印数量
+     * @param poolId 数据池ID
+     * @param planPrintCount 待打印数量
+     */
+    void updateDataPendingCount(Long poolId, int planPrintCount);
 }

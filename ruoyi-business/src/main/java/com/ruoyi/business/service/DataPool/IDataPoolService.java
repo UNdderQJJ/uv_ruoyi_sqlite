@@ -100,4 +100,11 @@ public interface IDataPoolService
      * @return 结果
      */
     public int updateConnectionState(Long id, String connectionState);
+
+    /**
+     * 更新数据池待待打印id
+     * @param poolId
+     * @param planPrintCount
+     */
+    void updateDataPendingCount(Long poolId, int planPrintCount);
 }

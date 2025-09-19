@@ -6,6 +6,7 @@ import com.ruoyi.business.domain.TaskInfo.*;
 import com.ruoyi.business.enums.*;
 import com.ruoyi.business.events.TaskPauseEvent;
 import com.ruoyi.business.service.DataPool.DataSourceLifecycleService;
+import com.ruoyi.business.service.DataPool.IDataPoolService;
 import com.ruoyi.business.service.SystemLog.ISystemLogService;
 import com.ruoyi.business.service.TaskInfo.*;
 import com.ruoyi.business.service.DeviceInfo.IDeviceInfoService;
@@ -73,8 +74,6 @@ public class TaskDispatcherServiceImpl implements TaskDispatcherService {
     // 当前任务
     private volatile TaskInfo currentTask;
 
-
-    
     @Autowired
     private ApplicationEventPublisher eventPublisher;
     @Autowired
@@ -87,9 +86,6 @@ public class TaskDispatcherServiceImpl implements TaskDispatcherService {
     private IDeviceInfoService deviceInfoService;
     
     @Autowired
-    private DeviceConfigService deviceConfigService;
-    
-    @Autowired
     private DeviceCommandService deviceCommandService;
 
     @Autowired
@@ -97,6 +93,9 @@ public class TaskDispatcherServiceImpl implements TaskDispatcherService {
 
     @Autowired
     private CommandQueueService commandQueueService;
+
+    @Autowired
+    private IDataPoolService dataPoolService;
 
     @Autowired
     private IDataPoolItemService dataPoolItemService;
@@ -239,8 +238,11 @@ public class TaskDispatcherServiceImpl implements TaskDispatcherService {
             // 停止数据源
             dataSourceLifecycleService.stopDataSource(getPoolId(taskId));
             
-            // 清空当前任务
+            // 清空当前任务 与缓存池数据
             if (currentTask != null && currentTask.getId().equals(taskId)) {
+                //清除commandQueue对应任务的缓存池数据
+                commandQueueService.clearQueue(taskId);
+                // 清空当前任务
                 currentTask = null;
             }
             
@@ -307,10 +309,14 @@ public class TaskDispatcherServiceImpl implements TaskDispatcherService {
             // 停止数据源
             dataSourceLifecycleService.stopDataSource(getPoolId(taskId));
 
-            // 清空当前任务
+             // 清空当前任务 与缓存池数据
             if (currentTask != null && currentTask.getId().equals(taskId)) {
+                //清除commandQueue对应任务的缓存池数据
+                commandQueueService.clearQueue(taskId);
+                // 清空当前任务
                 currentTask = null;
             }
+
 
             log.info("打印任务已完成，任务ID: {}", taskId);
 
@@ -625,6 +631,7 @@ public class TaskDispatcherServiceImpl implements TaskDispatcherService {
                     link.setCompletedQuantity(Math.toIntExact(completedCount));
                     totalCompleted += completedCount;
                     try {
+                        //更新任务设备关联表
                         taskDeviceLinkService.updateLink(link);
                     } catch (Exception ex) {
                         log.warn("更新TaskDeviceLink进度失败，taskId: {}, deviceId: {}", taskId, deviceId, ex);
@@ -638,10 +645,16 @@ public class TaskDispatcherServiceImpl implements TaskDispatcherService {
             task.setCompletedQuantity(totalCompleted);
             taskDispatch.setCompletedCommandCount(totalCompleted);
             try {
+                // 更新任务完成数量
                 taskInfoService.updateTaskInfo(task);
             } catch (Exception ex) {
                 log.warn("更新TaskInfo完成数量失败，taskId: {}", taskId, ex);
             }
+            //查询待打印数量
+             int planPrintCount = dataPoolItemService.countByPending(taskDispatch.getPoolId());
+            //更新数据池待打印数量
+            dataPoolService.updateDataPendingCount(taskDispatch.getPoolId(),planPrintCount);
+
         } catch (Exception e) {
             log.error("任务进度上报定时任务执行异常，任务ID: {}", taskId, e);
         }
@@ -686,7 +699,10 @@ public class TaskDispatcherServiceImpl implements TaskDispatcherService {
         TaskDispatchStatus taskStatus = taskStatusMap.get(taskId);
         try {
             if (commandQueueService.getQueueSize(taskId) == 0) {
-//                finishTaskDispatch(taskId);
+                int planPrintCount = dataPoolItemService.countByPending(taskStatus.getPoolId());
+                if (planPrintCount == 0) {
+                    finishTaskDispatch(taskId);
+                }
             }
         } catch (Exception ex) {
             log.warn("检查计划打印数量时发生异常，taskId: {}", taskId, ex);

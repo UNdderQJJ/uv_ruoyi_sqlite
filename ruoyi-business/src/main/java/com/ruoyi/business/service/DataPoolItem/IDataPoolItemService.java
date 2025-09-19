@@ -278,8 +278,16 @@ public interface IDataPoolItemService {
     /**
      * 统计非待打印的数据项数量
      *
-     * @param id 数据项ID
+     * @param poolId 数据池ID
      * @return 非待打印的数据项数量
      */
-    int countByNotPending(Long id);
+    int countByNotPending(Long poolId);
+
+    /**
+     * 统计待打印的数据项数量
+     *
+     * @param poolId 数据池ID
+     * @return 非打印的数据项数量
+     */
+    int countByPending(Long poolId);
 }

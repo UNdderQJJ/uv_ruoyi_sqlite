@@ -276,4 +276,9 @@ public class DataPoolServiceImpl implements IDataPoolService
 
         return result;
     }
+
+    @Override
+    public void updateDataPendingCount(Long poolId, int planPrintCount) {
+        dataPoolMapper.updateDataPendingCount(poolId, planPrintCount);
+    }
 }

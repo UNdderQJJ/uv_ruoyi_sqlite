@@ -579,7 +579,12 @@ public void updateDataPoolItemsStatus(List<DataPoolItem> itemList, String status
     }
 
     @Override
-    public int countByNotPending(Long id) {
-      return  dataPoolItemMapper.countByNotPending(id);
+    public int countByNotPending(Long poolId) {
+      return  dataPoolItemMapper.countByNotPending(poolId);
+    }
+
+    @Override
+    public int countByPending(Long poolId) {
+        return dataPoolItemMapper.countByPending(poolId);
     }
 }

@@ -78,7 +78,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         update data_pool_item
         set status = 'PRINTING',
             device_id = #{deviceId},
-            update_time = now()
+            update_time = datetime('now', 'localtime')
         where id = #{id} 
           and status = 'PENDING' 
           and del_flag = '0'
@@ -88,7 +88,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         update data_pool_item
         set status = 'PRINTING',
             device_id = #{deviceId},
-            update_time = now()
+            update_time = datetime('now', 'localtime')
         where id in
         <foreach item="id" collection="ids" open="(" separator="," close=")">
             #{id}
@@ -101,7 +101,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         update data_pool_item
         set status = #{status},
             <if test="printCount != null">print_count = #{printCount},</if>
-            update_time = now()
+            update_time = datetime('now', 'localtime')
         where id = #{id} and del_flag = '0'
     </update>
 
@@ -109,7 +109,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         update data_pool_item
         set status = 'PENDING',
             device_id = null,
-            update_time = now()
+            update_time = datetime('now', 'localtime')
         where id = #{id} and del_flag = '0'
     </update>
 
@@ -117,7 +117,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         update data_pool_item
         set status = 'PENDING',
             device_id = null,
-            update_time = now()
+            update_time = datetime('now', 'localtime')
         where device_id = #{deviceId} and del_flag = '0'
     </update>
 
@@ -170,7 +170,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
     </update>
     <update id="updateDataPoolItemsStatus">
         update data_pool_item
-        set status = #{status},update_time = now()
+        set status = #{status},update_time = datetime('now', 'localtime'),
             device_id = #{deviceId}
         where id in
         <foreach item="id" collection="ids" open="(" separator="," close=")">
@@ -180,7 +180,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
     </update>
     <update id="updateItemsStatus">
         update data_pool_item
-        set status = #{status},update_time = now()
+        set status = #{status},update_time = datetime('now', 'localtime')
         where id in
         <foreach item="id" collection="ids" open="(" separator="," close=")">
             #{id}
@@ -201,14 +201,14 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
     </delete>
 
     <delete id="deleteDataPoolItemByIds" parameterType="Long">
-        update data_pool_item set del_flag = '2', update_time = now() where id in 
+        update data_pool_item set del_flag = '2', update_time = datetime('now', 'localtime') where id in 
         <foreach item="id" collection="array" open="(" separator="," close=")">
             #{id}
         </foreach>
     </delete>
 
     <delete id="deleteDataPoolItemByPoolId" parameterType="Long">
-        update data_pool_item set del_flag = '2', update_time = now() where pool_id = #{poolId}
+        update data_pool_item set del_flag = '2', update_time = datetime('now', 'localtime') where pool_id = #{poolId}
     </delete>
 
     <select id="countByStatus" resultType="java.util.Map">
@@ -241,11 +241,18 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
           and del_flag = '0'
         <if test="poolId != null">and pool_id = #{poolId}</if>
     </select>
+    <select id="countByPending" resultType="java.lang.Integer">
+        select count(*)
+        from data_pool_item
+        where status = 'PENDING'
+          and del_flag = '0'
+        <if test="poolId != null">and pool_id = #{poolId}</if>
+    </select>
 
     <delete id="cleanPrintedData">
         update data_pool_item 
-        set del_flag = '2', update_time = now()
-        where status = 'PRINTED' 
+        set del_flag = '2', update_time = datetime('now', 'localtime')
+        where status = 'PRINTED'
           and del_flag = '0'
         <if test="poolId != null">and pool_id = #{poolId}</if>
         <if test="beforeTime != null">and create_time &lt; #{beforeTime}</if>
