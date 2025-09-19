@@ -303,11 +303,11 @@ public class AuthManagementHandler {
                 return null;
             }
             
-            // 验证token是否过期
-            if (loginUser.getExpireTime() < System.currentTimeMillis()) {
-                log.warn("Token已过期: {}", token);
-                return null;
-            }
+//            // 验证token是否过期
+//            if (loginUser.getExpireTime() < System.currentTimeMillis()) {
+//                log.warn("Token已过期: {}", token);
+//                return null;
+//            }
             
             return loginUser;
         } catch (Exception e) {
