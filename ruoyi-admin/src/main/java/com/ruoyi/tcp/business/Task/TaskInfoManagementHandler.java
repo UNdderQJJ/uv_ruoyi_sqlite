@@ -544,10 +544,10 @@ public class TaskInfoManagementHandler {
             //查询不包含待打印的数据
             passedQuantity += dataPoolItemService.countByNotPending(pool.getId());
             //查询成功的数据
-            failedQuantity += dataPoolItemService.countByStatus(pool.getId(), ItemStatus.PRINTED.getCode());
+            failedQuantity += dataPoolItemService.countByStatus(pool.getId(), ItemStatus.QC_COMPLETED.getCode());
         }
             //获取合格率保留四舍五入4位小数
-            qualityRate= (double) passedQuantity /failedQuantity;
+            qualityRate= (double) failedQuantity /passedQuantity;
             qualityRate = Math.round(qualityRate * 10000) / 100.0;
 
         return TcpResponse.success(qualityRate);

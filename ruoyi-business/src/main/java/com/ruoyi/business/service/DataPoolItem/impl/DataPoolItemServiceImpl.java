@@ -458,7 +458,6 @@ public void updateDataPoolItemsStatus(List<DataPoolItem> itemList, String status
         Map<String, Object> statistics = new HashMap<>();
         int totalCount = 0;
         int pendingCount = 0;
-        int printingCount = 0;
         int printedCount = 0;
         int failedCount = 0;
         
@@ -469,11 +468,9 @@ public void updateDataPoolItemsStatus(List<DataPoolItem> itemList, String status
             totalCount += count;
             
             switch (status) {
-                case "PENDING":
+                // 待打印，打印中
+                case "PENDING", "PRINTING":
                     pendingCount = count;
-                    break;
-                case "PRINTING":
-                    printingCount = count;
                     break;
                 case "PRINTED":
                     printedCount = count;
@@ -486,7 +483,6 @@ public void updateDataPoolItemsStatus(List<DataPoolItem> itemList, String status
         
         statistics.put("totalCount", totalCount);
         statistics.put("pendingCount", pendingCount);
-        statistics.put("printingCount", printingCount);
         statistics.put("printedCount", printedCount);
         statistics.put("failedCount", failedCount);
         statistics.put("poolId", poolId);
