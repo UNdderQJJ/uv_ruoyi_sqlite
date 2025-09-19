@@ -68,7 +68,7 @@ public class CommandSenderRunner implements Runnable {
                 }
                 
                 // 从指令队列获取下一个指令
-                PrintCommand command = commandQueueService.getNextCommand();
+                PrintCommand command = commandQueueService.getNextCommand(taskId);
                 if (command != null) {
                     sendCommand(command);
                 } else {

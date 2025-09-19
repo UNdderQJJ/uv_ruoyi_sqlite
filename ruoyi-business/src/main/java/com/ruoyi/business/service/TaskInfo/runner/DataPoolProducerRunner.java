@@ -120,7 +120,7 @@ public class DataPoolProducerRunner implements Runnable {
     private void fetchAndProcessData() {
         try {
             // 检查队列大小，避免队列过满
-            int queueSize = commandQueueService.getQueueSize();
+            int queueSize = commandQueueService.getQueueSize(poolId);
             int maxQueueSize = taskDispatchProperties.getCommandQueueSize();
             int printCount = taskDispatchProperties.getPlanPrintCount();//待打印数量
             int originalCount = taskDispatchProperties.getPlanPrintCount() - taskDispatchProperties.getOriginalCount();//已打印数量

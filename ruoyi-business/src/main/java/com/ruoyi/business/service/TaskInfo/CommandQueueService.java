@@ -18,11 +18,12 @@ public interface CommandQueueService {
     
     /**
      * 获取下一个指令
-     * 
+     *
+     * @param taskId 任务ID
      * @return 打印指令
      * @throws InterruptedException 中断异常
      */
-    PrintCommand getNextCommand() throws InterruptedException;
+    PrintCommand getNextCommand(Long taskId) throws InterruptedException;
     
     /**
      * 获取队列大小
@@ -40,6 +41,11 @@ public interface CommandQueueService {
      * 清空队列
      */
     void clearQueue();
+
+    /**
+     * 移除指定任务队列
+     */
+    void clearQueue(Long taskId);
 
     /**
      * 获取当前队列中所有指令的快照（不会移除）
