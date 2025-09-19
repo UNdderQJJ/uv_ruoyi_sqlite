@@ -48,6 +48,11 @@ public interface CommandQueueService {
     void clearQueue(Long taskId);
 
     /**
+     * 移除追踪队列
+     */
+    void removeTrackingQueue(Long taskId);
+
+    /**
      * 获取当前队列中所有指令的快照（不会移除）
      */
     List<PrintCommand> getAllCommandsSnapshot();

@@ -217,7 +217,14 @@ public class TaskDispatcherServiceImpl implements TaskDispatcherService {
             }
             // 更新任务状态
             taskInfoService.updateTaskStatus(taskId, TaskStatus.STOPPED);
-            //更新设备状态
+
+            // 停止任务进度上报定时器
+            stopProgressUpdater(taskId);
+
+            // 停止数据源
+            dataSourceLifecycleService.stopDataSource(getPoolId(taskId));
+
+             //更新设备状态
             List<TaskDeviceLink> linkList = taskDeviceLinkService.listByTaskId(taskId);
             for(TaskDeviceLink link : linkList){
                 DeviceInfo deviceInfo = deviceInfoService.selectDeviceInfoById(link.getDeviceId());
@@ -232,16 +239,12 @@ public class TaskDispatcherServiceImpl implements TaskDispatcherService {
                     deviceTask.setStatus(TaskDeviceStatus.ERROR.getCode());
                 }
             }
-            // 停止任务进度上报定时器
-            stopProgressUpdater(taskId);
-
-            // 停止数据源
-            dataSourceLifecycleService.stopDataSource(getPoolId(taskId));
             
             // 清空当前任务 与缓存池数据
             if (currentTask != null && currentTask.getId().equals(taskId)) {
                 //清除commandQueue对应任务的缓存池数据
                 commandQueueService.clearQueue(taskId);
+                commandQueueService.removeTrackingQueue(taskId);
                 // 清空当前任务
                 currentTask = null;
             }
@@ -285,18 +288,7 @@ public class TaskDispatcherServiceImpl implements TaskDispatcherService {
 
             // 更新任务状态
             taskInfoService.updateTaskStatus(taskId, TaskStatus.COMPLETED);
-            //更新设备状态
-            List<TaskDeviceLink> linkList = taskDeviceLinkService.listByTaskId(taskId);
-            for(TaskDeviceLink link : linkList){
-                DeviceInfo deviceInfo = deviceInfoService.selectDeviceInfoById(link.getDeviceId());
-                //在设备正常的情况下可以进行状态更新
-                if(deviceInfo.getStatus().equals(DeviceStatus.ONLINE_PRINTING.getCode()) || deviceInfo.getStatus().equals(DeviceStatus.ONLINE_IDLE.getCode())) {
-                    deviceInfoService.updateDeviceStatus(link.getDeviceId(), DeviceStatus.ONLINE_IDLE.getCode());
-                    taskDeviceLinkService.updateDeviceStatus(taskId, link.getDeviceId(), TaskDeviceStatus.COMPLETED.getCode());
-                }
-                //在设备异常的情况下只能进行状态更新
-                deviceStatusMap.get(link.getDeviceId().toString()).setStatus(TaskDeviceStatus.WAITING.getCode());
-            }
+
             //休眠2秒等待设备缓存池消耗
              Thread.sleep(2000);
 
@@ -309,10 +301,24 @@ public class TaskDispatcherServiceImpl implements TaskDispatcherService {
             // 停止数据源
             dataSourceLifecycleService.stopDataSource(getPoolId(taskId));
 
+            //更新设备状态
+            List<TaskDeviceLink> linkList = taskDeviceLinkService.listByTaskId(taskId);
+            for(TaskDeviceLink link : linkList){
+                DeviceInfo deviceInfo = deviceInfoService.selectDeviceInfoById(link.getDeviceId());
+                //在设备正常的情况下可以进行状态更新
+                if(deviceInfo.getStatus().equals(DeviceStatus.ONLINE_PRINTING.getCode()) || deviceInfo.getStatus().equals(DeviceStatus.ONLINE_IDLE.getCode())) {
+                    deviceInfoService.updateDeviceStatus(link.getDeviceId(), DeviceStatus.ONLINE_IDLE.getCode());
+                    taskDeviceLinkService.updateDeviceStatus(taskId, link.getDeviceId(), TaskDeviceStatus.COMPLETED.getCode());
+                }
+                //在设备异常的情况下只能进行状态更新
+                deviceStatusMap.get(link.getDeviceId().toString()).setStatus(TaskDeviceStatus.WAITING.getCode());
+            }
+
              // 清空当前任务 与缓存池数据
             if (currentTask != null && currentTask.getId().equals(taskId)) {
                 //清除commandQueue对应任务的缓存池数据
                 commandQueueService.clearQueue(taskId);
+                commandQueueService.removeTrackingQueue(taskId);
                 // 清空当前任务
                 currentTask = null;
             }
@@ -440,11 +446,11 @@ public class TaskDispatcherServiceImpl implements TaskDispatcherService {
                     return false;
                 }
 
-                 // 1.5 连接检测 - 必须存在活跃通道
+                // 1.5 连接检测 - 必须存在活跃通道
                 Object ch = getDeviceChannel(deviceIdStr);
                 if (!(ch instanceof Channel) || !((Channel) ch).isActive()) {
                     log.warn("设备未连接或通道不活跃，设备ID: {}", deviceIdStr);
-                   throw new RuntimeException(deviceInfo.getName()+"设备未连接");
+                    throw new RuntimeException(deviceInfo.getName() + "设备未连接，请先连接设备");
                 }
 
                 // 2. 健康检查 - 发送诊断指令

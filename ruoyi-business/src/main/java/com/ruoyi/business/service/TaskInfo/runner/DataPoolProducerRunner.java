@@ -18,6 +18,7 @@ import com.ruoyi.business.service.TaskInfo.CommandQueueService;
 import com.ruoyi.business.domain.TaskInfo.TaskDeviceLink;
 import com.ruoyi.business.enums.PrintCommandStatusEnum;
 import com.ruoyi.business.config.TaskDispatchProperties;
+import org.apache.commons.lang3.ObjectUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -98,7 +99,7 @@ public class DataPoolProducerRunner implements Runnable {
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
                 log.info("数据生成池被中断，任务ID: {}", taskId);
-                break;
+                throw new RuntimeException(e.getMessage());
                             } catch (Exception e) {
                     log.error("数据生产异常，任务ID: {}", taskId, e);
                     // 这里可以通过事件发布错误，而不是直接调用dispatcher
@@ -106,11 +107,10 @@ public class DataPoolProducerRunner implements Runnable {
                         Thread.sleep(5000); // 异常后等待5秒再重试
                     } catch (InterruptedException ie) {
                         Thread.currentThread().interrupt();
-                        break;
+                        throw new RuntimeException(e.getMessage());
                     }
                 }
         }
-        
         log.info("数据生成池停止，任务ID: {}, 总生产数量: {}", taskId, producedCount.get());
     }
     
@@ -162,9 +162,31 @@ public class DataPoolProducerRunner implements Runnable {
 
             //查询数据池模板
             DataPoolTemplate template = iDataPoolTemplateService.selectDataPoolTemplateById(deviceLinks.get(0).getPoolTemplateId());
+            if(ObjectUtils.isEmpty( template)){
+            //记录打印日志
+            SystemLog systemLog = new SystemLog();
+            systemLog.setLogType(SystemLogType.PRINT.getCode());
+            systemLog.setLogLevel(SystemLogLevel.ERROR.getCode());
+            systemLog.setTaskId(taskId);
+            systemLog.setPoolId(poolId);
+            systemLog.setContent("当前数据池模版为空!");
+            systemLogService.insert(systemLog);
+            throw new RuntimeException("当前数据池模版为空!");
+            }
             //查询设备模版
             DeviceFileConfig fileConfig = iDeviceFileConfigService.selectDeviceFileConfigById(deviceLinks.get(0).getDeviceFileConfigId());
-            
+          if(ObjectUtils.isEmpty(fileConfig)) {
+             //记录打印日志
+            SystemLog systemLog = new SystemLog();
+            systemLog.setLogType(SystemLogType.PRINT.getCode());
+            systemLog.setLogLevel(SystemLogLevel.ERROR.getCode());
+            systemLog.setTaskId(taskId);
+            systemLog.setPoolId(poolId);
+            systemLog.setContent("当前设备模版为空!");
+            systemLogService.insert(systemLog);
+            throw new RuntimeException("当前设备模版为空!");
+            }
+
             // 处理每条数据 - 每条数据只生成一个打印指令
             for (DataPoolItem item : items) {
                 if (!running || paused) {
@@ -194,12 +216,12 @@ public class DataPoolProducerRunner implements Runnable {
                 //记录打印日志
                 SystemLog systemLog = new SystemLog();
                 systemLog.setLogType(SystemLogType.PRINT.getCode());
-                systemLog.setLogLevel(SystemLogLevel.INFO.getCode());
+                systemLog.setLogLevel(SystemLogLevel.ERROR.getCode());
                 systemLog.setTaskId(taskId);
                 systemLog.setPoolId(poolId);
                 systemLog.setContent("指令生成异常:"+e.getMessage());
                 systemLogService.insert(systemLog);
-            throw e;
+                throw new RuntimeException("指令生成异常:"+e.getMessage());
         }
     }
     

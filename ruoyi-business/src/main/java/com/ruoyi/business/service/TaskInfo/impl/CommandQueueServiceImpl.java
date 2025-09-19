@@ -7,10 +7,7 @@ import com.ruoyi.business.service.TaskInfo.SentRecord;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -30,8 +27,7 @@ public class CommandQueueServiceImpl implements CommandQueueService {
     private BlockingQueue<PrintCommand> commandQueue;
 
     // 新增：使用线程安全的Set来追踪已在队列中的指令数据，确保唯一性
-    // 我们假设用 PrintCommand 的 data 字段作为唯一标识
-    private final Set<String> queuedCommandDataSet = ConcurrentHashMap.newKeySet();
+    private final Map<Long,String> queuedCommandDataSet = new ConcurrentHashMap<>();
     
     // 已发送记录（轻量：按任务分桶，含deviceId）
     private final ConcurrentHashMap<Long, BlockingQueue<SentRecord>> taskIdToSentRecords = new ConcurrentHashMap<>();
@@ -52,28 +48,27 @@ public void addCommandToQueue(PrintCommand command) {
 
     // 假设 command.getData() 是指令的唯一标识 (例如打印的SN码)
     // queuedCommandDataSet.add() 是一个原子操作，如果数据已存在，它会返回false
-    if (queuedCommandDataSet.add(command.getData())) {
-        // ---- 如果添加成功，说明这是新指令 ----
-        try {
-            // 尝试将指令对象放入队列
-            boolean success = commandQueue.offer(command, 1, TimeUnit.SECONDS);
+       boolean rest  = Boolean.parseBoolean(queuedCommandDataSet.put(command.getTaskId(), command.getData()));
+       // ---- 如果添加失败，说明Set中已存在该数据，是重复指令 ----
+       if (!rest) {
+           // ---- 如果添加成功，说明这是新指令 ----
+           try {
+               // 尝试将指令对象放入队列
+               boolean success = commandQueue.offer(command, 1, TimeUnit.SECONDS);
 
-            if (!success) {
-                // 如果队列已满导致添加失败，我们必须把刚刚添加到Set中的标识也移除，以保证数据一致性
-                queuedCommandDataSet.remove(command.getData());
-                System.err.println("指令队列已满，丢弃指令: " + command.getId());
-            }
-        } catch (InterruptedException e) {
-            // 如果在等待入队时被中断，同样需要移除Set中的标识
-            queuedCommandDataSet.remove(command.getData());
-            Thread.currentThread().interrupt();
-            System.err.println("添加指令到队列被中断");
-        }
-    } else {
-        // ---- 如果添加失败，说明Set中已存在该数据，是重复指令 ----
-        System.err.println("检测到重复指令，已忽略: " + command.getData());
-    }
-}
+               if (!success) {
+                   // 如果队列已满导致添加失败，我们必须把刚刚添加到Set中的标识也移除，以保证数据一致性
+                   queuedCommandDataSet.remove(command.getTaskId(), command.getData());
+                   System.err.println("指令队列已满，丢弃指令: " + command.getId());
+               }
+           } catch (InterruptedException e) {
+               // 如果在等待入队时被中断，同样需要移除Set中的标识
+               queuedCommandDataSet.remove(command.getTaskId(), command.getData());
+               Thread.currentThread().interrupt();
+               System.err.println("添加指令到队列被中断");
+           }
+       }
+   }
     
     @Override
     public PrintCommand getNextCommand(Long taskId){
@@ -83,7 +78,7 @@ public void addCommandToQueue(PrintCommand command) {
          if (command != null) {
         // 关键步骤：一旦指令被成功取出，就将其唯一标识从追踪Set中移除
         // 这样，后续相同数据的新指令就可以被再次添加进来
-        queuedCommandDataSet.remove(command.getData());
+        queuedCommandDataSet.remove(command.getTaskId(),command.getData());
          //移除已发送缓存池数据
          removeCommand(command);
     }
@@ -111,6 +106,11 @@ public void addCommandToQueue(PrintCommand command) {
     public void clearQueue(Long taskId) {
         initQueues();
         commandQueue.removeIf(command -> command.getTaskId().equals(taskId));
+    }
+
+    @Override
+    public void removeTrackingQueue(Long taskId) {
+        queuedCommandDataSet.remove(taskId);
     }
 
     @Override
