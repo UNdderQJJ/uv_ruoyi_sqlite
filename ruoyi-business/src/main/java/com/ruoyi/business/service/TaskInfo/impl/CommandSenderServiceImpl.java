@@ -1,14 +1,17 @@
 package com.ruoyi.business.service.TaskInfo.impl;
 
+import com.ruoyi.business.domain.DataInspect.DataInspect;
 import com.ruoyi.business.domain.SystemLog.SystemLog;
 import com.ruoyi.business.domain.TaskInfo.PrintCommand;
 import com.ruoyi.business.domain.TaskInfo.TaskDispatchStatus;
 import com.ruoyi.business.domain.TaskInfo.TaskInfo;
+import com.ruoyi.business.enums.InspectStatus;
 import com.ruoyi.business.enums.ItemStatus;
 import com.ruoyi.business.enums.SystemLogLevel;
 import com.ruoyi.business.enums.SystemLogType;
 import com.ruoyi.business.events.TaskPauseEvent;
 import com.ruoyi.business.domain.TaskInfo.TaskDeviceLink;
+import com.ruoyi.business.service.DataInspect.IDataInspectService;
 import com.ruoyi.business.service.SystemLog.ISystemLogService;
 import com.ruoyi.business.service.TaskInfo.*;
 import com.ruoyi.business.domain.DeviceInfo.DeviceInfo;
@@ -74,6 +77,9 @@ public class CommandSenderServiceImpl implements CommandSenderService {
 
     @Autowired
     private ISystemLogService systemLogService;
+
+    @Autowired
+    private IDataInspectService dataInspectService;
 
     // 任务队列维护与状态标记调度句柄
     private final ConcurrentHashMap<Long, java.util.concurrent.ScheduledFuture<?>> queueMaintainers = new ConcurrentHashMap<>();
@@ -318,25 +324,47 @@ public class CommandSenderServiceImpl implements CommandSenderService {
         }
     }
 
-    // 标记SENT为PRINTING
+    // 标记SENT为PRINTING  创建产品质检记录
     private void maintainQueueAndMarkPrinting(Long taskId) {
         try {
             // 1) 处理已发送ID：按任务原子抽取并批量更新为PRINTING
             List<SentRecord> sentRecords = commandQueueService.drainSentRecordsForTask(taskId);
 
             if (sentRecords != null && !sentRecords.isEmpty()) {
+                //需要更新的数据项ID
                 List<DataPoolItem> toUpdate = new ArrayList<>(sentRecords.size());
+                //需要插入质检记录列表
+                List<DataInspect> toInsert = new ArrayList<>();
                 for (SentRecord rec : sentRecords) {
                     DataPoolItem item = new DataPoolItem();
                     item.setId(rec.getDataPoolItemId());
                     item.setDeviceId(rec.getDeviceId());
                     toUpdate.add(item);
+
+                    //批量创建产品质检记录
+                    DataInspect inspect = new DataInspect();
+                    inspect.setItemId(rec.getDataPoolItemId());//数据项ID
+                    inspect.setItemData(rec.getDataPoolItemData());//数据项数据
+                    inspect.setPoolId(rec.getPoolId());//数据池ID
+                    inspect.setTaskId(taskId);//任务ID
+                    inspect.setPrintDeviceId(Long.valueOf(rec.getDeviceId()));//打印设备ID
+                    inspect.setPrintTime(rec.getPrintTime());//打印时间
+                    inspect.setInspectStatus(InspectStatus.PENDING.getCode());//待扫码
+                    toInsert.add(inspect);
                 }
                 try {
                     dataPoolItemService.updateDataPoolItemsStatus(toUpdate, ItemStatus.PRINTED.getCode());
                     log.debug("批量更新{}个数据项状态为PRINTING，任务ID: {}", toUpdate.size(), taskId);
                 } catch (Exception ex) {
                     log.warn("批量更新数据项为PRINTING失败，任务ID: {}", taskId, ex);
+                }
+                try {
+                    //批量插入产品质检记录
+                    dataInspectService.batchInsertDataInspect(toInsert);
+                    log.debug("批量插入{}个数据项质检记录，任务ID: {}", toUpdate.size(), taskId);
+                } catch (Exception e) {
+                    log.error("批量插入数据项质检记录异常，任务ID: {}", taskId, e);
+                    throw new RuntimeException(e);
                 }
             }
         } catch (Exception e) {

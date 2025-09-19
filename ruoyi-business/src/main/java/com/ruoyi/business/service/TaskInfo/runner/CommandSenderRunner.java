@@ -157,9 +157,11 @@ public class CommandSenderRunner implements Runnable {
             
             // 记录轻量的已发送ID，避免回填整个指令对象导致性能下降
             try {
+                String dataPoolItemData =command.getData();
                 Long dataPoolItemId = Long.valueOf(command.getId());
                 Long taskId = command.getTaskId();
-                commandQueueService.addSentRecord(taskId, dataPoolItemId,deviceId);
+                Long poolId = dispatcher.getPoolId(taskId);
+                commandQueueService.addSentRecord(taskId, dataPoolItemId,dataPoolItemData,deviceId,poolId);
             } catch (NumberFormatException ignore) {
             }
             

@@ -59,15 +59,17 @@ public interface CommandQueueService {
      *
      * @param taskId 任务ID
      * @param dataPoolItemId 数据项ID
+     * @param dataPoolItemData 数据内容
      * @param deviceId 设备ID
+     * @param poolId 数据项所属的池ID
      */
-    void addSentRecord(Long taskId, Long dataPoolItemId, String deviceId);
+    void addSentRecord(Long taskId, Long dataPoolItemId, String dataPoolItemData, String deviceId, Long poolId);
 
     /**
      * 兼容方法（无设备ID），等价于 deviceId=null
      */
     default void addSentRecord(Long taskId, Long dataPoolItemId) {
-        addSentRecord(taskId, dataPoolItemId, null);
+        addSentRecord(taskId, dataPoolItemId, null, null, null);
     }
 
     /**

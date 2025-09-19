@@ -96,14 +96,14 @@ public class CommandQueueServiceImpl implements CommandQueueService {
     }
 
     @Override
-    public void addSentRecord(Long taskId, Long dataPoolItemId, String deviceId) {
+    public void addSentRecord(Long taskId, Long dataPoolItemId,String dataPoolItemData, String deviceId,Long poolId) {
         if (taskId == null || dataPoolItemId == null) {
             return;
         }
         int queueSize = taskDispatchProperties.getCommandQueueSize();
         BlockingQueue<SentRecord> q = taskIdToSentRecords.computeIfAbsent(taskId, k -> new LinkedBlockingQueue<>(queueSize));
         // 非阻塞插入，满则丢弃并记录
-        boolean ok = q.offer(new SentRecord(taskId, dataPoolItemId, deviceId));
+        boolean ok = q.offer(new SentRecord(taskId, dataPoolItemId,dataPoolItemData, deviceId,poolId));
         if (!ok) {
             System.err.println("已发送记录队列满，taskId=" + taskId + ", 丢弃ID=" + dataPoolItemId);
         }
@@ -111,7 +111,7 @@ public class CommandQueueServiceImpl implements CommandQueueService {
 
     @Override
     public void addSentRecord(Long taskId, Long dataPoolItemId) {
-        addSentRecord(taskId, dataPoolItemId, null);
+        addSentRecord(taskId, dataPoolItemId, null,null,null);
     }
 
     @Override
