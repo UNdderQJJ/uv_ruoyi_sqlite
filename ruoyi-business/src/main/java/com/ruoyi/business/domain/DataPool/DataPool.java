@@ -54,6 +54,9 @@ public class DataPool extends BaseEntity
     /** 数据获取间隔时间（毫秒） */
     private Long dataFetchInterval;
 
+    /** 自动更新 **/
+    private String autoUpdate;
+
     @Override
     public String toString() {
         return new ToStringBuilder(this, ToStringStyle.MULTI_LINE_STYLE)

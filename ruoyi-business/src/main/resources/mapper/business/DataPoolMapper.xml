@@ -23,10 +23,11 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         <result property="updateBy"          column="update_by"         />
         <result property="updateTime"        column="update_time"       />
         <result property="remark"            column="remark"            />
+        <result property="autoUpdate"        column="auto_update"/>
     </resultMap>
 
     <sql id="selectDataPoolVo">
-        select id, pool_name, source_type, total_count, pending_count, status, connection_state, source_config_json, parsing_rule_json, trigger_config_json, del_flag, file_read_completed, data_fetch_interval, create_by, create_time, update_by, update_time, remark from data_pool
+        select id, pool_name, source_type, total_count, pending_count, status, connection_state, source_config_json, parsing_rule_json, trigger_config_json, del_flag, file_read_completed, data_fetch_interval, create_by, create_time, update_by, update_time, remark,auto_update from data_pool
     </sql>
 
     <select id="selectDataPoolList" parameterType="DataPool" resultMap="DataPoolResult">
@@ -35,6 +36,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="poolName != null  and poolName != ''"> and pool_name like concat('%', #{poolName}, '%')</if>
             <if test="sourceType != null  and sourceType != ''"> and source_type = #{sourceType}</if>
             <if test="status != null  and status != ''"> and status = #{status}</if>
+             <if test="autoUpdate != null  and autoUpdate != ''"> and auto_update = #{autoUpdate}</if>
             <if test="connectionState != null  and connectionState != ''"> and connection_state = #{connectionState}</if>
               <if test="fileReadCompleted != null  and fileReadCompleted != ''"> and file_read_completed = #{fileReadCompleted}</if>
             and del_flag = '0'
@@ -66,6 +68,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="updateBy != null">update_by,</if>
             <if test="updateTime != null">update_time,</if>
             <if test="remark != null">remark,</if>
+            <if test="autoUpdate != null">auto_update,</if>
          </trim>
         <trim prefix="values (" suffix=")" suffixOverrides=",">
             <if test="poolName != null and poolName != ''">#{poolName},</if>
@@ -85,6 +88,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="updateBy != null">#{updateBy},</if>
             <if test="updateTime != null">#{updateTime},</if>
             <if test="remark != null">#{remark},</if>
+            <if test="autoUpdate != null">#{autoUpdate},</if>
          </trim>
     </insert>
 
@@ -108,6 +112,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="updateBy != null">update_by = #{updateBy},</if>
             <if test="updateTime != null">update_time = #{updateTime},</if>
             <if test="remark != null">remark = #{remark},</if>
+            <if test="autoUpdate != null">auto_update = #{autoUpdate},</if>
         </trim>
         where id = #{id}
     </update>

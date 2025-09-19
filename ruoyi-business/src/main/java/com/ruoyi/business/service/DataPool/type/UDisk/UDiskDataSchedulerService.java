@@ -8,13 +8,24 @@ import com.ruoyi.business.enums.SourceType;
 import com.ruoyi.business.enums.TriggerType;
 import com.ruoyi.business.enums.ConnectionState;
 import com.ruoyi.business.service.DataPool.IDataPoolService;
+import com.ruoyi.business.service.DataPool.DataPoolSchedulerService;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 
+import java.io.File;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
+import jakarta.annotation.PostConstruct;
+import jakarta.annotation.PreDestroy;
+import com.ruoyi.business.domain.config.UDiskSourceConfig;
 
 /**
  * U盘数据调度器服务
@@ -32,12 +43,36 @@ public class UDiskDataSchedulerService {
     @Autowired
     private UDiskFileReaderService uDiskFileReaderService;
 
+    @Autowired
+    @Lazy
+    private DataPoolSchedulerService dataPoolSchedulerService;
+
 
     // 默认阈值：当待打印数据少于此值时触发读取
     private static final int DEFAULT_THRESHOLD = 100;
 
     // 默认批次大小：每次最多读取的数据量
     private static final int DEFAULT_BATCH_SIZE = 10;
+
+    // 自动监控调度
+    private final ScheduledExecutorService monitorExecutor = Executors.newSingleThreadScheduledExecutor(r -> {
+        Thread t = new Thread(r, "u-disk-monitor");
+        t.setDaemon(true);
+        return t;
+    });
+    // 记录文件的最近修改时间，避免重复处理
+    private final Map<Long, Long> poolIdToLastModified = new ConcurrentHashMap<>();
+
+    @PostConstruct
+    public void startAutoMonitor() {
+        // 每3秒扫描一次，识别 autoUpdate=1 的U盘数据池
+        monitorExecutor.scheduleWithFixedDelay(this::scanAndHandleAutoUpdatePools, 3, 3, TimeUnit.SECONDS);
+    }
+
+    @PreDestroy
+    public void stopAutoMonitor() {
+        monitorExecutor.shutdownNow();
+    }
     
     /**
      * 手动触发数据读取
@@ -60,12 +95,12 @@ public class UDiskDataSchedulerService {
             return "数据池类型不是U盘类型";
         }
         
-        // 检查文件是否已经读取完成
-        if ("1".equals(dataPool.getFileReadCompleted())) {
-            log.info("数据池 {} 的文件已经读取完成，无需再次读取", dataPool.getPoolName());
-            dataPoolService.updateDataPoolStatus(poolId, PoolStatus.WINING.getCode());
-            return "数据池"+dataPool.getPoolName()+"的文件已经读取完成，无需再次读取";
-        }
+//        // 检查文件是否已经读取完成
+//        if ("1".equals(dataPool.getFileReadCompleted())) {
+//            log.info("数据池 {} 的文件已经读取完成，无需再次读取", dataPool.getPoolName());
+//            dataPoolService.updateDataPoolStatus(poolId, PoolStatus.WINING.getCode());
+//            return "数据池"+dataPool.getPoolName()+"的文件已经读取完成，无需再次读取";
+//        }
         
         // 获取批次大小
         int actualBatchSize = batchSize != null ? batchSize : getBatchSizeFromConfig(dataPool);
@@ -73,12 +108,12 @@ public class UDiskDataSchedulerService {
         //获取阈值
         int threshold =  getThresholdFromConfig(dataPool);
 
-           // 检查待打印数据量是否低于阈值
-        if (dataPool.getPendingCount() > threshold) {
-            log.debug("数据池 {} 待打印数据量 {} 未低于阈值 {}, 无需读取",
-                    dataPool.getPoolName(), dataPool.getPendingCount(), threshold);
-           return "数据池"+dataPool.getPoolName()+"的待打印数据量"+dataPool.getPendingCount()+"未低于阈值"+threshold;
-        }
+//           // 检查待打印数据量是否低于阈值
+//        if (dataPool.getPendingCount() > threshold) {
+//            log.debug("数据池 {} 待打印数据量 {} 未低于阈值 {}, 无需读取",
+//                    dataPool.getPoolName(), dataPool.getPendingCount(), threshold);
+//           return "数据池"+dataPool.getPoolName()+"的待打印数据量"+dataPool.getPendingCount()+"未低于阈值"+threshold;
+//        }
         
         log.info("触发数据池 {} 读取数据, 批次大小: {}", dataPool.getPoolName(), actualBatchSize);
         
@@ -136,6 +171,81 @@ public class UDiskDataSchedulerService {
             }
         } catch (Exception e) {
             log.error("调度器执行时发生错误: {}", e.getMessage(), e);
+        }
+    }
+
+    /**
+     * 扫描 autoUpdate=1 的U盘数据池，检测U盘文件是否发生变化（重启或重插引发的变更），自动更新数据。
+     */
+    private void scanAndHandleAutoUpdatePools() {
+        try {
+            DataPool queryParam = new DataPool();
+            queryParam.setSourceType(SourceType.U_DISK.getCode());
+            queryParam.setDelFlag("0");
+            queryParam.setAutoUpdate("1");
+            List<DataPool> pools = dataPoolService.selectDataPoolList(queryParam);
+            log.debug("[UDiskScheduler] 找到 {} 个需要运行的 UDisk 数据池", pools.size());
+            if (pools == null || pools.isEmpty()) {
+                return;
+            }
+
+            for (DataPool p : pools) {
+            
+                try {
+                    handleAutoUpdatePool(p);
+                } catch (Exception e) {
+                    log.warn("自动监控处理数据池失败，poolId={}, msg={}", p.getId(), e.getMessage());
+                }
+            }
+        } catch (Exception e) {
+            log.error("扫描自动监控U盘数据池失败: {}", e.getMessage(), e);
+        }
+    }
+
+    private void handleAutoUpdatePool(DataPool dataPool) {
+        // 解析U盘配置，获取文件路径
+        if (StringUtils.isBlank(dataPool.getSourceConfigJson())) {
+            return;
+        }
+        UDiskSourceConfig cfg;
+        try {
+            cfg = JSON.parseObject(dataPool.getSourceConfigJson(), UDiskSourceConfig.class);
+        } catch (Exception ex) {
+            log.warn("解析U盘配置失败，poolId={}, err={}", dataPool.getId(), ex.getMessage());
+            return;
+        }
+        String filePath = cfg != null ? cfg.getFilePath() : null;
+        if (StringUtils.isBlank(filePath)) {
+            return;
+        }
+
+       File f = new File(filePath);
+        long lastModified = f.exists() ? f.lastModified() : -1L;
+        Long prev = poolIdToLastModified.get(dataPool.getId());
+
+        // 首次记录或检测到变化
+        if (prev == null || !prev.equals(lastModified)) {
+            poolIdToLastModified.put(dataPool.getId(), lastModified);
+
+            // 检测到变化：重置读取完成标志，交由统一调度器按阈值持续读取
+            try {
+                if (lastModified > 0) {
+                    log.info("检测到U盘文件变更，启动统一调度器按阈值持续读取，poolId={}, path={}", dataPool.getId(), filePath);
+                    // 重置读取位置与完成标志
+                    uDiskFileReaderService.resetReadPosition(dataPool.getId(), null);
+                    //更新成运行中
+                    dataPoolService.updateDataPoolStatus(dataPool.getId(), PoolStatus.RUNNING.getCode());
+                    // 更新连接状态为已连接（文件可读）
+                    dataPoolService.updateConnectionState(dataPool.getId(), ConnectionState.CONNECTED.getCode());
+                    // 交由动态调度器按阈值持续读取
+                    dataPoolSchedulerService.startDataPoolScheduler(dataPool.getId());
+                } else {
+                    // 文件丢失，标记断开
+                    dataPoolService.updateConnectionState(dataPool.getId(), ConnectionState.DISCONNECTED.getCode());
+                }
+            } catch (Exception e) {
+                log.warn("自动读取失败，poolId={}, err={}", dataPool.getId(), e.getMessage());
+            }
         }
     }
     
