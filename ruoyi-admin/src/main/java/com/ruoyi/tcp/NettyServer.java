@@ -20,6 +20,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 import java.util.concurrent.TimeUnit;
@@ -28,6 +29,7 @@ import java.util.concurrent.TimeUnit;
  * Netty TCP 服务器
  */
 @Component
+@ConditionalOnProperty(name = "app.comm-mode", havingValue = "tcp", matchIfMissing = true)
 public class NettyServer {
 
     private static final Logger log = LoggerFactory.getLogger(NettyServer.class);
