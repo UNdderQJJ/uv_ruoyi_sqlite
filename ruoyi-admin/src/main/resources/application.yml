@@ -13,6 +13,13 @@ ruoyi:
   # 验证码类型 math 数字计算 char 字符验证
   captchaType: math
 
+# 自定义配置
+app:
+  comm-mode: stdio # 默认是tcp, 可通过启动参数修改为 stdio
+  # 数据库文件路径占位符，将在启动时动态设置
+  database:
+    path: jdbc:sqlite:${app.database.path}
+
 # 后端服务版本配置
 backend:
   # 后端服务版本号

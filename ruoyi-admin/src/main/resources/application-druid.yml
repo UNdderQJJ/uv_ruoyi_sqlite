@@ -6,8 +6,8 @@ spring:
         druid:
             # 主库数据源
             master:
-#                url: jdbc:sqlite:${user.dir}/uv-sqlite.db?journal_mode=DELETE&busy_timeout=30000&synchronous=NORMAL
-                url: jdbc:sqlite:${user.dir}/uv-sqlite.db?journal_mode=WAL&busy_timeout=30000&synchronous=NORMAL
+                url: ${app.database.path}?journal_mode=WAL&busy_timeout=30000&synchronous=NORMAL
+#                url: ${app.database.path}?journal_mode=DELETE&busy_timeout=30000&synchronous=NORMAL
                 username:
                 password:
             # 从库数据源
