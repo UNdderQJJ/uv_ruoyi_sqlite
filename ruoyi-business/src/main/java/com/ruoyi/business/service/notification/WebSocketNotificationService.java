@@ -25,6 +25,7 @@ import java.net.InetSocketAddress;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.HashMap;
+import java.util.concurrent.TimeUnit;
 
 /**
  * WebSocket通知服务
@@ -44,6 +45,7 @@ public class WebSocketNotificationService {
     private EventLoopGroup bossGroup;
     private EventLoopGroup workerGroup;
     private Channel serverChannel;
+    private volatile boolean started = false;
     
     // 存储所有连接的WebSocket会话
     private final Map<String, Channel> sessions = new ConcurrentHashMap<>();
@@ -100,6 +102,17 @@ public class WebSocketNotificationService {
             serverChannel = future.channel();
             log.info("WebSocket通知服务启动成功: port={}, path={}, localAddress={}", 
                      port, path, serverChannel.localAddress());
+
+            // 注册JVM关闭钩子，确保资源释放
+            if (!started) {
+                started = true;
+                Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+                    try {
+                        stop();
+                    } catch (Exception ignored) {
+                    }
+                }, "ws-notification-shutdown"));
+            }
             
         } catch (Exception e) {
             log.error("启动WebSocket通知服务失败: port={}, path={}", port, path, e);
@@ -119,17 +132,35 @@ public class WebSocketNotificationService {
         });
         sessions.clear();
         
-        // 关闭服务器
+        // 关闭服务器并等待关闭完成
         if (serverChannel != null) {
-            serverChannel.close();
+            try {
+                serverChannel.close().syncUninterruptibly();
+            } catch (Exception e) {
+                log.warn("关闭WebSocket服务器通道时发生异常", e);
+            } finally {
+                serverChannel = null;
+            }
         }
         
         // 关闭线程组
         if (bossGroup != null) {
-            bossGroup.shutdownGracefully();
+            try {
+                bossGroup.shutdownGracefully(0, 5, TimeUnit.SECONDS).syncUninterruptibly();
+            } catch (Exception e) {
+                log.warn("关闭bossGroup时发生异常", e);
+            } finally {
+                bossGroup = null;
+            }
         }
         if (workerGroup != null) {
-            workerGroup.shutdownGracefully();
+            try {
+                workerGroup.shutdownGracefully(0, 5, TimeUnit.SECONDS).syncUninterruptibly();
+            } catch (Exception e) {
+                log.warn("关闭workerGroup时发生异常", e);
+            } finally {
+                workerGroup = null;
+            }
         }
     }
     
