@@ -143,9 +143,11 @@ public class DataInspectManagementHandler {
          // 解析参数
         Map<String, Object> params = objectMapper.readValue(body, new TypeReference<>() {});
         //获取ids
-        List<Long> idList =List.of((Long) params.get("ids"));
+        List<?> idListRaw = (List<?>) params.get("ids");
+        List<Long> idList = idListRaw != null ? idListRaw.stream().map(o -> Long.valueOf(o.toString())).toList() : null;
         //获取itemId
-        List<Long> itemIdList =List.of((Long) params.get("itemIds"));
+        List<?> itemIdListRaw = (List<?>) params.get("items");
+        List<Long> itemIdList = itemIdListRaw != null ? itemIdListRaw.stream().map(o -> Long.valueOf(o.toString())).toList() : null;
 
         if(ObjectUtils.isEmpty(idList) && ObjectUtils.isEmpty(itemIdList)){
             return TcpResponse.success("请选择需要回收的数据！");
@@ -154,9 +156,11 @@ public class DataInspectManagementHandler {
         //批量更新打印数据状态
         List<DataPoolItem> updateItems = new ArrayList<>();
         DataPoolItem updateItem = new DataPoolItem();
-        for (Long id : itemIdList){
-            updateItem.setId(id);
-            updateItems.add(updateItem);
+        if (itemIdList != null) {
+            for (Long id : itemIdList){
+                updateItem.setId(id);
+                updateItems.add(updateItem);
+            }
         }
         try {
             //批量更新为打印中

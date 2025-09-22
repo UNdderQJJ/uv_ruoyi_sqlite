@@ -106,7 +106,7 @@ public class TaskDispatcherServiceImpl implements TaskDispatcherService {
     @Autowired
     private ISystemLogService systemLogService;
     
-    @Autowired
+    @Resource
     private TaskScheduler taskScheduler;
 
     @Resource
@@ -706,7 +706,9 @@ public class TaskDispatcherServiceImpl implements TaskDispatcherService {
         try {
             if (commandQueueService.getQueueSize(taskId) == 0) {
                 int planPrintCount = dataPoolItemService.countByPending(taskStatus.getPoolId());
-                if (planPrintCount == 0) {
+                if (taskStatus.getPlannedPrintCount() == -1 && planPrintCount == 0) {
+                    finishTaskDispatch(taskId);
+                }else if (taskStatus.getPlannedPrintCount() > 0) {
                     finishTaskDispatch(taskId);
                 }
             }

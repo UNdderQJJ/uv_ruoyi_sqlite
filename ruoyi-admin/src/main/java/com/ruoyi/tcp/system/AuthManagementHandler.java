@@ -132,7 +132,8 @@ public class AuthManagementHandler {
         try {
             LoginUser loginUser = getLoginUserFromToken(token);
             if (loginUser == null) {
-                return TcpResponse.error("用户未登录或登录已过期");
+//                return TcpResponse.error("用户未登录或登录已过期");
+                return null;
             }
             
             SysUser user = loginUser.getUser();
