@@ -133,7 +133,7 @@ public class UDiskDataSchedulerService {
         if (readCount > 0) {
             log.info("数据池 {} 成功读取 {} 条数据", dataPool.getPoolName(), readCount);
 
-            return "数据池"+dataPool.getPoolName()+"成功读取"+readCount+"条数据";
+            return "启动成功!";
         } else {
             log.info("数据池 {} 没有新数据可读取", dataPool.getPoolName());
             // 如果没有数据可读，可能是文件不存在或已读完，更新状态为断开

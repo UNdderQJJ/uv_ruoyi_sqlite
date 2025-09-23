@@ -21,7 +21,7 @@ app:
     path: jdbc:sqlite:${app.database.path}
   # 日志目录（供 logback-spring.xml 读取），默认使用用户主目录
   logging:
-    path: ${user.home}/UVControlSystem/logs
+    path: ${APPDATA:${user.home}}/UVControlSystem/logs
 
 # 后端服务版本配置
 backend:
