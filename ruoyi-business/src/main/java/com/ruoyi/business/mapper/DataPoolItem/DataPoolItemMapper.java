@@ -216,9 +216,17 @@ public interface DataPoolItemMapper {
     int countIntStatus(Long poolId, String status);
 
     /**
-     * 统计待打印的数据项数量
+     * 统计待打印与打印中的数据项数量
      * @param poolId 数据池ID
      * @return 数据项数量
      */
     int countByPending(Long poolId);
+
+
+    /**
+     * 统计打印中的数据项数量
+     * @param poolId 数据池ID
+     * @return 数据项数量
+     */
+    int countByPrinting(Long poolId);
 }

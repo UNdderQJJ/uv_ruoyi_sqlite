@@ -705,11 +705,18 @@ public class TaskDispatcherServiceImpl implements TaskDispatcherService {
         TaskDispatchStatus taskStatus = taskStatusMap.get(taskId);
         try {
             if (commandQueueService.getQueueSize(taskId) == 0) {
-                int planPrintCount = dataPoolItemService.countByPending(taskStatus.getPoolId());
-                if (taskStatus.getPlannedPrintCount() == -1 && planPrintCount == 0) {
-                    finishTaskDispatch(taskId);
+                if (taskStatus.getPlannedPrintCount() == -1) {
+                    //查询待打印与打印中的数量
+                    int planPrintCount = dataPoolItemService.countByPending(taskStatus.getPoolId());
+                    if (planPrintCount == 0) {
+                        finishTaskDispatch(taskId);
+                    }
                 }else if (taskStatus.getPlannedPrintCount() > 0) {
-                    finishTaskDispatch(taskId);
+                    //查询打印中的数量
+                    int printingCount = dataPoolItemService.countByPrinting(taskStatus.getPoolId());
+                    if (printingCount == 0) {
+                        finishTaskDispatch(taskId);
+                    }
                 }
             }
         } catch (Exception ex) {

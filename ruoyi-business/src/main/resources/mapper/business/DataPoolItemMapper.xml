@@ -248,6 +248,13 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
           and del_flag = '0'
         <if test="poolId != null">and pool_id = #{poolId}</if>
     </select>
+    <select id="countByPrinting" resultType="java.lang.Integer">
+        select count(*)
+        from data_pool_item
+        where status = 'PRINTING'
+          and del_flag = '0'
+        <if test="poolId != null">and pool_id = #{poolId}</if>
+    </select>
 
     <delete id="cleanPrintedData">
         update data_pool_item 

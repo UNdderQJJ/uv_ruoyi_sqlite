@@ -583,4 +583,9 @@ public void updateDataPoolItemsStatus(List<DataPoolItem> itemList, String status
     public int countByPending(Long poolId) {
         return dataPoolItemMapper.countByPending(poolId);
     }
+
+    @Override
+    public int countByPrinting(Long poolId) {
+        return dataPoolItemMapper.countByPrinting(poolId);
+    }
 }
