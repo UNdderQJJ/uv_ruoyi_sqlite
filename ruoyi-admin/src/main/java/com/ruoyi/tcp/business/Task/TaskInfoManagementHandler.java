@@ -541,6 +541,9 @@ public class TaskInfoManagementHandler {
                continue;
             }
             DataPool pool = dataPoolService.selectDataPoolById(taskInfo.getPoolId());
+            if(ObjectUtils.isEmpty( pool)){
+                continue;
+            }
             //查询不包含待打印的数据
             passedQuantity += dataPoolItemService.countByNotPending(pool.getId());
             //查询成功的数据

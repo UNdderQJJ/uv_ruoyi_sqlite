@@ -178,7 +178,8 @@ public class AuthManagementHandler {
             // 获取登录用户信息
             LoginUser loginUser = getLoginUserFromToken(token);
             if (loginUser == null) {
-                return TcpResponse.error("用户未登录或登录已过期");
+//                return TcpResponse.error("用户未登录或登录已过期");
+                return null;
             }
             
             Long userId = loginUser.getUserId();
@@ -233,7 +234,8 @@ public class AuthManagementHandler {
             // 获取登录用户信息
             LoginUser loginUser = getLoginUserFromToken(token);
             if (loginUser == null) {
-                return TcpResponse.error("用户未登录或登录已过期");
+//                return TcpResponse.error("用户未登录或登录已过期");
+                return null;
             }
             
             // 检查权限
