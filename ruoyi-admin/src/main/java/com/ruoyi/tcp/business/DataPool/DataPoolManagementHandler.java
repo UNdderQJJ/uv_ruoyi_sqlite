@@ -145,6 +145,9 @@ public class DataPoolManagementHandler
             queryParam = objectMapper.readValue(body, DataPool.class);
         }
 
+        //刷新数据池待打印数量
+        dataPoolService.refreshPendingCount();
+
         List<DataPool> dataPools = dataPoolService.selectDataPoolList(queryParam);
         
         var result = new HashMap<String, Object>();

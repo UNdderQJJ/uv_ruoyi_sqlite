@@ -1,9 +1,11 @@
 package com.ruoyi.business.service.DataPool.impl;
 
 import com.ruoyi.business.domain.DataPool.DataPool;
+import com.ruoyi.business.domain.DataPoolItem.DataPoolItem;
 import com.ruoyi.business.enums.ConnectionState;
 import com.ruoyi.business.enums.PoolStatus;
 import com.ruoyi.business.mapper.DataPool.DataPoolMapper;
+import com.ruoyi.business.mapper.DataPoolItem.DataPoolItemMapper;
 import com.ruoyi.business.service.DataPool.DataPoolSchedulerService;
 import com.ruoyi.business.service.DataPool.IDataPoolService;
 import com.ruoyi.business.service.notification.DataPoolStateChangeService;
@@ -24,6 +26,9 @@ public class DataPoolServiceImpl implements IDataPoolService
 {
     @Resource
     private DataPoolMapper dataPoolMapper;
+
+    @Resource
+    private DataPoolItemMapper dataPoolItemMapper;
     
     @Resource
     private DataPoolStateChangeService stateChangeService;
@@ -280,5 +285,16 @@ public class DataPoolServiceImpl implements IDataPoolService
     @Override
     public void updateDataPendingCount(Long poolId, int planPrintCount) {
         dataPoolMapper.updateDataPendingCount(poolId, planPrintCount);
+    }
+
+    @Override
+    public void refreshPendingCount() {
+        List<DataPool> dataPools = dataPoolMapper.selectDataPoolList(new DataPool());
+        for (DataPool dataPool : dataPools) {
+            //查询数据池的待打印数量
+            int pendingCount = dataPoolItemMapper.countByPending(dataPool.getId());
+            //更新数据池的待打印数量
+            dataPoolMapper.updateDataPendingCount(dataPool.getId(), pendingCount);
+        }
     }
 }
