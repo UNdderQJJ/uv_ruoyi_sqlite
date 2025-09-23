@@ -155,9 +155,9 @@ public class DataInspectManagementHandler {
 
         //批量更新打印数据状态
         List<DataPoolItem> updateItems = new ArrayList<>();
-        DataPoolItem updateItem = new DataPoolItem();
         if (itemIdList != null) {
             for (Long id : itemIdList){
+                DataPoolItem updateItem = new DataPoolItem();
                 updateItem.setId(id);
                 updateItems.add(updateItem);
             }

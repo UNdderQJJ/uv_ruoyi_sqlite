@@ -22,13 +22,13 @@ import com.ruoyi.business.service.DataPoolItem.IDataPoolItemService;
 import com.ruoyi.business.domain.DataPoolItem.DataPoolItem;
 import com.ruoyi.business.events.TaskStartEvent;
 import com.ruoyi.business.events.TaskStopEvent;
+import jakarta.annotation.Resource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.scheduling.TaskScheduler;
-import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -69,7 +69,7 @@ public class CommandSenderServiceImpl implements CommandSenderService {
     @Autowired
     private IDeviceInfoService deviceInfoService;
 
-    @Autowired
+    @Resource
     private TaskScheduler taskScheduler;
 
     @Autowired
@@ -287,9 +287,6 @@ public class CommandSenderServiceImpl implements CommandSenderService {
             if (runner != null) {
                 runner.resume();
             }
-
-            // 恢复后重启维护任务
-            startQueueMaintenance(taskId);
             
             log.info("指令发送恢复成功，任务ID: {}", taskId);
             
@@ -303,7 +300,7 @@ public class CommandSenderServiceImpl implements CommandSenderService {
             if (queueMaintainers.containsKey(taskId)) {
                 return;
             }
-            java.util.concurrent.ScheduledFuture<?> future = ((ThreadPoolTaskScheduler) taskScheduler)
+            java.util.concurrent.ScheduledFuture<?> future = taskScheduler
                     .scheduleAtFixedRate(() -> maintainQueueAndMarkPrinting(taskId), 5000);
             queueMaintainers.put(taskId, future);
             log.info("已启动队列维护任务，任务ID: {}", taskId);

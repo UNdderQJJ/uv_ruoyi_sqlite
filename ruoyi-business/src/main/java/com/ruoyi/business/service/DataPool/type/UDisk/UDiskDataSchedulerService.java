@@ -108,12 +108,12 @@ public class UDiskDataSchedulerService {
         //获取阈值
         int threshold =  getThresholdFromConfig(dataPool);
 
-//           // 检查待打印数据量是否低于阈值
-//        if (dataPool.getPendingCount() > threshold) {
-//            log.debug("数据池 {} 待打印数据量 {} 未低于阈值 {}, 无需读取",
-//                    dataPool.getPoolName(), dataPool.getPendingCount(), threshold);
-//           return "数据池"+dataPool.getPoolName()+"的待打印数据量"+dataPool.getPendingCount()+"未低于阈值"+threshold;
-//        }
+           // 检查待打印数据量是否低于阈值
+        if (dataPool.getPendingCount() > threshold) {
+            log.debug("数据池 {} 待打印数据量 {} 未低于阈值 {}, 无需读取",
+                    dataPool.getPoolName(), dataPool.getPendingCount(), threshold);
+            return "启动成功！";
+        }
         
         log.info("触发数据池 {} 读取数据, 批次大小: {}", dataPool.getPoolName(), actualBatchSize);
         
@@ -142,37 +142,7 @@ public class UDiskDataSchedulerService {
         }
 
     }
-    
-    /**
-     * 定时任务：每5秒检查一次所有U盘类型的数据池
-     */
-//    @Scheduled(fixedDelay = 5000)
-    public void scheduledCheckDataPools() {
-        try {
-            // 查询所有运行中的U盘类型数据池
-            DataPool queryParam = new DataPool();
-            queryParam.setSourceType(SourceType.U_DISK.getCode());
-            queryParam.setStatus(PoolStatus.RUNNING.getCode()); // 只检查运行中的数据池
-            queryParam.setFileReadCompleted("0");// 只检查未读取完成的数据池
-            queryParam.setDelFlag("0"); // 未删除
-            
-            List<DataPool> dataPools = dataPoolService.selectDataPoolList(queryParam);
-            if (dataPools == null || dataPools.isEmpty()) {
-                return;
-            }
-            
-            // 遍历所有数据池，检查是否需要读取数据
-            for (DataPool dataPool : dataPools) {
-                try {
-                    processDataPool(dataPool);
-                } catch (Exception e) {
-                    log.error("处理数据池 {} 时发生错误: {}", dataPool.getPoolName(), e.getMessage(), e);
-                }
-            }
-        } catch (Exception e) {
-            log.error("调度器执行时发生错误: {}", e.getMessage(), e);
-        }
-    }
+
 
     /**
      * 扫描 autoUpdate=1 的U盘数据池，检测U盘文件是否发生变化（重启或重插引发的变更），自动更新数据。

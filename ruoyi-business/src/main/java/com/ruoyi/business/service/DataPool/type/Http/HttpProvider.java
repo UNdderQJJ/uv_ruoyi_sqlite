@@ -365,30 +365,7 @@ public class HttpProvider {
                     log.debug("[HttpProvider] 响应不是标准JSON格式，继续正常处理: poolId={}", poolId);
                 }
             }
-            
-            // 检查其他常见的错误响应模式
-            if (responseBody != null) {
-                if (responseBody.contains("认证失败") || responseBody.contains("Unauthorized") || responseBody.contains("401")) {
-                    log.warn("[HttpProvider] 检测到认证失败响应: poolId={}, responseBody={}", poolId, responseBody);
-                     dataPoolService.updateDataPoolStatus(poolId, PoolStatus.ERROR.getCode());
-                    updateConnectionState(ConnectionState.ERROR);
-                    return false;
-                }
-                
-                if (responseBody.contains("权限不足") || responseBody.contains("Forbidden") || responseBody.contains("403")) {
-                    log.warn("[HttpProvider] 检测到权限不足响应: poolId={}, responseBody={}", poolId, responseBody);
-                     dataPoolService.updateDataPoolStatus(poolId, PoolStatus.ERROR.getCode());
-                    updateConnectionState(ConnectionState.ERROR);
-                    return false;
-                }
-                
-                if (responseBody.contains("资源不存在") || responseBody.contains("Not Found") || responseBody.contains("404")) {
-                    log.warn("[HttpProvider] 检测到资源不存在响应: poolId={}, responseBody={}", poolId, responseBody);
-                     dataPoolService.updateDataPoolStatus(poolId, PoolStatus.ERROR.getCode());
-                    updateConnectionState(ConnectionState.ERROR);
-                    return false;
-                }
-            }
+
             
             // 正常响应，进行数据解析
             log.debug("[HttpProvider] 开始解析HTTP响应数据: poolId={}, responseLength={}", poolId, 
