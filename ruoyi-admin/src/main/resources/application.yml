@@ -52,50 +52,6 @@ netty:
   business-thread-pool-size: 20
   business-queue-capacity: 1000
 
-# WebSocket通知服务配置
-websocket:
-  notification:
-    # WebSocket服务端口
-    port: 8751
-    # WebSocket连接路径
-    path: /ws/notification
-    # 最大连接数
-    max-connections: 1000
-    # 心跳间隔（秒）
-    heartbeat-interval: 30
-
-    # 连接配置
-    connection:
-      # 连接超时时间（毫秒）
-      timeout: 5000
-      # 最大重连次数
-      max-reconnect-attempts: 5
-      # 重连间隔（毫秒）
-      reconnect-interval: 3000
-
-    # 网络配置
-    network:
-      # 绑定地址，0.0.0.0 表示监听所有网络接口
-      bind-address: 0.0.0.0
-    # 性能调优
-    performance:
-      # 工作线程数，默认为CPU核心数
-      worker-threads: ${SERVER_WORKER_THREADS:#{T(java.lang.Runtime).getRuntime().availableProcessors() * 2}}
-      # 连接等待队列大小
-      backlog: 1024
-
-    # 安全配置
-    security:
-      # 是否启用SSL
-      ssl-enabled: false
-      # SSL证书路径（如果启用）
-      ssl-cert-path: ""
-      # 允许的源站点（跨域配置）
-      allowed-origins:
-        - "http://localhost:8080"
-        - "http://127.0.0.1:8080"
-        - "http://172.20.0.9:8751"
-
 # 日志配置
 logging:
   level:
