@@ -8,10 +8,13 @@ import com.ruoyi.business.service.DataPoolItem.IDataPoolItemService;
 import com.ruoyi.common.core.page.PageQuery;
 import com.ruoyi.common.core.page.PageResult;
 import com.ruoyi.common.utils.DateUtils;
+import com.ruoyi.common.utils.DatabaseRetryUtil;
 import com.ruoyi.common.utils.PageQueryUtils;
 import com.ruoyi.common.utils.StringUtils;
 import jakarta.annotation.Resource;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.annotation.Isolation;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -124,6 +127,7 @@ public class DataPoolItemServiceImpl implements IDataPoolItemService {
  * @param status   要更新的目标新状态
  */
 @Override
+@Transactional(rollbackFor = Exception.class, isolation = Isolation.READ_COMMITTED)
 public void updateDataPoolItemsStatus(List<DataPoolItem> itemList, String status) {
     // 1. 边界条件检查：如果传入的列表为空或 null，直接返回 0
     if (itemList == null || itemList.isEmpty()) {
@@ -308,6 +312,7 @@ public void updateDataPoolItemsStatus(List<DataPoolItem> itemList, String status
      * @return 结果
      */
     @Override
+    @Transactional(rollbackFor = Exception.class, isolation = Isolation.READ_COMMITTED)
     public int batchInsertDataPoolItems(List<DataPoolItem> dataPoolItems) {
         if (dataPoolItems == null || dataPoolItems.isEmpty()) {
             return 0;
@@ -332,7 +337,11 @@ public void updateDataPoolItemsStatus(List<DataPoolItem> itemList, String status
             item.setUpdateTime(now);
         }
         
-        return dataPoolItemMapper.batchInsertDataPoolItems(dataPoolItems);
+        try {
+            return DatabaseRetryUtil.executeWithRetry(() -> dataPoolItemMapper.batchInsertDataPoolItems(dataPoolItems));
+        } catch (Exception e) {
+            throw new RuntimeException("批量插入数据池项目失败", e);
+        }
     }
 
     /**
@@ -366,6 +375,7 @@ public void updateDataPoolItemsStatus(List<DataPoolItem> itemList, String status
      * @return 新增的数据项数量
      */
     @Override
+    @Transactional(rollbackFor = Exception.class, isolation = Isolation.READ_COMMITTED)
     public int batchAddDataItems(Long poolId, List<String> itemDataList) {
         if (poolId == null || itemDataList == null || itemDataList.isEmpty()) {
             return 0;
@@ -381,7 +391,11 @@ public void updateDataPoolItemsStatus(List<DataPoolItem> itemList, String status
             }
         }
         
-        return batchInsertDataPoolItems(items);
+        try {
+            return DatabaseRetryUtil.executeWithRetry(() -> batchInsertDataPoolItems(items));
+        } catch (Exception e) {
+            throw new RuntimeException("批量添加数据项失败", e);
+        }
     }
 
     /**
@@ -391,6 +405,7 @@ public void updateDataPoolItemsStatus(List<DataPoolItem> itemList, String status
      * @return 结果
      */
     @Override
+    @Transactional(rollbackFor = Exception.class, isolation = Isolation.READ_COMMITTED)
     public int updateDataPoolItem(DataPoolItem dataPoolItem) {
         dataPoolItem.setUpdateTime(DateUtils.getNowDate());
         return dataPoolItemMapper.updateDataPoolItem(dataPoolItem);
@@ -414,6 +429,7 @@ public void updateDataPoolItemsStatus(List<DataPoolItem> itemList, String status
      * @return 结果
      */
     @Override
+    @Transactional(rollbackFor = Exception.class, isolation = Isolation.READ_COMMITTED)
     public int deleteDataPoolItemById(Long id) {
         return dataPoolItemMapper.deleteDataPoolItemById(id);
     }
@@ -452,6 +468,7 @@ public void updateDataPoolItemsStatus(List<DataPoolItem> itemList, String status
      * @return 统计信息
      */
     @Override
+    @Transactional(rollbackFor = Exception.class, isolation = Isolation.READ_COMMITTED)
     public Map<String, Object> getDataPoolStatistics(Long poolId) {
         List<Map<String, Object>> statusCounts = countByStatus(poolId);
         
@@ -490,45 +507,6 @@ public void updateDataPoolItemsStatus(List<DataPoolItem> itemList, String status
         return statistics;
     }
 
-    /**
-     * 清理已打印成功的数据（可选功能）
-     * 
-     * @param poolId 数据池ID（可选）
-     * @param beforeTime 时间限制（清理此时间之前的数据）
-     * @return 清理的数据量
-     */
-    @Override
-    public int cleanPrintedData(Long poolId, Date beforeTime) {
-        return dataPoolItemMapper.cleanPrintedData(poolId, beforeTime);
-    }
-
-    /**
-     * 重置失败的数据项（将FAILED状态改为PENDING，清空deviceId）
-     * 
-     * @param poolId 数据池ID（可选）
-     * @return 重置的数据项数量
-     */
-    @Override
-    public int resetFailedItems(Long poolId) {
-        // 查询失败的数据项
-        DataPoolItem queryItem = new DataPoolItem();
-        queryItem.setPoolId(poolId);
-        queryItem.setStatus(ItemStatus.FAILED.getCode());
-        
-        List<DataPoolItem> failedItems = selectDataPoolItemList(queryItem);
-        
-        int resetCount = 0;
-        for (DataPoolItem entity : failedItems) {
-            // 重置状态为PENDING，清空deviceId
-            entity.setStatus(ItemStatus.PENDING.getCode());
-            entity.setDeviceId(null);
-            if (updateDataPoolItem(entity) > 0) {
-                resetCount++;
-            }
-        }
-        
-        return resetCount;
-    }
 
     /**
      * 获取打印队列信息
@@ -570,6 +548,7 @@ public void updateDataPoolItemsStatus(List<DataPoolItem> itemList, String status
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class, isolation = Isolation.READ_COMMITTED)
     public void updateToPendingItem(Long poolId) {
         dataPoolItemMapper.updateToPendingItem(poolId);
     }
@@ -587,5 +566,28 @@ public void updateDataPoolItemsStatus(List<DataPoolItem> itemList, String status
     @Override
     public int countByPrinting(Long poolId) {
         return dataPoolItemMapper.countByPrinting(poolId);
+    }
+
+    /**
+     * 按poolId批量软删除
+     */
+    @Override
+    @Transactional(rollbackFor = Exception.class, isolation = Isolation.READ_COMMITTED)
+    public int softDeleteByPoolId(Long poolId) {
+        return dataPoolItemMapper.softDeleteByPoolId(poolId);
+    }
+
+    /**
+     * 分批真删除（每批独立事务，由调用方循环触发）
+     */
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public int hardDeleteByPoolIdLimit(Long poolId, int batchSize) {
+        return dataPoolItemMapper.hardDeleteByPoolIdLimit(poolId, batchSize);
+    }
+
+    @Override
+    public int softDeleteByPoolIdLimit(Long id, int batchSize) {
+        return dataPoolItemMapper.softDeleteByPoolIdLimit(id, batchSize);
     }
 }

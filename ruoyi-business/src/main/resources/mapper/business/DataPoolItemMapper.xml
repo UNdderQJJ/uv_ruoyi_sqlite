@@ -255,6 +255,12 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
           and del_flag = '0'
         <if test="poolId != null">and pool_id = #{poolId}</if>
     </select>
+    <select id="countByAll" resultType="java.lang.Integer">
+        select count(*)
+        from data_pool_item
+        where del_flag = '0'
+        <if test="poolId != null">and pool_id = #{poolId}</if>
+    </select>
 
     <delete id="cleanPrintedData">
         update data_pool_item 
@@ -263,6 +269,34 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
           and del_flag = '0'
         <if test="poolId != null">and pool_id = #{poolId}</if>
         <if test="beforeTime != null">and create_time &lt; #{beforeTime}</if>
+    </delete>
+
+    <update id="softDeleteByPoolId">
+        update data_pool_item
+        set del_flag = '2', update_time = datetime('now', 'localtime')
+        where pool_id = #{poolId}
+          and del_flag = '0'
+    </update>
+
+    <update id="softDeleteByPoolIdLimit">
+        update data_pool_item
+        set del_flag = '2', update_time = datetime('now', 'localtime')
+        where rowid in (
+            select rowid from data_pool_item
+            where pool_id = #{param1}
+              and del_flag = '0'
+            limit #{param2}
+        )
+    </update>
+
+    <delete id="hardDeleteByPoolIdLimit">
+        delete from data_pool_item
+        where rowid in (
+            select rowid from data_pool_item
+            where pool_id = #{param1}
+              and del_flag = '2'
+            limit #{param2}
+        )
     </delete>
 
 </mapper>

@@ -145,7 +145,7 @@ public interface DataPoolItemMapper {
     public int deleteDataPoolItemByIds(Long[] ids);
 
     /**
-     * 根据数据池ID删除热数据
+     * 根据数据池ID删除热数据（软删除）
      * 
      * @param poolId 数据池ID
      * @return 结果
@@ -159,16 +159,6 @@ public interface DataPoolItemMapper {
      * @return 状态统计结果
      */
     public List<Map<String, Object>> countByStatus(Long poolId);
-
-    /**
-     * 清理已打印成功的数据（可选功能）
-     * 
-     * @param poolId 数据池ID（可选）
-     * @param beforeTime 时间限制（清理此时间之前的数据）
-     * @return 清理的数据量
-     */
-    public int cleanPrintedData(Long poolId, java.util.Date beforeTime);
-
 
     /**
      *  批量更新数据项状态
@@ -222,11 +212,30 @@ public interface DataPoolItemMapper {
      */
     int countByPending(Long poolId);
 
-
     /**
      * 统计打印中的数据项数量
      * @param poolId 数据池ID
      * @return 数据项数量
      */
     int countByPrinting(Long poolId);
+
+     /**
+     * 按数据池ID统计数据项数量
+     */
+    int countByAll(Long poolId);
+
+    /**
+     * 按数据池ID批量软删除（标记del_flag='2'）
+     */
+    int softDeleteByPoolId(Long poolId);
+
+    /**
+     * 按数据池ID分批软删除（LIMIT）
+     */
+    int softDeleteByPoolIdLimit(Long poolId, int batchSize);
+
+    /**
+     * 按数据池ID和del_flag='2'分批真删除（LIMIT）
+     */
+    int hardDeleteByPoolIdLimit(Long poolId, int batchSize);
 }

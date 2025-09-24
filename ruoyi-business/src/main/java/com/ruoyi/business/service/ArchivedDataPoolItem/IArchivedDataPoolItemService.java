@@ -187,4 +187,10 @@ public interface IArchivedDataPoolItemService {
      * @return 更新的数据量
      */
     public int updateVerificationStatusByDeviceId(String deviceId, String verificationStatus);
+
+    /**
+     * 分批将 data_pool_item 中的数据按 poolId 归档到 archived_data_pool_item（INSERT…SELECT + LIMIT）
+     * 返回受影响行数
+     */
+    int insertFromDataPoolByPoolIdLimit(Long poolId, int batchSize);
 }

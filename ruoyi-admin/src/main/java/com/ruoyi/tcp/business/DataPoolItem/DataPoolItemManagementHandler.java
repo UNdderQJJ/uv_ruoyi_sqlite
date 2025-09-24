@@ -75,10 +75,7 @@ public class DataPoolItemManagementHandler {
                     return getStatistics(body);
                 case "/business/dataPoolItem/queueInfo":
                     return getQueueInfo(body);
-                case "/business/dataPoolItem/resetFailed":
-                    return resetFailedItems(body);
-                case "/business/dataPoolItem/cleanPrinted":
-                    return cleanPrintedData(body);
+
                 default:
                     log.warn("[DataPoolItemManagement] 未知的热数据操作路径: {}", path);
                     return TcpResponse.error("未知的热数据操作: " + path);
@@ -406,40 +403,4 @@ public class DataPoolItemManagementHandler {
         return TcpResponse.success("获取队列信息成功", queueInfo);
     }
 
-    /**
-     * 重置失败数据
-     */
-    private TcpResponse resetFailedItems(String body) throws JsonProcessingException {
-        DataPoolItem queryItem = objectMapper.readValue(body, DataPoolItem.class);
-        
-        Long poolId = queryItem.getPoolId();
-        
-        int resetCount = dataPoolItemService.resetFailedItems(poolId);
-        
-        Map<String, Object> result = new HashMap<>();
-        result.put("resetCount", resetCount);
-        result.put("poolId", poolId);
-        
-        log.info("[DataPoolItemManagement] 重置失败数据成功，数量: {}", resetCount);
-        return TcpResponse.success("重置失败数据成功", result);
-    }
-
-    /**
-     * 清理已打印数据
-     */
-    private TcpResponse cleanPrintedData(String body) throws JsonProcessingException {
-        DataPoolItem queryItem = objectMapper.readValue(body, DataPoolItem.class);
-        
-        Long poolId = queryItem.getPoolId();
-        java.util.Date beforeTime = queryItem.getReceivedTime(); // 复用receivedTime字段作为beforeTime
-        
-        int cleanedCount = dataPoolItemService.cleanPrintedData(poolId, beforeTime);
-        
-        Map<String, Object> result = new HashMap<>();
-        result.put("cleanedCount", cleanedCount);
-        result.put("poolId", poolId);
-        
-        log.info("[DataPoolItemManagement] 清理已打印数据成功，数量: {}", cleanedCount);
-        return TcpResponse.success("清理已打印数据成功", result);
-    }
 }
