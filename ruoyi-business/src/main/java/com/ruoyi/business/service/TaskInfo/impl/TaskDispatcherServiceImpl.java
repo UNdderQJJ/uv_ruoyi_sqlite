@@ -656,10 +656,8 @@ public class TaskDispatcherServiceImpl implements TaskDispatcherService {
             } catch (Exception ex) {
                 log.warn("更新TaskInfo完成数量失败，taskId: {}", taskId, ex);
             }
-            //查询待打印数量
-             int planPrintCount = dataPoolItemService.countByPending(taskDispatch.getPoolId());
             //更新数据池待打印数量
-            dataPoolService.updateDataPendingCount(taskDispatch.getPoolId(),planPrintCount);
+            dataPoolService.updateDataPendingCount(taskDispatch.getPoolId());
 
         } catch (Exception e) {
             log.error("任务进度上报定时任务执行异常，任务ID: {}", taskId, e);

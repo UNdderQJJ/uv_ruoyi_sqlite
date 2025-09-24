@@ -104,9 +104,8 @@ public interface IDataPoolService
     /**
      * 更新数据池待待打印id
      * @param poolId
-     * @param planPrintCount
      */
-    void updateDataPendingCount(Long poolId, int planPrintCount);
+    void updateDataPendingCount(Long poolId);
 
     /**
      * 刷新待打印数据量

@@ -117,7 +117,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         where id = #{id}
     </update>
     <update id="updateDataPendingCount">
-        update data_pool set pending_count = #{planPrintCount} where id = #{poolId}
+        update data_pool set pending_count = #{planPrintCount}, total_count = #{totalCount}  where id = #{poolId}
     </update>
 
     <delete id="deleteDataPoolById" parameterType="Long">

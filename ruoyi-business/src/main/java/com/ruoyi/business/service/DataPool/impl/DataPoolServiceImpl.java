@@ -8,10 +8,13 @@ import com.ruoyi.business.mapper.DataPool.DataPoolMapper;
 import com.ruoyi.business.mapper.DataPoolItem.DataPoolItemMapper;
 import com.ruoyi.business.service.DataPool.DataPoolSchedulerService;
 import com.ruoyi.business.service.DataPool.IDataPoolService;
+import com.ruoyi.common.utils.DatabaseRetryUtil;
 import com.ruoyi.common.utils.DateUtils;
 import jakarta.annotation.Resource;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Isolation;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -28,10 +31,7 @@ public class DataPoolServiceImpl implements IDataPoolService
 
     @Resource
     private DataPoolItemMapper dataPoolItemMapper;
-    
-    @Resource
-    @Lazy
-    private DataPoolSchedulerService dataPoolSchedulerService;
+
 
     /**
      * 查询数据池列表
@@ -174,6 +174,7 @@ public class DataPoolServiceImpl implements IDataPoolService
      * @return 结果
      */
     @Override
+    @Transactional(rollbackFor = Exception.class, isolation = Isolation.READ_COMMITTED)
     public int updateDataPoolStatus(Long id, String status)
     {
         // 获取当前状态
@@ -200,6 +201,7 @@ public class DataPoolServiceImpl implements IDataPoolService
      * @return 结果
      */
     @Override
+    @Transactional(rollbackFor = Exception.class, isolation = Isolation.READ_COMMITTED)
     public int updateDataPoolCount(Long id, Long totalCount, Long pendingCount)
     {
         DataPool dataPool = new DataPool();
@@ -207,13 +209,19 @@ public class DataPoolServiceImpl implements IDataPoolService
         dataPool.setTotalCount(totalCount);
         dataPool.setPendingCount(pendingCount);
         dataPool.setUpdateTime(DateUtils.getNowDate());
-        return dataPoolMapper.updateDataPool(dataPool);
+
+         try {
+            return DatabaseRetryUtil.executeWithRetry(() -> dataPoolMapper.updateDataPool(dataPool));
+        } catch (Exception e) {
+            throw new RuntimeException("更新数据池计数失败", e);
+        }
     }
 
     /**
      * 更新数据池连接状态
      */
     @Override
+    @Transactional(rollbackFor = Exception.class, isolation = Isolation.READ_COMMITTED)
     public int updateConnectionState(Long id, String connectionState)
     {
         // 获取当前状态
@@ -231,18 +239,25 @@ public class DataPoolServiceImpl implements IDataPoolService
     }
 
     @Override
-    public void updateDataPendingCount(Long poolId, int planPrintCount) {
-        dataPoolMapper.updateDataPendingCount(poolId, planPrintCount);
+    public void updateDataPendingCount(Long poolId) {
+         //查询数据池的待打印数量
+            int pendingCount = dataPoolItemMapper.countByPending(poolId);
+            //查询数据池的所有数量
+            int totalCount = dataPoolItemMapper.countByAll(poolId);
+        dataPoolMapper.updateDataPendingCount(poolId, pendingCount,totalCount);
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class, isolation = Isolation.READ_COMMITTED)
     public void refreshPendingCount() {
         List<DataPool> dataPools = dataPoolMapper.selectDataPoolList(new DataPool());
         for (DataPool dataPool : dataPools) {
             //查询数据池的待打印数量
             int pendingCount = dataPoolItemMapper.countByPending(dataPool.getId());
+            //查询数据池的所有数量
+            int totalCount = dataPoolItemMapper.countByAll(dataPool.getId());
             //更新数据池的待打印数量
-            dataPoolMapper.updateDataPendingCount(dataPool.getId(), pendingCount);
+            dataPoolMapper.updateDataPendingCount(dataPool.getId(), pendingCount,totalCount);
         }
     }
 }

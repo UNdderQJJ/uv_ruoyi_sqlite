@@ -233,22 +233,6 @@ public interface IDataPoolItemService {
      */
     public Map<String, Object> getDataPoolStatistics(Long poolId);
 
-    /**
-     * 清理已打印成功的数据（可选功能）
-     * 
-     * @param poolId 数据池ID（可选）
-     * @param beforeTime 时间限制（清理此时间之前的数据）
-     * @return 清理的数据量
-     */
-    public int cleanPrintedData(Long poolId, Date beforeTime);
-
-    /**
-     * 重置失败的数据项（将FAILED状态改为PENDING，清空deviceId）
-     * 
-     * @param poolId 数据池ID（可选）
-     * @return 重置的数据项数量
-     */
-    public int resetFailedItems(Long poolId);
 
     /**
      * 获取打印队列信息
@@ -296,4 +280,19 @@ public interface IDataPoolItemService {
      * @return 打印中的数据项数量
      */
     int countByPrinting(Long poolId);
+
+    /**
+     * 按poolId批量软删除
+     */
+    int softDeleteByPoolId(Long poolId);
+
+    /**
+     * 分批真删除（单批执行，返回影响行数）
+     */
+    int hardDeleteByPoolIdLimit(Long poolId, int batchSize);
+
+    /**
+     * 按poolId批量软删除（单批执行，返回影响行数）
+     */
+    int softDeleteByPoolIdLimit(Long id, int batchSize);
 }
