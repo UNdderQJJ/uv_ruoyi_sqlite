@@ -1,8 +1,12 @@
 package com.ruoyi.business.service.common;
 
+import com.ruoyi.business.domain.DataPool.DataPool;
 import com.ruoyi.business.events.DataPoolCountChangedEvent;
 import com.ruoyi.business.service.DataPoolItem.IDataPoolItemService;
 import com.ruoyi.business.service.DataPool.IDataPoolService;
+import com.ruoyi.business.mapper.DataPoolItemStaging.DataPoolItemStagingMapper;
+import com.ruoyi.business.domain.DataPoolItem.DataPoolItem;
+import com.ruoyi.common.utils.DateUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationEventPublisher;
@@ -10,13 +14,14 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import jakarta.annotation.Resource;
+import java.util.Date;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * 通用数据入库服务
- * 负责在一个事务中批量写入数据项，并更新数据池计数
- * 供所有数据源类型使用
+ * 使用暂存表避免与实时任务更新发生锁竞争
  */
 @Service
 public class DataIngestionService {
@@ -30,7 +35,7 @@ public class DataIngestionService {
     private IDataPoolService dataPoolService;
 
     @Resource
-    private ApplicationEventPublisher eventPublisher;
+    private DataPoolItemStagingMapper stagingMapper;
 
     /**
      * 批量入库数据项（使用 ParsingRuleConfig）
@@ -38,27 +43,47 @@ public class DataIngestionService {
     @Transactional(rollbackFor = Exception.class)
     public void ingestItems(Long poolId, List<String> items) {
 
-        // 入库前统计旧值
-        var before = dataPoolItemService.getDataPoolStatistics(poolId);
-        Long oldTotal = ((Integer) before.getOrDefault("totalCount", 0)).longValue();
-        Long oldPending = ((Integer) before.getOrDefault("pendingCount", 0)).longValue();
-
         int inserted = 0;
         if (items != null && !items.isEmpty()) {
-            inserted = dataPoolItemService.batchAddDataItems(poolId, items);
+            try {
+                Date now = DateUtils.getNowDate();
+                List<DataPoolItem> toStage = items.stream().filter(s -> s != null && !s.isEmpty()).map(s -> {
+                    DataPoolItem item = new DataPoolItem();
+                    item.setPoolId(poolId);
+                    item.setItemData(s);
+                    item.setStatus("PENDING");
+                    item.setPrintCount(0);
+                    item.setReceivedTime(now);
+                    item.setDelFlag("0");
+                    item.setCreateTime(now);
+                    item.setUpdateTime(now);
+                    return item;
+                }).collect(Collectors.toList());
+
+                if (!toStage.isEmpty()) {
+                    inserted = stagingMapper.batchInsertToStaging(toStage);
+                }
+            } catch (Exception e) {
+                log.error("写入暂存表失败", e);
+            }
+        }
+        try {
+            //查询数据池
+            DataPool dataPool = dataPoolService.selectDataPoolById(poolId);
+            int pingCount = 0;
+            if (items != null) {
+                pingCount = items.size();
+            }
+            dataPoolService.updateDataPoolCount(poolId, dataPool.getTotalCount()+pingCount, dataPool.getPendingCount()+pingCount);
+        } catch (Exception e) {
+            log.error("更新数据池计数失败", e);
+        }
+        if (inserted > 0) {
+            log.info("成功写入 {} 条数据项到暂存表", inserted);
         }
 
-        // 入库后统计新值
-        var after = dataPoolItemService.getDataPoolStatistics(poolId);
-        Long newTotal = ((Integer) after.getOrDefault("totalCount", 0)).longValue();
-        Long newPending = ((Integer) after.getOrDefault("pendingCount", 0)).longValue();
-
-        dataPoolService.updateDataPoolCount(poolId, newTotal, newPending);
-        log.info("[DataIngestion] poolId={} 批量入库 {} 条，pending: {} -> {}, total: {} -> {}",
-                poolId, inserted, oldPending, newPending, oldTotal, newTotal);
-
     }
-    
+
     /**
      * 批量入库数据项（兼容旧版本，使用 Map 类型）
      */
@@ -67,15 +92,15 @@ public class DataIngestionService {
         if (items == null || items.isEmpty()) {
             return;
         }
-        
+
         // 转换为字符串列表
         List<String> stringItems = items.stream()
                 .map(this::convertItemToString)
                 .toList();
-        
+
         ingestItems(poolId, stringItems);
     }
-    
+
     /**
      * 将 Map 类型的数据项转换为字符串
      */
@@ -83,7 +108,7 @@ public class DataIngestionService {
         if (item == null) {
             return "";
         }
-        
+
         try {
             StringBuilder content = new StringBuilder();
             for (Map.Entry<String, Object> entry : item.entrySet()) {

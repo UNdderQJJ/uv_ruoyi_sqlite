@@ -420,4 +420,10 @@ public class ArchivedDataPoolItemServiceImpl implements IArchivedDataPoolItemSer
             return 0;
         }
     }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public int insertFromDataPoolByPoolIdLimit(Long poolId, int batchSize) {
+        return archivedDataPoolItemMapper.insertFromDataPoolByPoolIdLimit(poolId, batchSize);
+    }
 }

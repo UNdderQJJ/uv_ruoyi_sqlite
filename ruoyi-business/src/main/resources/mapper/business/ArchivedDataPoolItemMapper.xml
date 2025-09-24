@@ -177,4 +177,32 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         select count(1) from archived_data_pool_item where id = #{id} and del_flag = '0'
     </select>
 
+    <insert id="insertFromDataPoolByPoolIdLimit">
+        insert into archived_data_pool_item (
+            item_data, final_status, print_count, pool_id, pool_name, device_id,
+            received_time, printed_time, archived_time, verification_data, verification_status,
+            del_flag, create_time, update_time
+        )
+        select 
+            dpi.item_data,
+            dpi.status as final_status,
+            dpi.print_count,
+            dpi.pool_id,
+            dp.pool_name,
+            dpi.device_id,
+            dpi.received_time,
+            null as printed_time,
+            datetime('now', 'localtime') as archived_time,
+            null as verification_data,
+            null as verification_status,
+            '0' as del_flag,
+            dpi.create_time,
+            dpi.update_time
+        from data_pool_item dpi
+        left join data_pool dp on dp.id = dpi.pool_id
+        where dpi.pool_id = #{poolId}
+          and dpi.del_flag = '0'
+        limit #{batchSize}
+    </insert>
+
 </mapper>

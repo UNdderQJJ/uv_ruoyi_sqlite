@@ -136,4 +136,10 @@ public interface ArchivedDataPoolItemMapper {
      * @return 存在返回1，不存在返回0
      */
     public int checkArchivedDataExists(Long id);
+
+    /**
+     * 分批将 data_pool_item 中的数据按 poolId 归档到 archived_data_pool_item（INSERT…SELECT + LIMIT）
+     * 返回受影响行数
+     */
+    int insertFromDataPoolByPoolIdLimit(@Param("poolId") Long poolId, @Param("batchSize") int batchSize);
 }
