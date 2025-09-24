@@ -8,7 +8,6 @@ import com.ruoyi.business.mapper.DataPool.DataPoolMapper;
 import com.ruoyi.business.mapper.DataPoolItem.DataPoolItemMapper;
 import com.ruoyi.business.service.DataPool.DataPoolSchedulerService;
 import com.ruoyi.business.service.DataPool.IDataPoolService;
-import com.ruoyi.business.service.notification.DataPoolStateChangeService;
 import com.ruoyi.common.utils.DateUtils;
 import jakarta.annotation.Resource;
 import org.springframework.context.annotation.Lazy;
@@ -29,9 +28,6 @@ public class DataPoolServiceImpl implements IDataPoolService
 
     @Resource
     private DataPoolItemMapper dataPoolItemMapper;
-    
-    @Resource
-    private DataPoolStateChangeService stateChangeService;
     
     @Resource
     @Lazy
@@ -140,18 +136,8 @@ public class DataPoolServiceImpl implements IDataPoolService
         dataPool.setId(id);
         dataPool.setStatus(newStatus.getCode());
         dataPool.setUpdateTime(DateUtils.getNowDate());
-        
-        int result = dataPoolMapper.updateDataPool(dataPool);
-        
-        // 发布状态变更事件
-        if (result > 0) {
-            stateChangeService.publishPoolStatusChanged(
-                    id, currentPool.getPoolName(), currentPool.getSourceType(),
-                    oldStatus, newStatus
-            );
-        }
-        
-        return result;
+
+        return dataPoolMapper.updateDataPool(dataPool);
     }
 
     /**
@@ -176,18 +162,8 @@ public class DataPoolServiceImpl implements IDataPoolService
         dataPool.setId(id);
         dataPool.setStatus(newStatus.getCode());
         dataPool.setUpdateTime(DateUtils.getNowDate());
-        
-        int result = dataPoolMapper.updateDataPool(dataPool);
-        
-        // 发布状态变更事件
-        if (result > 0) {
-            stateChangeService.publishPoolStatusChanged(
-                    id, currentPool.getPoolName(), currentPool.getSourceType(),
-                    oldStatus, newStatus
-            );
-        }
-        
-        return result;
+
+        return dataPoolMapper.updateDataPool(dataPool);
     }
 
     /**
@@ -205,26 +181,14 @@ public class DataPoolServiceImpl implements IDataPoolService
         if (currentPool == null) {
             return 0;
         }
-        
-        PoolStatus oldStatus = PoolStatus.fromCode(currentPool.getStatus());
-        PoolStatus newStatus = PoolStatus.fromCode(status);
-        
+
         DataPool dataPool = new DataPool();
         dataPool.setId(id);
         dataPool.setStatus(status);
         dataPool.setUpdateTime(DateUtils.getNowDate());
-        
-        int result = dataPoolMapper.updateDataPool(dataPool);
-        
-        // 发布状态变更事件
-        if (result > 0 && newStatus != null && newStatus != oldStatus) {
-            stateChangeService.publishPoolStatusChanged(
-                    id, currentPool.getPoolName(), currentPool.getSourceType(),
-                    oldStatus, newStatus
-            );
-        }
-        
-        return result;
+
+
+        return dataPoolMapper.updateDataPool(dataPool);
     }
 
     /**
@@ -258,28 +222,12 @@ public class DataPoolServiceImpl implements IDataPoolService
             return 0;
         }
         
-        ConnectionState oldState = ConnectionState.fromCode(currentPool.getConnectionState());
-        ConnectionState newState = ConnectionState.fromCode(connectionState);
-        
         DataPool dataPool = new DataPool();
         dataPool.setId(id);
         dataPool.setConnectionState(connectionState);
-//        if(connectionState.equals(ConnectionState.DISCONNECTED.getCode())){
-//            dataPool.setStatus(PoolStatus.ERROR.getCode());
-//        }
         dataPool.setUpdateTime(DateUtils.getNowDate());
-        
-        int result = dataPoolMapper.updateDataPool(dataPool);
-        
-        // 发布状态变更事件
-        if (result > 0 && newState != null && newState != oldState) {
-            stateChangeService.publishConnectionStateChanged(
-                    id, currentPool.getPoolName(), currentPool.getSourceType(),
-                    oldState, newState
-            );
-        }
 
-        return result;
+        return dataPoolMapper.updateDataPool(dataPool);
     }
 
     @Override

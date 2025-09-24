@@ -57,21 +57,6 @@ public class DataIngestionService {
         log.info("[DataIngestion] poolId={} 批量入库 {} 条，pending: {} -> {}, total: {} -> {}",
                 poolId, inserted, oldPending, newPending, oldTotal, newTotal);
 
-        // 发布数量变更事件
-        try {
-            var pool = dataPoolService.selectDataPoolById(poolId);
-            eventPublisher.publishEvent(
-                    new DataPoolCountChangedEvent(
-                            poolId,
-                            pool != null ? pool.getPoolName() : null,
-                            pool != null ? pool.getSourceType() : null,
-                            oldTotal, newTotal,
-                            oldPending, newPending
-                    )
-            );
-        } catch (Exception e) {
-            log.warn("[DataIngestion] 发布数量变更事件失败: poolId={}", poolId, e);
-        }
     }
     
     /**
