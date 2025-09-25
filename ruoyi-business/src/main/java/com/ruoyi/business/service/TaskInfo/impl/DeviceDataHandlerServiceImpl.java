@@ -81,15 +81,15 @@ public class DeviceDataHandlerServiceImpl implements DeviceDataHandlerService {
             updateDeviceStatistics(deviceId, data);
 
             if (!data.contains("ping:")) {
-                //记录通讯日志
-                SystemLog systemLog = new SystemLog();
-                systemLog.setLogType(SystemLogType.COMMUNICATION.getCode());
-                systemLog.setLogLevel(SystemLogLevel.INFO.getCode());
-                systemLog.setTaskId(dispatcher.getDeviceTaskId(deviceId));
-                systemLog.setDeviceId(Long.valueOf(deviceId));
-                systemLog.setPoolId(dispatcher.getPoolId(systemLog.getTaskId()));
-                systemLog.setContent("接收指令<==="+data);
-                systemLogService.insert(systemLog);
+//                //记录通讯日志
+//                SystemLog systemLog = new SystemLog();
+//                systemLog.setLogType(SystemLogType.COMMUNICATION.getCode());
+//                systemLog.setLogLevel(SystemLogLevel.INFO.getCode());
+//                systemLog.setTaskId(dispatcher.getDeviceTaskId(deviceId));
+//                systemLog.setDeviceId(Long.valueOf(deviceId));
+//                systemLog.setPoolId(dispatcher.getPoolId(systemLog.getTaskId()));
+//                systemLog.setContent("接收指令<==="+data);
+//                systemLogService.insert(systemLog);
             }
 
             // 解析并处理不同类型的设备数据

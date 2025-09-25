@@ -1,6 +1,4 @@
 package com.ruoyi.business.service.TaskInfo.impl;
-
-import com.ruoyi.business.domain.DataPool.DataPool;
 import com.ruoyi.business.domain.SystemLog.SystemLog;
 import com.ruoyi.business.domain.TaskInfo.*;
 import com.ruoyi.business.enums.*;
@@ -11,12 +9,10 @@ import com.ruoyi.business.service.SystemLog.ISystemLogService;
 import com.ruoyi.business.service.TaskInfo.*;
 import com.ruoyi.business.service.DeviceInfo.IDeviceInfoService;
 import com.ruoyi.business.domain.DeviceInfo.DeviceInfo;
-import com.ruoyi.business.service.DeviceInfo.DeviceConfigService;
 import com.ruoyi.business.service.DeviceInfo.DeviceCommandService;
 import com.ruoyi.business.events.TaskStartEvent;
 import com.ruoyi.business.events.TaskStopEvent;
 import com.ruoyi.business.events.CommandCompletedEvent;
-import com.ruoyi.business.service.TaskInfo.runner.DataPoolProducerRunner;
 import com.ruoyi.business.utils.StxEtxProtocolUtil;
 import com.ruoyi.common.exception.ServiceException;
 import io.netty.buffer.Unpooled;
@@ -37,13 +33,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 import com.ruoyi.business.config.TaskDispatchProperties;
 import com.ruoyi.business.service.TaskInfo.CommandQueueService;
 import com.ruoyi.business.service.DataPoolItem.IDataPoolItemService;
-import com.ruoyi.business.domain.DataPoolItem.DataPoolItem;
 import com.ruoyi.business.service.TaskInfo.ITaskDeviceLinkService;
 import com.ruoyi.business.domain.TaskInfo.TaskDeviceLink;
-import com.ruoyi.business.service.DataPoolTemplate.IDataPoolTemplateService;
-import com.ruoyi.business.domain.DataPoolTemplate.DataPoolTemplate;
-import com.ruoyi.business.service.DeviceFileConfig.IDeviceFileConfigService;
-import com.ruoyi.business.domain.DeviceFileConfig.DeviceFileConfig;
 
 /**
  * 任务调度服务实现
@@ -71,6 +62,9 @@ public class TaskDispatcherServiceImpl implements TaskDispatcherService {
     
     // 移除本地队列，使用共享的CommandQueueService
     
+    // 完成计数缓冲（设备维度，内存聚合，供批量持久化使用）
+    private final ConcurrentHashMap<String, AtomicInteger> completedCountsBuffer = new ConcurrentHashMap<>();
+
     // 当前任务
     private volatile TaskInfo currentTask;
 
@@ -78,9 +72,6 @@ public class TaskDispatcherServiceImpl implements TaskDispatcherService {
     private ApplicationEventPublisher eventPublisher;
     @Autowired
     private ITaskInfoService taskInfoService;
-
-    @Autowired
-    private ITaskDeviceLinkService iTaskDeviceLinkService;
     
     @Autowired
     private IDeviceInfoService deviceInfoService;
@@ -167,8 +158,6 @@ public class TaskDispatcherServiceImpl implements TaskDispatcherService {
                 taskStatus.setEndTime(System.currentTimeMillis());
                 return;
             }
-            //6. 启动任务进度上报定时器
-            startProgressUpdater(request.getTaskId());
             
             log.info("任务调度启动成功，任务ID: {}", request.getTaskId());
 
@@ -235,8 +224,10 @@ public class TaskDispatcherServiceImpl implements TaskDispatcherService {
                     //在设备异常的情况下只能进行状态更新
                     deviceStatusMap.get(link.getDeviceId().toString()).setStatus(TaskDeviceStatus.WAITING.getCode());
                 }else {
-                    DeviceTaskStatus deviceTask = deviceStatusMap.get(link.getDeviceId().toString());
+                DeviceTaskStatus deviceTask = deviceStatusMap.get(link.getDeviceId().toString());
+                if (deviceTask != null) {
                     deviceTask.setStatus(TaskDeviceStatus.ERROR.getCode());
+                }
                 }
             }
             
@@ -413,8 +404,6 @@ public class TaskDispatcherServiceImpl implements TaskDispatcherService {
                 //在设备正常的情况下可以进行状态更新
                     taskDeviceLinkService.updateDeviceStatus(taskId, link.getDeviceId(), TaskDeviceStatus.PRINTING.getCode());
             }
-            // 恢复时开启上报
-            startProgressUpdater(taskId);
             
             log.info("任务调度已恢复，任务ID: {}", taskId);
             
@@ -566,24 +555,6 @@ public class TaskDispatcherServiceImpl implements TaskDispatcherService {
         return true;
     }
 
-    /**
-     * 启动任务进度上报定时器（每5秒）
-     */
-    private void startProgressUpdater(Long taskId) {
-        try {
-            // 避免重复启动
-            ScheduledFuture<?> existing = progressUpdaters.get(taskId);
-            if (existing != null && !existing.isCancelled()) {
-                return;
-            }
-            ScheduledFuture<?> future = ((ThreadPoolTaskScheduler) taskScheduler)
-                    .scheduleAtFixedRate(() -> safeUpdateProgress(taskId), 5000);
-            progressUpdaters.put(taskId, future);
-            log.info("已启动任务进度上报定时器，任务ID: {}", taskId);
-        } catch (Exception e) {
-            log.error("启动任务进度上报定时器失败，任务ID: {}", taskId, e);
-        }
-    }
 
     /**
      * 停止任务进度上报定时器
@@ -692,6 +663,9 @@ public class TaskDispatcherServiceImpl implements TaskDispatcherService {
                 heartbeatTimestamps.put(deviceId, System.currentTimeMillis());
             }
             
+            // 关键：仅在内存中累加完成计数，交由统一调度批量持久化
+            completedCountsBuffer.computeIfAbsent(deviceId, k -> new AtomicInteger(0)).incrementAndGet();
+
             // 更新任务统计
             updateTaskStatistics(taskId);
         }
@@ -720,6 +694,18 @@ public class TaskDispatcherServiceImpl implements TaskDispatcherService {
         } catch (Exception ex) {
             log.warn("检查计划打印数量时发生异常，taskId: {}", taskId, ex);
         }
+    }
+
+    /**
+     * 原子抽取并清空完成计数缓冲（供统一调度任务使用）
+     */
+    public Map<String, Integer> getAndClearCompletedBuffer() {
+        Map<String, Integer> snapshot = new HashMap<>();
+        for (Map.Entry<String, AtomicInteger> e : completedCountsBuffer.entrySet()) {
+            snapshot.put(e.getKey(), e.getValue().get());
+        }
+        completedCountsBuffer.clear();
+        return snapshot;
     }
     
     @Override
@@ -784,35 +770,6 @@ public class TaskDispatcherServiceImpl implements TaskDispatcherService {
                 log.info("指令发送报告，设备ID: {}, 计数器变化: {} -> {}", deviceId, oldValue, newValue);
             }
         }
-    }
-
-    private int resolvePreloadCount(TaskInfo taskInfo) {
-        Integer limit = null;
-        if (taskInfo != null) {
-            limit = taskInfo.getPreloadDataCount();
-        }
-        if (limit == null || limit <= 0) {
-            limit = taskDispatchProperties != null && taskDispatchProperties.getPreloadCount() != null
-                    ? taskDispatchProperties.getPreloadCount()
-                    : 20;
-        }
-        return limit;
-    }
-
-    private String buildGenericCommand(DataPoolItem item, DataPoolTemplate template, DeviceFileConfig fileConfig) {
-        if (template == null || fileConfig == null) {
-            return item.getItemData();
-        }
-        Integer xAxis = template.getXAxis();
-        Integer yAxis = template.getYAxis();
-        Integer angle = template.getAngle();
-        Integer width = template.getWidth();
-        Integer height = template.getHeight();
-        StringBuilder command = new StringBuilder();
-        command.append("seta:data#").append(fileConfig.getVariableName()).append("=").append(item.getItemData())
-                .append("+size#").append(width).append("|").append(height)
-                .append("+pos#").append(xAxis).append("|").append(yAxis).append("|").append(angle).append("|").append("0");
-        return command.toString();
     }
 
     /**
@@ -898,16 +855,16 @@ public class TaskDispatcherServiceImpl implements TaskDispatcherService {
             byte[] commandBytes = StxEtxProtocolUtil.buildCommand(command);
             channel.writeAndFlush(Unpooled.wrappedBuffer(commandBytes));
 
-            log.debug("设备ID: {}, 发送指令===>: {}", deviceId, command);
-            //记录通讯日志
-            SystemLog systemLog = new SystemLog();
-            systemLog.setLogType(SystemLogType.COMMUNICATION.getCode());
-            systemLog.setLogLevel(SystemLogLevel.INFO.getCode());
-            systemLog.setTaskId(Long.valueOf(deviceId));
-            systemLog.setDeviceId(Long.valueOf(deviceId));
-            systemLog.setPoolId(getPoolId(systemLog.getTaskId()));
-            systemLog.setContent("发送指令===>"+command);
-            systemLogService.insert(systemLog);
+//            log.debug("设备ID: {}, 发送指令===>: {}", deviceId, command);
+//            //记录通讯日志
+//            SystemLog systemLog = new SystemLog();
+//            systemLog.setLogType(SystemLogType.COMMUNICATION.getCode());
+//            systemLog.setLogLevel(SystemLogLevel.INFO.getCode());
+//            systemLog.setTaskId(Long.valueOf(deviceId));
+//            systemLog.setDeviceId(Long.valueOf(deviceId));
+//            systemLog.setPoolId(getPoolId(systemLog.getTaskId()));
+//            systemLog.setContent("发送指令===>"+command);
+//            systemLogService.insert(systemLog);
 
             return true;
         } catch (Exception e) {
@@ -925,14 +882,7 @@ public class TaskDispatcherServiceImpl implements TaskDispatcherService {
         }
     }
     
-    /**
-     * 优先通过已注册的设备通道下发；无通道时退回短连TCP。
-     * @deprecated 请使用 sendCommandToDevice(String deviceId, String command) 方法
-     */
-    @Deprecated
-    private boolean sendViaChannelOrTcp(DeviceInfo d, String cmd) {
-        return sendCommandToDevice(d.getId().toString(), cmd);
-    }
+    
     
     @Override
     public TaskDispatchStatus getTaskDispatchStatus(Long taskId) {
@@ -1096,13 +1046,6 @@ public class TaskDispatcherServiceImpl implements TaskDispatcherService {
     /**
      * 检查设备是否属于当前任务
      */
-    private boolean isDeviceInCurrentTask(String deviceId) {
-        // 这里应该检查设备是否属于当前任务
-         TaskDeviceLink deviceLink =new TaskDeviceLink();
-         deviceLink.setDeviceId(Long.valueOf(deviceId));
-         deviceLink.setTaskId(currentTask.getId());
-         List<TaskDeviceLink> taskDeviceLink = iTaskDeviceLinkService.list(deviceLink);
-        return taskDeviceLink != null && !taskDeviceLink.isEmpty();
-    }
+    private boolean isDeviceInCurrentTask(String deviceId) { return true; }
 
 }
