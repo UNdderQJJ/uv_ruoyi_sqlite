@@ -36,8 +36,12 @@ public class TaskThreadPoolConfig {
     @Bean("taskSenderExecutor")
     public ThreadPoolTaskExecutor taskSenderExecutor() {
         ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
-        executor.setCorePoolSize(properties.getThreadPool().getSender().getCoreSize());
-        executor.setMaxPoolSize(properties.getThreadPool().getSender().getMaxSize());
+        // --- 核心修改 开始 ---
+        // 将核心线程数增加，例如增加到8个。这意味着系统会一直保持8个线程随时准备发送指令。
+        executor.setCorePoolSize(8); 
+        // 将最大线程数增加，例如增加到16个。在任务高峰期，线程池最多可以扩展到16个线程来处理指令发送。
+        executor.setMaxPoolSize(16);
+        // --- 核心修改 结束 ---
         executor.setQueueCapacity(properties.getThreadPool().getSender().getQueueCapacity());
         executor.setKeepAliveSeconds(properties.getThreadPool().getSender().getKeepAliveSeconds());
         executor.setThreadNamePrefix("TaskSender-");

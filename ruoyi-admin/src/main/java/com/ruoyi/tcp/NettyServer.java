@@ -14,6 +14,7 @@ import io.netty.handler.codec.string.StringDecoder;
 import io.netty.handler.codec.string.StringEncoder;
 import io.netty.handler.timeout.IdleStateHandler;
 import io.netty.util.CharsetUtil;
+import io.netty.util.concurrent.DefaultThreadFactory;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import org.slf4j.Logger;
@@ -46,8 +47,12 @@ public class NettyServer {
     @Autowired
     private NettyServerHandler nettyServerHandler;
 
-    private final EventLoopGroup bossGroup = new NioEventLoopGroup(1);
-    private final EventLoopGroup workerGroup = new NioEventLoopGroup();
+    private final EventLoopGroup bossGroup = new NioEventLoopGroup(1,new DefaultThreadFactory("netty-boss"));
+    // --- 核心修改 开始 ---
+    // 为100个连接，明确分配16个I/O处理线程。
+    // 这意味着16个线程会共同处理这100条连接上的数据读写事件。
+    private final EventLoopGroup workerGroup = new NioEventLoopGroup(16,new DefaultThreadFactory("netty-worker"));
+    // --- 核心修改 结束 ---
     private ChannelFuture channelFuture;
 
     @PostConstruct

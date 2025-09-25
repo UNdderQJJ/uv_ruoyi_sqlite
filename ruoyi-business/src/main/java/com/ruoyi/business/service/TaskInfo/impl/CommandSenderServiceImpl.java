@@ -37,6 +37,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Future;
+import java.util.concurrent.ScheduledFuture;
 
 /**
  * 指令发送服务实现
@@ -69,20 +70,11 @@ public class CommandSenderServiceImpl implements CommandSenderService {
     @Autowired
     private IDeviceInfoService deviceInfoService;
 
-    @Resource
-    private TaskScheduler taskScheduler;
-
-    @Autowired
-    private IDataPoolItemService dataPoolItemService;
-
     @Autowired
     private ISystemLogService systemLogService;
 
-    @Autowired
-    private IDataInspectService dataInspectService;
-
     // 任务队列维护与状态标记调度句柄
-    private final ConcurrentHashMap<Long, java.util.concurrent.ScheduledFuture<?>> queueMaintainers = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<Long,ScheduledFuture<?>> queueMaintainers = new ConcurrentHashMap<>();
     
     @Override
     public void startSending(Long taskId) {
@@ -149,10 +141,6 @@ public class CommandSenderServiceImpl implements CommandSenderService {
             runningFutures.put(taskId, future);
             
             log.info("指令发送启动成功，任务ID: {}", taskId);
-
-            // 启动队列维护与状态同步任务（每5秒）
-            startQueueMaintenance(taskId);
-
             
         } catch (Exception e) {
             log.error("启动指令发送失败，任务ID: {}", taskId, e);
@@ -192,8 +180,6 @@ public class CommandSenderServiceImpl implements CommandSenderService {
                         DeviceInfo d = deviceInfoService.selectDeviceInfoById(link.getDeviceId());
                         if (d != null) {
                             String stopCmd = "stop:";
-//                            //睡眠两秒
-//                            Thread.sleep(2000);
                             boolean success = dispatcher.sendCommandToDevice(d.getId().toString(), stopCmd);
                             if (success) {
                                 log.info("已发送停止指令至设备，设备ID: {}, IP: {}, 端口: {}", d.getId(), d.getIpAddress(), d.getPort());
@@ -295,77 +281,16 @@ public class CommandSenderServiceImpl implements CommandSenderService {
         }
     }
 
-    private void startQueueMaintenance(Long taskId) {
-        try {
-            if (queueMaintainers.containsKey(taskId)) {
-                return;
-            }
-            java.util.concurrent.ScheduledFuture<?> future = taskScheduler
-                    .scheduleAtFixedRate(() -> maintainQueueAndMarkPrinting(taskId), 5000);
-            queueMaintainers.put(taskId, future);
-            log.info("已启动队列维护任务，任务ID: {}", taskId);
-        } catch (Exception e) {
-            log.error("启动队列维护任务失败，任务ID: {}", taskId, e);
-        }
-    }
 
     private void stopQueueMaintenance(Long taskId) {
         try {
-            java.util.concurrent.ScheduledFuture<?> future = queueMaintainers.remove(taskId);
+           ScheduledFuture<?> future = queueMaintainers.remove(taskId);
             if (future != null) {
                 future.cancel(false);
                 log.info("已停止队列维护任务，任务ID: {}", taskId);
             }
         } catch (Exception e) {
             log.error("停止队列维护任务失败，任务ID: {}", taskId, e);
-        }
-    }
-
-    // 标记SENT为PRINTING  创建产品质检记录
-    private void maintainQueueAndMarkPrinting(Long taskId) {
-        try {
-            // 1) 处理已发送ID：按任务原子抽取并批量更新为PRINTING
-            List<SentRecord> sentRecords = commandQueueService.drainSentRecordsForTask(taskId);
-
-            if (sentRecords != null && !sentRecords.isEmpty()) {
-                //需要更新的数据项ID
-                List<DataPoolItem> toUpdate = new ArrayList<>(sentRecords.size());
-                //需要插入质检记录列表
-                List<DataInspect> toInsert = new ArrayList<>();
-                for (SentRecord rec : sentRecords) {
-                    DataPoolItem item = new DataPoolItem();
-                    item.setId(rec.getDataPoolItemId());
-                    item.setDeviceId(rec.getDeviceId());
-                    toUpdate.add(item);
-
-                    //批量创建产品质检记录
-                    DataInspect inspect = new DataInspect();
-                    inspect.setItemId(rec.getDataPoolItemId());//数据项ID
-                    inspect.setItemData(rec.getDataPoolItemData());//数据项数据
-                    inspect.setPoolId(rec.getPoolId());//数据池ID
-                    inspect.setTaskId(taskId);//任务ID
-                    inspect.setPrintDeviceId(Long.valueOf(rec.getDeviceId()));//打印设备ID
-                    inspect.setPrintTime(rec.getPrintTime());//打印时间
-                    inspect.setInspectStatus(InspectStatus.PENDING.getCode());//待扫码
-                    toInsert.add(inspect);
-                }
-                try {
-                    dataPoolItemService.updateDataPoolItemsStatus(toUpdate, ItemStatus.PRINTED.getCode());
-                    log.debug("批量更新{}个数据项状态为PRINTING，任务ID: {}", toUpdate.size(), taskId);
-                } catch (Exception ex) {
-                    log.warn("批量更新数据项为PRINTING失败，任务ID: {}", taskId, ex);
-                }
-                try {
-                    //批量插入产品质检记录
-                    dataInspectService.batchInsertDataInspect(toInsert);
-                    log.debug("批量插入{}个数据项质检记录，任务ID: {}", toUpdate.size(), taskId);
-                } catch (Exception e) {
-                    log.error("批量插入数据项质检记录异常，任务ID: {}", taskId, e);
-                    throw new RuntimeException(e);
-                }
-            }
-        } catch (Exception e) {
-            log.error("标记打印中失败，任务ID: {}", taskId, e);
         }
     }
     

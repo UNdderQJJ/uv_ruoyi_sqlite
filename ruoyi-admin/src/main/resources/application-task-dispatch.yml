@@ -1,33 +1,33 @@
-# 任务调度配置
+# 任务调度配置 - 针对100台设备优化
 task:
   dispatch:
-    # 批处理大小
-    batch-size: 1500
-    # 预加载数量
+    # 批处理大小 - 增大以提升数据库读取效率
+    batch-size: 5000
+    # 预加载数量 - 保持适中，避免内存压力
     preload-count: 20
     # 心跳超时时间（毫秒）
     heartbeat-timeout: 60000
     # 最大重试次数
     max-retry-count: 1
-    # 指令队列大小
-    command-queue-size: 3000
-    # 线程池配置
+    # 指令队列大小 - 大幅增加以支持100台设备
+    command-queue-size: 50000
+    # 线程池配置 - 针对100台设备优化
     thread-pool:
-      # 生成池线程池
+      # 生成池线程池 - 适度增加以提升数据生成效率
       producer:
-        core-size: 1
-        max-size: 1
-        queue-capacity: 10
-        keep-alive-seconds: 60
-      # 发送者线程池
-      sender:
-        core-size: 1
-        max-size: 1
-        queue-capacity: 10
-        keep-alive-seconds: 60
-      # 处理器线程池
-      handler:
         core-size: 2
         max-size: 4
-        queue-capacity: 100
+        queue-capacity: 50
+        keep-alive-seconds: 60
+      # 发送者线程池 - 大幅增加以支持100台设备并发发送
+      sender:
+        core-size: 8
+        max-size: 16
+        queue-capacity: 200
+        keep-alive-seconds: 60
+      # 处理器线程池 - 增加以处理更多设备响应
+      handler:
+        core-size: 4
+        max-size: 8
+        queue-capacity: 200
         keep-alive-seconds: 60
