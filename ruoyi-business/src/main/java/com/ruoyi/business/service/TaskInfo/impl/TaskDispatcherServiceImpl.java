@@ -134,7 +134,7 @@ public class TaskDispatcherServiceImpl implements TaskDispatcherService {
             try {
                 dataSourceLifecycleService.startDataSource(request.getPoolId());
             } catch (Exception e) {
-                throw new RuntimeException(e.getMessage());
+                throw new RuntimeException("数据池启动失败");
             }
 
             // 3. 更新任务状态为运行中
