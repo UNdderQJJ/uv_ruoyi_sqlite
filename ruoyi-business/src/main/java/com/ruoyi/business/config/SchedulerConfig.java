@@ -9,6 +9,7 @@ import com.ruoyi.business.service.TaskInfo.CommandQueueService;
 import com.ruoyi.business.service.TaskInfo.ITaskDeviceLinkService;
 import com.ruoyi.business.service.TaskInfo.ITaskInfoService;
 import com.ruoyi.business.service.TaskInfo.SentRecord;
+import com.ruoyi.business.domain.TaskInfo.DeviceTaskStatus;
 import com.ruoyi.business.domain.TaskInfo.TaskDeviceLink;
 import com.ruoyi.business.domain.TaskInfo.TaskInfo;
 import com.ruoyi.business.service.TaskInfo.impl.TaskDispatcherServiceImpl;
@@ -124,14 +125,37 @@ public class SchedulerConfig {
                 }
 
                 // 更新 TaskDeviceLink.completedQuantity += delta
+                // 同时更新 assignedQuantity（在途打印数量）和吞吐率
                 TaskDeviceLink query = new TaskDeviceLink();
                 query.setTaskId(taskId);
                 query.setDeviceId(Long.valueOf(deviceIdStr));
                 List<TaskDeviceLink> links = taskDeviceLinkService.list(query);
                 if (links != null && !links.isEmpty()) {
                     TaskDeviceLink link = links.get(0);
-                    Integer current = link.getCompletedQuantity() == null ? 0 : link.getCompletedQuantity();
-                    link.setCompletedQuantity(current + delta);
+                    
+                    // 更新完成数量
+                    Integer completedCount = link.getCompletedQuantity() == null ? 0 : link.getCompletedQuantity();
+                    link.setCompletedQuantity(completedCount + delta);
+                    
+                    // 获取当前设备的在途打印数量
+                   DeviceTaskStatus deviceStatus = taskDispatcherService.getDeviceTaskStatus(deviceIdStr);
+                    if (deviceStatus != null) {
+                        // 更新在途打印数量（assignedQuantity）
+                        link.setCachePoolSize(deviceStatus.getInFlightCount());
+
+
+                        //获取当前完成数量
+                        Integer currentCompletedCount = deviceStatus.getCurrentCompletedCount() == null ? 0 : deviceStatus.getCurrentCompletedCount();
+                        deviceStatus.setCurrentCompletedCount(currentCompletedCount + delta);
+                        // 计算并更新吞吐率（每秒完成数量）
+                            long currentTime = System.currentTimeMillis();
+                            long taskStartTime = taskDispatcherService.getTaskDispatchStatus(taskId).getStartTime();
+                            long runningSeconds = Math.max(1, (currentTime - taskStartTime) / 1000); // 至少1秒
+                            int throughput = (int) ((currentCompletedCount + delta) / runningSeconds);
+                            link.setThroughput(throughput);
+
+                    }
+                    
                     taskDeviceLinkService.updateLink(link);
                 }
 

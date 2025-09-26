@@ -40,6 +40,12 @@ public class TaskDeviceLink extends BaseEntity {
     /** 设备已完成数量 */
     private Integer completedQuantity;
 
+    /** 当前缓存池数量 */
+    private Integer cachePoolSize;
+
+    /**设备吞吐率 */
+    private Integer throughput;
+
     /** 删除标记 0-正常 2-删除 */
     private Integer delFlag;
 
