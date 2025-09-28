@@ -98,11 +98,7 @@ public class TaskInfoManagementHandler {
                 return startDispatch(body);
             } else if (path.endsWith("/stop")) {
                 return stopDispatch(body);
-            } else if (path.endsWith("/pause")) {
-                return pauseDispatch(body);
-            } else if (path.endsWith("/resume")) {
-                return resumeDispatch(body);
-            } else if (path.endsWith("/getDispatchStatus")) {
+            }  else if (path.endsWith("/getDispatchStatus")) {
                 return getDispatchStatus(body);
             } else if (path.endsWith("/getTaskStatistics")) {
                 return getTaskStatistics(body);
@@ -459,19 +455,6 @@ public class TaskInfoManagementHandler {
         return TcpResponse.success("任务调度停止成功");
     }
 
-    /** 暂停任务调度 */
-    private TcpResponse pauseDispatch(String body) throws Exception {
-        Long id = parseId(body);
-        taskDispatcherService.pauseTaskDispatch(id);
-        return TcpResponse.success("任务调度暂停成功");
-    }
-
-    /** 恢复任务调度 */
-    private TcpResponse resumeDispatch(String body) throws Exception {
-        Long id = parseId(body);
-        taskDispatcherService.resumeTaskDispatch(id);
-        return TcpResponse.success("任务调度恢复成功");
-    }
 
     /** 获取任务调度状态 */
     private TcpResponse getDispatchStatus(String body) throws Exception {

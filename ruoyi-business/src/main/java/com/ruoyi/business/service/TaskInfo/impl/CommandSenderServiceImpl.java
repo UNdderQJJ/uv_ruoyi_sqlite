@@ -56,9 +56,6 @@ public class CommandSenderServiceImpl implements CommandSenderService {
     private TaskDispatcherService dispatcher;
     
     @Autowired
-    private DeviceDataHandlerService deviceDataHandlerService;
-    
-    @Autowired
     private CommandQueueService commandQueueService;
     
     @Autowired
@@ -132,7 +129,7 @@ public class CommandSenderServiceImpl implements CommandSenderService {
             
             // 创建并启动Runner
             CommandSenderRunner runner = new CommandSenderRunner(
-                    taskId, dispatcher, deviceDataHandlerService, commandQueueService);
+                    taskId, dispatcher, commandQueueService);
             
             Future<?> future = taskSenderExecutor.submit(runner);
             

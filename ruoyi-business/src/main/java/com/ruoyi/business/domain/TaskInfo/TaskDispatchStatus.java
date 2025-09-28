@@ -30,6 +30,9 @@ public class TaskDispatchStatus {
     /** 已发送指令数量 */
     private Integer sentCommandCount;
 
+    /** 已接收指令数量 */
+    private Integer receivedCommandCount;
+
     /** 计划打印数量 */
     private Integer plannedPrintCount;
     

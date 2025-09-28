@@ -2,6 +2,7 @@ package com.ruoyi.business.service.TaskInfo.impl;
 
 import com.ruoyi.business.domain.SystemLog.SystemLog;
 import com.ruoyi.business.domain.TaskInfo.DeviceTaskStatus;
+import com.ruoyi.business.domain.TaskInfo.TaskDispatchStatus;
 import com.ruoyi.business.domain.TaskInfo.PrintCommand;
 import com.ruoyi.business.enums.*;
 import com.ruoyi.business.service.SystemLog.ISystemLogService;
@@ -81,15 +82,15 @@ public class DeviceDataHandlerServiceImpl implements DeviceDataHandlerService {
             updateDeviceStatistics(deviceId, data);
 
             if (!data.contains("ping:")) {
-//                //记录通讯日志
-//                SystemLog systemLog = new SystemLog();
-//                systemLog.setLogType(SystemLogType.COMMUNICATION.getCode());
-//                systemLog.setLogLevel(SystemLogLevel.INFO.getCode());
-//                systemLog.setTaskId(dispatcher.getDeviceTaskId(deviceId));
-//                systemLog.setDeviceId(Long.valueOf(deviceId));
-//                systemLog.setPoolId(dispatcher.getPoolId(systemLog.getTaskId()));
-//                systemLog.setContent("接收指令<==="+data);
-//                systemLogService.insert(systemLog);
+                //记录通讯日志
+                SystemLog systemLog = new SystemLog();
+                systemLog.setLogType(SystemLogType.COMMUNICATION.getCode());
+                systemLog.setLogLevel(SystemLogLevel.INFO.getCode());
+                systemLog.setTaskId(dispatcher.getDeviceTaskId(deviceId));
+                systemLog.setDeviceId(Long.valueOf(deviceId));
+                systemLog.setPoolId(dispatcher.getPoolId(systemLog.getTaskId()));
+                systemLog.setContent("接收指令<==="+data);
+                systemLogService.insert(systemLog);
             }
 
             // 解析并处理不同类型的设备数据
@@ -404,6 +405,12 @@ public class DeviceDataHandlerServiceImpl implements DeviceDataHandlerService {
                         if (currentTaskId != null) {
                             stats.setStatus(TaskDeviceStatus.PRINTING.getCode());
                             updateDeviceStatus(deviceId, DeviceStatus.ONLINE_PRINTING.getCode());
+                            // 统计接收数量：收到一次system:2即视为接收一次
+                            TaskDispatchStatus taskStatus = dispatcher.getTaskDispatchStatus(currentTaskId);
+                            if (taskStatus != null) {
+                                Integer received = taskStatus.getReceivedCommandCount();
+                                taskStatus.setReceivedCommandCount((received == null ? 0 : received) + 1);
+                            }
                         } else {
                             stats.setStatus(TaskDeviceStatus.WAITING.getCode());
                             updateDeviceStatus(deviceId, DeviceStatus.ONLINE_IDLE.getCode());

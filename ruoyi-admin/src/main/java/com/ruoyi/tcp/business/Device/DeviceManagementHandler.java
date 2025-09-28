@@ -715,7 +715,7 @@ public class DeviceManagementHandler {
             boolean ok = deviceConnectionManager.sendCommandViaRegisteredChannel(device.getId().toString(), "get_currfile");
             String newStatus = ok ? DeviceStatus.ONLINE_IDLE.getCode() : DeviceStatus.ERROR.getCode();
             // 如果当前任务不为空，则置为打印中
-            if(ObjectUtils.isNotEmpty(device.getCurrentTaskId())){
+            if( ok && ObjectUtils.isNotEmpty(device.getCurrentTaskId())){
                 newStatus = DeviceStatus.ONLINE_PRINTING.getCode();
             }
             if (!device.getStatus().equals(DeviceStatus.ONLINE_PRINTING.getCode())) {

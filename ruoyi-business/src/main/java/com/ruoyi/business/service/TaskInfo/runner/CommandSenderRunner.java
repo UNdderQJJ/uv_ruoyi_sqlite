@@ -2,6 +2,7 @@ package com.ruoyi.business.service.TaskInfo.runner;
 
 import com.ruoyi.business.domain.SystemLog.SystemLog;
 import com.ruoyi.business.domain.TaskInfo.PrintCommand;
+import com.ruoyi.business.domain.TaskInfo.TaskDispatchStatus;
 import com.ruoyi.business.enums.SystemLogLevel;
 import com.ruoyi.business.enums.SystemLogType;
 import com.ruoyi.business.service.TaskInfo.TaskDispatcherService;
@@ -28,7 +29,6 @@ public class CommandSenderRunner implements Runnable {
     
     private final Long taskId;
     private final TaskDispatcherService dispatcher;
-    private final DeviceDataHandlerService deviceDataHandler;
     private final CommandQueueService commandQueueService;
 
     /**
@@ -48,11 +48,9 @@ public class CommandSenderRunner implements Runnable {
     
     public CommandSenderRunner(Long taskId, 
                               TaskDispatcherService dispatcher,
-                              DeviceDataHandlerService deviceDataHandler,
                               CommandQueueService commandQueueService) {
         this.taskId = taskId;
         this.dispatcher = dispatcher;
-        this.deviceDataHandler = deviceDataHandler;
         this.commandQueueService = commandQueueService;
     }
     
@@ -167,6 +165,14 @@ public class CommandSenderRunner implements Runnable {
             
             // 报告指令已发送
             dispatcher.reportCommandSent(deviceId);
+
+            // 统计发送数量:发送加一
+            long taskId = dispatcher.getDeviceTaskId(deviceId);
+            TaskDispatchStatus taskStatus = dispatcher.getTaskDispatchStatus(taskId);
+            if (taskStatus != null) {
+                Integer sent = taskStatus.getSentCommandCount();
+                taskStatus.setSentCommandCount((sent == null ? 0 : sent) + 1);
+            }
             sentCount.incrementAndGet();
 
             log.debug("指令发送成功，设备ID: {}, 指令: {}", deviceId, commandStr);

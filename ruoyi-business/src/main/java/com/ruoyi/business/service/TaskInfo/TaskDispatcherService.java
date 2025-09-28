@@ -31,20 +31,6 @@ public interface TaskDispatcherService {
      * @param taskId 任务ID
      */
     void finishTaskDispatch(Long taskId);
-
-    /**
-     * 暂停任务调度
-     * 
-     * @param taskId 任务ID
-     */
-    void pauseTaskDispatch(Long taskId);
-    
-    /**
-     * 恢复任务调度
-     * 
-     * @param taskId 任务ID
-     */
-    void resumeTaskDispatch(Long taskId);
     
     /**
      * 执行预检流程
