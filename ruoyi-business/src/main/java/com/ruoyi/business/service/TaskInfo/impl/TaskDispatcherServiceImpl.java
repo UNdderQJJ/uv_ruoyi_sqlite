@@ -1034,116 +1034,106 @@ public class TaskDispatcherServiceImpl implements TaskDispatcherService {
     }
     
 
-//    /**
-//     * 自动检测任务完成状态
-//     * 每5秒检查一次运行中的任务是否已完成
-//     */
-//    @Scheduled(fixedRate = 5000)
-//    public void autoCheckTaskCompletion() {
-//        try {
-//            // 获取所有运行中的任务
-//            Set<Long> runningTasks = getRunningTasks();
-//            if (runningTasks.isEmpty()) {
-//                return;
-//            }
-//
-//            for (Long taskId : runningTasks) {
-//                checkAndCompleteTask(taskId);
-//            }
-//        } catch (Exception e) {
-//            log.error("自动检测任务完成状态异常", e);
-//        }
-//    }
-//
-//    /**
-//     * 检查并完成指定任务
-//     * @param taskId 任务ID
-//     */
-//    private void checkAndCompleteTask(Long taskId) {
-//        try {
-//            TaskDispatchStatus taskStatus = taskStatusMap.get(taskId);
-//            if (taskStatus == null || !TaskDispatchStatusEnum.RUNNING.getCode().equals(taskStatus.getStatus())) {
-//                return;
-//            }
-//
-//            // 检查任务是否已经启动完成（数据加载是否已经开始）
-//            if (!isTaskStartupCompleted(taskId)) {
-//                log.debug("任务 {} 尚未启动完成，跳过完成检查", taskId);
-//                return;
-//            }
-//
-//            // 检查指令队列是否为空
-//            int queueSize = commandQueueService.getQueueSize(taskId);
-//            if (queueSize > 0) {
-//                log.debug("任务 {} 指令队列还有 {} 条指令，继续等待", taskId, queueSize);
-//                return;
-//            }
-//
-//             // 在完成前等待本任务下所有设备缓存池清空
-//            waitUntilDeviceBuffersEmpty(taskId, 10000L);
-//
-//            // 检查计划打印数量
-//            if (taskStatus.getPlannedPrintCount() != null && taskStatus.getPlannedPrintCount() != -1) {
-//                // 有具体计划打印数量，检查是否达到目标
-//                int completedCount = taskStatus.getSentCommandCount() != null ? taskStatus.getSentCommandCount() : 0;
-//                int plannedCount = taskStatus.getPlannedPrintCount();
-//
-//                if (completedCount >= plannedCount) {
-//                    log.info("任务 {} 已完成计划打印数量，完成数量: {}, 计划数量: {}", taskId, completedCount, plannedCount);
-//                    finishTaskDispatch(taskId);
-//                    return;
-//                }
-//            }
-//
-//            // 检查数据池中是否还有待打印的数据
-//            Long poolId = taskStatus.getPoolId();
-//            if (poolId != null) {
-//                try {
-//                    int pendingCount = dataPoolItemService.countByPending(poolId);
-//                    int printingCount = dataPoolItemService.countByPrinting(poolId);
-//
-//                    if (taskStatus.getPlannedPrintCount() != -1 && printingCount == 0) {
-//                        log.info("任务 {} 数据池中无打印中的数据，任务完成", taskId);
-//                        finishTaskDispatch(taskId);
-//                        return;
-//                    }else if (pendingCount == 0) {
-//                        log.info("任务 {} 数据池中无待打印数据，任务完成", taskId);
-//                        finishTaskDispatch(taskId);
-//                        return;
-//                    }
-//
-//                    log.debug("任务 {} 数据池状态 , 打印中: {}", taskId, printingCount);
-//                } catch (Exception e) {
-//                    log.warn("检查任务 {} 数据池状态异常", taskId, e);
-//                }
-//            }
-//
-////            // 检查设备是否都在等待状态（无在途指令）
-////            boolean allDevicesWaiting = true;
-////            List<TaskDeviceLink> deviceLinks = taskDeviceLinkService.listByTaskId(taskId);
-////            for (TaskDeviceLink link : deviceLinks) {
-////                String deviceId = link.getDeviceId().toString();
-////                DeviceTaskStatus deviceStatus = deviceStatusMap.get(deviceId);
-////
-////                if (deviceStatus != null && deviceStatus.getCurrentTaskId() != null && deviceStatus.getCurrentTaskId().equals(taskId)) {
-////                    int inFlightCount = deviceStatus.getInFlightCount() != null ? deviceStatus.getInFlightCount() : 0;
-////                    if (inFlightCount > 0) {
-////                        allDevicesWaiting = false;
-////                        log.debug("设备 {} 还有 {} 个在途指令", deviceId, inFlightCount);
-////                        break;
-////                    }
-////                }
-////            }
-////
-////            if (allDevicesWaiting) {
-////                log.info("任务 {} 所有设备都在等待状态，无在途指令，任务完成", taskId);
-////                finishTaskDispatch(taskId);
-////            }
-//
-//        } catch (Exception e) {
-//            log.error("检查任务 {} 完成状态异常", taskId, e);
-//        }
-//    }
+    /**
+     * 自动检测任务完成状态
+     * 每5秒检查一次运行中的任务是否已完成
+     */
+    @Scheduled(fixedRate = 5000)
+    public void autoCheckTaskCompletion() {
+        try {
+            // 获取所有运行中的任务
+            Set<Long> runningTasks = getRunningTasks();
+            if (runningTasks.isEmpty()) {
+                return;
+            }
+
+            for (Long taskId : runningTasks) {
+                checkAndCompleteTask(taskId);
+            }
+        } catch (Exception e) {
+            log.error("自动检测任务完成状态异常", e);
+        }
+    }
+
+    /**
+     * 检查并完成指定任务
+     * @param taskId 任务ID
+     */
+    private void checkAndCompleteTask(Long taskId) {
+        try {
+            TaskDispatchStatus taskStatus = taskStatusMap.get(taskId);
+            if (taskStatus == null || !TaskDispatchStatusEnum.RUNNING.getCode().equals(taskStatus.getStatus())) {
+                return;
+            }
+
+            // 检查任务是否已经启动完成（数据加载是否已经开始）
+            if (!isTaskStartupCompleted(taskId)) {
+                log.debug("任务 {} 尚未启动完成，跳过完成检查", taskId);
+                return;
+            }
+
+            // 检查指令队列是否为空
+            int queueSize = commandQueueService.getQueueSize(taskId);
+            if (queueSize > 0) {
+                log.debug("任务 {} 指令队列还有 {} 条指令，继续等待", taskId, queueSize);
+                return;
+            }
+
+             // 在完成前等待本任务下所有设备缓存池清空
+                List<TaskDeviceLink> deviceLinks = taskDeviceLinkService.listByTaskId(taskId);
+                for (TaskDeviceLink link : deviceLinks) {
+                    String deviceId = link.getDeviceId().toString();
+                    DeviceTaskStatus status = deviceStatusMap.get(deviceId);
+                    if (status != null && TaskDeviceStatus.ERROR.getCode().equals(status.getStatus())) {
+                        // 故障设备不阻塞退出
+                        continue;
+                    }
+                    Integer buf = status != null ? status.getInFlightCount() : null;
+                    if (buf != null && buf > 0) {
+                      return;
+                    }
+                }
+
+            // 检查计划打印数量
+            if (taskStatus.getPlannedPrintCount() != null && taskStatus.getPlannedPrintCount() != -1) {
+                // 有具体计划打印数量，检查是否达到目标
+                int completedCount = taskStatus.getSentCommandCount() != null ? taskStatus.getSentCommandCount() : 0;
+                int plannedCount = taskStatus.getPlannedPrintCount();
+
+                if (completedCount >= plannedCount) {
+                    log.info("任务 {} 已完成计划打印数量，完成数量: {}, 计划数量: {}", taskId, completedCount, plannedCount);
+                    finishTaskDispatch(taskId);
+                    return;
+                }
+            }
+
+            // 检查数据池中是否还有待打印的数据
+            Long poolId = taskStatus.getPoolId();
+            if (poolId != null) {
+                try {
+                    int pendingCount = dataPoolItemService.countByPending(poolId);
+                    int printingCount = dataPoolItemService.countByPrinting(poolId);
+
+                    if (taskStatus.getPlannedPrintCount() != -1 && printingCount == 0) {
+                        log.info("任务 {} 数据池中无打印中的数据，任务完成", taskId);
+                        finishTaskDispatch(taskId);
+                        return;
+                    }else if (pendingCount == 0) {
+                        log.info("任务 {} 数据池中无待打印数据，任务完成", taskId);
+                        finishTaskDispatch(taskId);
+                        return;
+                    }
+
+                    log.debug("任务 {} 数据池状态 , 打印中: {}", taskId, printingCount);
+                } catch (Exception e) {
+                    log.warn("检查任务 {} 数据池状态异常", taskId, e);
+                }
+            }
+
+        } catch (Exception e) {
+            log.error("检查任务 {} 完成状态异常", taskId, e);
+        }
+    }
 
     /**
      * 检查任务是否已经启动完成（数据加载是否已经开始）
