@@ -60,8 +60,8 @@ public class CommandSenderRunner implements Runnable {
         log.info("指令发送器启动，任务ID: {}", taskId);
 
         try {
-            // 等待1.5秒，等待设备初始化完成
-            Thread.sleep(1500);
+            // 等待1秒，等待设备初始化完成
+            Thread.sleep(1000);
         } catch (InterruptedException e) {
             throw new RuntimeException(e);
         }

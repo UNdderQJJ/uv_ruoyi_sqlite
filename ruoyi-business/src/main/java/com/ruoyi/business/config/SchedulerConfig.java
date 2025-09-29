@@ -167,7 +167,9 @@ public class SchedulerConfig {
                     taskDeviceLinkService.updateLink(link);
                 }
 
-                taskIdToDelta.merge(taskId, delta, Integer::sum);
+                if (deviceStatus != null) {
+                    taskIdToDelta.merge(taskId, deviceStatus.getReceivedCount(), Integer::sum);
+                }
             }
 
             // 汇总后更新 TaskInfo.completedQuantity += sumDelta
@@ -182,7 +184,7 @@ public class SchedulerConfig {
                     TaskInfo toUpdateTask = new TaskInfo();
                     toUpdateTask.setId(taskId);
                     toUpdateTask.setCompletedQuantity(status.getSentCommandCount());
-                    toUpdateTask.setReceivedQuantity(current + delta);
+                    toUpdateTask.setReceivedQuantity(delta);
                     taskInfoService.updateTaskInfo(toUpdateTask);
                 }
             }

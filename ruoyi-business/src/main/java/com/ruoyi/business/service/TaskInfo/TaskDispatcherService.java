@@ -76,6 +76,14 @@ public interface TaskDispatcherService {
     void requestDeviceBufferCount(String deviceId);
 
     /**
+     * 同步设备端上报的缓存池数量到调度器（覆盖本地计数器）
+     *
+     * @param deviceId 设备ID
+     * @param bufferCount 设备端上报的缓存池数量
+     */
+    void updateDeviceBufferCount(String deviceId, Integer bufferCount);
+
+    /**
      * 报告指令已发送
      * 
      * @param deviceId 设备ID
