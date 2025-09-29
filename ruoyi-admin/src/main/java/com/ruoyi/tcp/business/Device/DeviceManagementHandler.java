@@ -73,6 +73,8 @@ public class DeviceManagementHandler {
                 return getDeviceByUuid(body);
             } else if (path.equals("/business/device/create")) {
                 return createDevice(body);
+            } else if (path.equals("/business/device/batchCreate")) {
+                return batchCreateDevices(body);
             } else if (path.equals("/business/device/update")) {
                 return updateDevice(body);
             } else if (path.equals("/business/device/delete")) {
@@ -316,6 +318,85 @@ public class DeviceManagementHandler {
         } catch (Exception e) {
             log.error("创建设备异常", e);
             return TcpResponse.error("创建设备异常: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 批量创建设备 端口默认，按ip后缀区间进行分配创建
+     */
+
+    private TcpResponse batchCreateDevices(String body) {
+        try {
+            if (body == null || body.trim().isEmpty()) {
+                return TcpResponse.error("请求体不能为空，需要提供ipPrefix、startIp、endIp、port、deviceType、connectionType");
+            }
+            Map<String, Object> params = objectMapper.readValue(body, new TypeReference<Map<String, Object>>(){ });
+
+            String ipPrefix = params.get("ipPrefix") == null ? null : String.valueOf(params.get("ipPrefix"));
+            Integer startIp = params.get("startIp") == null ? null : Integer.valueOf(String.valueOf(params.get("startIp")));
+            Integer endIp = params.get("endIp") == null ? null : Integer.valueOf(String.valueOf(params.get("endIp")));
+            Integer port = params.get("port") == null ? null : Integer.valueOf(String.valueOf(params.get("port")));
+            String deviceType = params.get("deviceType") == null ? null : String.valueOf(params.get("deviceType"));
+            String connectionType = params.get("connectionType") == null ? null : String.valueOf(params.get("connectionType"));
+            String name = params.get("name") == null ? "设备" : String.valueOf(params.get("name"));
+
+            if (StringUtils.isEmpty(ipPrefix)) {
+                return TcpResponse.error("ip前缀不能为空，例如 192.168.1");
+            }
+            if (startIp == null || endIp == null) {
+                return TcpResponse.error("起始Ip与结束Ip不能为空");
+            }
+            if (startIp < 1 || endIp > 254 || endIp < startIp) {
+                return TcpResponse.error("IP末段区间不合法，应在1-254且结束Ip>=起始Ip");
+            }
+            if (port == null || port <= 0 || port > 65535) {
+                return TcpResponse.error("端口不合法");
+            }
+            if (StringUtils.isEmpty(deviceType)) {
+                return TcpResponse.error("设备类型deviceType不能为空");
+            }
+            if (StringUtils.isEmpty(connectionType)) {
+                return TcpResponse.error("连接类型connectionType不能为空");
+            }
+
+            int success = 0;
+            int fail = 0;
+            List<String> failedIps = new ArrayList<>();
+            for (int last = startIp; last <= endIp; last++) {
+                String ipAddress = ipPrefix + "." + last;
+                try {
+                    DeviceInfo di = new DeviceInfo();
+                    di.setDeviceUuid(UUID.randomUUID().toString());
+                    di.setName(name + last);
+                    di.setDeviceType(deviceType);
+                    di.setConnectionType(connectionType);
+                    di.setIpAddress(ipAddress);
+                    di.setPort(port);
+                    di.setStatus(DeviceStatus.OFFLINE.getCode());
+
+                    int r = deviceInfoService.insertDeviceInfo(di);
+                    if (r > 0) {
+                        success++;
+                    } else {
+                        fail++;
+                        failedIps.add(ipAddress);
+                    }
+                } catch (Exception ex) {
+                    log.warn("批量创建设备失败 ip={}, err={}", ipAddress, ex.getMessage());
+                    fail++;
+                    failedIps.add(ipAddress);
+                }
+            }
+
+            Map<String, Object> result = new HashMap<>();
+            result.put("total", endIp - startIp + 1);
+            result.put("success", success);
+            result.put("fail", fail);
+            result.put("failedIps", failedIps);
+            return fail == 0 ? TcpResponse.success(result) : TcpResponse.error("部分创建失败", result);
+        } catch (Exception e) {
+            log.error("批量创建设备异常", e);
+            return TcpResponse.error("批量创建设备异常: " + e.getMessage());
         }
     }
 
