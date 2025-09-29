@@ -20,7 +20,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import java.util.Map;
@@ -351,9 +350,9 @@ public class DeviceDataHandlerServiceImpl implements DeviceDataHandlerService {
             log.debug("处理缓冲区数量报告，设备ID: {}, 数量: {}", deviceId, bufferCount);
             
             // 更新设备统计
-            DeviceStatistics stats = deviceStatistics.get(deviceId);
-            if (stats != null) {
-                stats.setLastBufferCount(bufferCount);
+            DeviceTaskStatus deviceTask = dispatcher.getDeviceTaskStatus(deviceId);
+            if (deviceTask != null) {
+                deviceTask.setInFlightCount(bufferCount);
             }
             
         } catch (Exception e) {

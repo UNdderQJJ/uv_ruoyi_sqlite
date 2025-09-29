@@ -66,7 +66,15 @@ public interface TaskDispatcherService {
      * @return 是否可以接收指令
      */
     boolean canDeviceReceiveCommand(String deviceId);
-    
+
+
+    /**
+     * 请求设备缓冲区数量
+     *
+     * @param deviceId 设备ID
+     */
+    void requestDeviceBufferCount(String deviceId);
+
     /**
      * 报告指令已发送
      * 

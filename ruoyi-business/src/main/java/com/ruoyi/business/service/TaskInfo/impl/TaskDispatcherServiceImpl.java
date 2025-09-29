@@ -6,6 +6,7 @@ import com.ruoyi.business.service.DataPool.DataSourceLifecycleService;
 import com.ruoyi.business.service.DataPool.IDataPoolService;
 import com.ruoyi.business.service.SystemLog.ISystemLogService;
 import com.ruoyi.business.service.TaskInfo.*;
+import com.ruoyi.business.service.TaskInfo.DeviceDataHandlerService;
 import com.ruoyi.business.service.DeviceInfo.IDeviceInfoService;
 import com.ruoyi.business.domain.DeviceInfo.DeviceInfo;
 import com.ruoyi.business.service.DeviceInfo.DeviceCommandService;
@@ -682,6 +683,28 @@ public class TaskDispatcherServiceImpl implements TaskDispatcherService {
         }
         
         return true;
+    }
+
+    /**
+     * 请求设备缓冲区数量
+     *
+     * @param deviceId 设备ID
+     */
+    @Override
+    public void requestDeviceBufferCount(String deviceId) {
+        try {
+            Object ch = getDeviceChannel(deviceId);
+            if (ch instanceof Channel channel && channel.isActive()) {
+                String cmd = "geta:"; // 按协议发送 'geta:'
+                byte[] commandBytes = StxEtxProtocolUtil.buildCommand(cmd);
+                channel.writeAndFlush(Unpooled.wrappedBuffer(commandBytes));
+                log.debug("请求设备缓冲区数量，设备ID: {} -> {}", deviceId, cmd);
+            } else {
+                log.warn("设备通道不可用，无法请求缓冲区数量，设备ID: {}", deviceId);
+            }
+        } catch (Exception e) {
+            log.error("请求设备缓冲区数量异常，设备ID: {}", deviceId, e);
+        }
     }
     
     @Override

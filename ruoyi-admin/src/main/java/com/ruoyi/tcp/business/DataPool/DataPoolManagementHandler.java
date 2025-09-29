@@ -339,6 +339,11 @@ public class DataPoolManagementHandler
         Long id = Long.valueOf(params.get("id").toString());
 
         DataPool dataPool = dataPoolService.selectDataPoolById(id);
+
+        //正在运行的数据池不允许删除
+        if (PoolStatus.RUNNING.getCode().equals(dataPool.getStatus())) {
+            return TcpResponse.error("数据池正在运行中，不允许删除");
+        }
         
         int result = dataPoolService.deleteDataPoolById(id);
         
