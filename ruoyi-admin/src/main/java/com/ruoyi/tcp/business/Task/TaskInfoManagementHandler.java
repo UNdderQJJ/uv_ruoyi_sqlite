@@ -258,6 +258,7 @@ public class TaskInfoManagementHandler {
                             link.setDeviceFileConfigId(deviceFileConfig.get(0).getId());
                             link.setPoolTemplateId(taskInfo.getPoolTemplateId());
                             link.setAssignedQuantity(taskInfo.getPreloadDataCount());
+                            link.setReceivedQuantity(0);
                             link.setCompletedQuantity(0);
                             link.setStatus(TaskDeviceStatus.WAITING.getCode());//等待
                             link.setDelFlag(0);
@@ -439,6 +440,8 @@ public class TaskInfoManagementHandler {
             request.setAssignedQuantity(taskInfo.getPreloadDataCount());
             request.setOriginalCount(taskInfo.getCompletedQuantity());
             request.setPrintCount(taskInfo.getPlannedQuantity());
+            request.setSentCommandCount(taskInfo.getCompletedQuantity());
+            request.setReceivedCommandCount(taskInfo.getReceivedQuantity());
 
         try {
             taskDispatcherService.startNewTask(request);
@@ -490,6 +493,9 @@ public class TaskInfoManagementHandler {
             }
             //查询数据池表
             DataPool pool = dataPoolService.selectDataPoolById(taskInfo.getPoolId());
+            if(ObjectUtils.isEmpty( pool)){
+                continue;
+            }
             if(taskInfo.getPlannedQuantity() == -1){
                 plannedQuantity += pool.getTotalCount();
             }else {

@@ -15,6 +15,7 @@
         <result property="poolName"          column="pool_name" />
         <result property="plannedQuantity"   column="planned_quantity" />
         <result property="completedQuantity" column="completed_quantity" />
+        <result property="receivedQuantity" column="received_quantity" />
         <result property="preloadDataCount"  column="preload_data_count" />
         <result property="description"       column="description" />
         <result property="delFlag"           column="del_flag" />
@@ -101,12 +102,12 @@
     INSERT INTO task_info (
         name, status, device_name, device_id, device_type,
         pool_id, pool_template_id, pool_name, planned_quantity,
-        completed_quantity, preload_data_count, description,
+        completed_quantity, received_quantity, preload_data_count, description,
         del_flag, create_time
     ) VALUES (
         #{name}, #{status}, #{deviceName}, #{deviceId}, #{deviceType},
         #{poolId}, #{poolTemplateId}, #{poolName}, #{plannedQuantity},
-        #{completedQuantity}, #{preloadDataCount}, #{description},
+        #{completedQuantity},#{receivedQuantity},#{preloadDataCount}, #{description},
         COALESCE(#{delFlag}, 0),
         COALESCE(#{createTime}, datetime('now', 'localtime'))
     )
@@ -126,6 +127,7 @@
             <if test="poolName != null">pool_name = #{poolName},</if>
             <if test="plannedQuantity != null">planned_quantity = #{plannedQuantity},</if>
             <if test="completedQuantity != null">completed_quantity = #{completedQuantity},</if>
+            <if test="receivedQuantity != null">received_quantity = #{receivedQuantity},</if>
             <if test="preloadDataCount != null">preload_data_count = #{preloadDataCount},</if>
             <if test="description != null">description = #{description},</if>
             update_time = COALESCE(#{updateTime}, datetime('now','localtime'))

@@ -33,6 +33,9 @@ public interface TaskDeviceLinkMapper {
 
     /** 查询列表（按任务ID） */
     List<TaskDeviceLink> listByTaskId(Long taskId);
+
+    /** 查询（按任务ID和设备ID） */
+    TaskDeviceLink selectByTaskIdAndDeviceId(Long taskId, Long deviceId);
 }
 
 

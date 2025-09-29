@@ -12,8 +12,7 @@
         <result property="status"             column="status" />
         <result property="assignedQuantity"   column="assigned_quantity" />
         <result property="completedQuantity"  column="completed_quantity" />
-        <result property="cachePoolSize"      column="cache_pool_size" />
-        <result property="throughput"         column="throughput" />
+        <result property="receivedQuantity"   column="received_quantity" />
         <result property="delFlag"            column="del_flag" />
         <result property="createTime"         column="create_time" />
         <result property="updateTime"         column="update_time" />
@@ -23,10 +22,10 @@
     <insert id="insertTaskDeviceLink" parameterType="com.ruoyi.business.domain.TaskInfo.TaskDeviceLink" useGeneratedKeys="true" keyProperty="id">
         INSERT INTO task_device_link (
             task_id, device_id, device_name, device_file_config_id, pool_template_id, status,
-            assigned_quantity, completed_quantity, del_flag, create_time, update_time
+            assigned_quantity, completed_quantity, received_quantity, del_flag, create_time, update_time
         ) VALUES (
             #{taskId}, #{deviceId}, #{deviceName}, #{deviceFileConfigId}, #{poolTemplateId}, #{status},
-            #{assignedQuantity}, COALESCE(#{completedQuantity}, 0), COALESCE(#{delFlag}, 0),
+            #{assignedQuantity}, COALESCE(#{completedQuantity}, 0),COALESCE(#{receivedQuantity}, 0), COALESCE(#{delFlag}, 0),
             COALESCE(#{createTime}, datetime('now','localtime')), COALESCE(datetime(#{updateTime} / 1000, 'unixepoch', 'localtime'), datetime('now', 'localtime'))
         )
     </insert>
@@ -35,12 +34,12 @@
     <insert id="batchInsertTaskDeviceLinks" parameterType="map">
         INSERT INTO task_device_link (
             task_id, device_id, device_name, device_file_config_id, pool_template_id, status,
-            assigned_quantity, completed_quantity, del_flag, create_time, update_time
+            assigned_quantity, completed_quantity, received_quantity, del_flag, create_time, update_time
         ) VALUES
         <foreach collection="list" item="item" separator=",">
             (
                 #{item.taskId}, #{item.deviceId}, #{item.deviceName}, #{item.deviceFileConfigId}, #{item.poolTemplateId}, #{item.status},
-                #{item.assignedQuantity}, COALESCE(#{item.completedQuantity}, 0), COALESCE(#{item.delFlag}, 0),
+                #{item.assignedQuantity}, COALESCE(#{item.completedQuantity}, 0),COALESCE(#{item.receivedQuantity}, 0), COALESCE(#{item.delFlag}, 0),
                 COALESCE(#{item.createTime}, datetime('now','localtime')), COALESCE(#{item.updateTime}, datetime('now','localtime'))
             )
         </foreach>
@@ -56,6 +55,7 @@
             <if test="status != null">status = #{status},</if>
             <if test="assignedQuantity != null">assigned_quantity = #{assignedQuantity},</if>
             <if test="completedQuantity != null">completed_quantity = #{completedQuantity},</if>
+            <if test="receivedQuantity != null">received_quantity = #{receivedQuantity},</if>
             <if test="throughput != null">throughput = #{throughput},</if>
             <if test="cachePoolSize != null">cache_pool_size = #{cachePoolSize},</if>
             update_time = COALESCE(datetime(#{updateTime} / 1000, 'unixepoch', 'localtime'), datetime('now', 'localtime'))
@@ -93,6 +93,12 @@
         SELECT * FROM task_device_link
         WHERE task_id = #{taskId} AND del_flag = 0
         ORDER BY create_time DESC
+    </select>
+    <select id="selectByTaskIdAndDeviceId" resultType="com.ruoyi.business.domain.TaskInfo.TaskDeviceLink">
+        SELECT * FROM task_device_link
+        WHERE task_id = #{taskId} AND device_id = #{deviceId} AND del_flag = 0
+        ORDER BY create_time DESC
+        LIMIT 1
     </select>
 
 </mapper>

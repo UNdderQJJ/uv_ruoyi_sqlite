@@ -20,6 +20,7 @@ import io.netty.util.AttributeKey;
 import java.util.List;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
+import org.apache.commons.lang3.ObjectUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -140,7 +141,9 @@ public class DeviceConnectionManager {
                     log.info("设备连接成功: {} ({}:{})", device.getName(), device.getIpAddress(), device.getPort());
 
                     //不等于在线打印 更新设备状态为在线
-                    if (!device.getStatus().equals(DeviceStatus.ONLINE_PRINTING.getCode())) {
+                    if(device.getStatus().equals(DeviceStatus.ONLINE_PRINTING.getCode()) || ObjectUtils.isNotEmpty(device.getCurrentTaskName())) {
+                        deviceInfoService.updateDeviceStatus(device.getId(), DeviceStatus.ONLINE_PRINTING.getCode());
+                    }else {
                         deviceInfoService.updateDeviceStatus(device.getId(), DeviceStatus.ONLINE_IDLE.getCode());
                     }
 

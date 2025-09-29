@@ -30,6 +30,9 @@ public interface ITaskDeviceLinkService {
 
     /** 根据任务ID查询关联列表 */
     List<TaskDeviceLink> listByTaskId(Long taskId);
+
+    /** 根据任务ID和设备ID查询关联 */
+    TaskDeviceLink selectByTaskIdAndDeviceId(Long taskId, Long deviceId);
 }
 
 
