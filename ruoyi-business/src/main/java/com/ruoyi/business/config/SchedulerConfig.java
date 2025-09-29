@@ -2,6 +2,7 @@ package com.ruoyi.business.config;
 
 import com.ruoyi.business.domain.DataInspect.DataInspect;
 import com.ruoyi.business.domain.DataPoolItem.DataPoolItem;
+import com.ruoyi.business.domain.TaskInfo.TaskDispatchStatus;
 import com.ruoyi.business.enums.ItemStatus;
 import com.ruoyi.business.service.DataInspect.IDataInspectService;
 import com.ruoyi.business.service.DataPoolItem.IDataPoolItemService;
@@ -110,7 +111,7 @@ public class SchedulerConfig {
 
         // 基于完成计数，增量刷新 TaskDeviceLink 与 TaskInfo 的完成数量
         if (countsToUpdate != null && !countsToUpdate.isEmpty()) {
-            // 按任务ID聚合增量
+            // 按任务ID聚合完成数量
            Map<Long, Integer> taskIdToDelta = new HashMap<>();
 
             for (Map.Entry<String, Integer> e : countsToUpdate.entrySet()) {
@@ -123,7 +124,8 @@ public class SchedulerConfig {
                 if (taskId == null) {
                     continue;
                 }
-
+                // 获取当前设备的在途打印数量
+                DeviceTaskStatus deviceStatus = taskDispatcherService.getDeviceTaskStatus(deviceIdStr);
                 // 更新 TaskDeviceLink.completedQuantity += delta
                 // 同时更新 assignedQuantity（在途打印数量）和吞吐率
                 TaskDeviceLink query = new TaskDeviceLink();
@@ -137,12 +139,18 @@ public class SchedulerConfig {
                     Integer completedCount = link.getCompletedQuantity() == null ? 0 : link.getCompletedQuantity();
                     link.setCompletedQuantity(completedCount + delta);
                     
-                    // 获取当前设备的在途打印数量
-                   DeviceTaskStatus deviceStatus = taskDispatcherService.getDeviceTaskStatus(deviceIdStr);
+
+
                     if (deviceStatus != null) {
                         // 更新在途打印数量（assignedQuantity）
                         link.setCachePoolSize(deviceStatus.getInFlightCount());
 
+                        // 更新设备完成数量
+                        link.setCompletedQuantity(deviceStatus.getCompletedCount());
+
+                        //获取设备已接收的数量
+                        deviceStatus.setReceivedCount( deviceStatus.getReceivedCount() +delta);
+                        link.setReceivedQuantity(deviceStatus.getReceivedCount());
 
                         //获取当前完成数量
                         Integer currentCompletedCount = deviceStatus.getCurrentCompletedCount() == null ? 0 : deviceStatus.getCurrentCompletedCount();
@@ -167,15 +175,18 @@ public class SchedulerConfig {
                 Long taskId = e.getKey();
                 Integer delta = e.getValue();
                 if (delta == null || delta <= 0) continue;
+                TaskDispatchStatus status = taskDispatcherService.getTaskDispatchStatus(taskId);
                 TaskInfo task = taskInfoService.selectTaskInfoById(taskId);
                 if (task != null) {
-                    Integer current = task.getCompletedQuantity() == null ? 0 : task.getCompletedQuantity();
+                    Integer current = task.getReceivedQuantity() == null ? 0 : task.getReceivedQuantity();
                     TaskInfo toUpdateTask = new TaskInfo();
                     toUpdateTask.setId(taskId);
-                    toUpdateTask.setCompletedQuantity(current + delta);
+                    toUpdateTask.setCompletedQuantity(status.getSentCommandCount());
+                    toUpdateTask.setReceivedQuantity(current + delta);
                     taskInfoService.updateTaskInfo(toUpdateTask);
                 }
             }
         }
+
     }
 }

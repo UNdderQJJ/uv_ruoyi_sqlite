@@ -1,6 +1,7 @@
 package com.ruoyi.business.service.TaskInfo.runner;
 
 import com.ruoyi.business.domain.SystemLog.SystemLog;
+import com.ruoyi.business.domain.TaskInfo.DeviceTaskStatus;
 import com.ruoyi.business.domain.TaskInfo.PrintCommand;
 import com.ruoyi.business.domain.TaskInfo.TaskDispatchStatus;
 import com.ruoyi.business.enums.SystemLogLevel;
@@ -57,7 +58,14 @@ public class CommandSenderRunner implements Runnable {
     @Override
     public void run() {
         log.info("指令发送器启动，任务ID: {}", taskId);
-        
+
+        try {
+            // 等待1.5秒，等待设备初始化完成
+            Thread.sleep(1500);
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        }
+
         while (running) {
             try {
                 if (paused) {
@@ -173,6 +181,11 @@ public class CommandSenderRunner implements Runnable {
                 Integer sent = taskStatus.getSentCommandCount();
                 taskStatus.setSentCommandCount((sent == null ? 0 : sent) + 1);
             }
+            DeviceTaskStatus deviceTaskStatus = dispatcher.getDeviceTaskStatus(deviceId);
+            if (deviceTaskStatus != null) {
+                deviceTaskStatus.setCompletedCount(deviceTaskStatus.getCompletedCount() + 1);
+            }
+
             sentCount.incrementAndGet();
 
             log.debug("指令发送成功，设备ID: {}, 指令: {}", deviceId, commandStr);

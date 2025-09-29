@@ -50,7 +50,7 @@ public void addCommandToQueue(PrintCommand command) {
     // queuedCommandDataSet.add() 是一个原子操作，如果数据已存在，它会返回false
        boolean rest  = Boolean.parseBoolean(queuedCommandDataSet.put(command.getTaskId(), command.getData()));
        // ---- 如果添加失败，说明Set中已存在该数据，是重复指令 ----
-       if (!rest) {
+           if (!rest) {
            // ---- 如果添加成功，说明这是新指令 ----
            try {
                // 尝试将指令对象放入队列
@@ -106,6 +106,8 @@ public void addCommandToQueue(PrintCommand command) {
     public void clearQueue(Long taskId) {
         initQueues();
         commandQueue.removeIf(command -> command.getTaskId().equals(taskId));
+        queuedCommandDataSet.remove(taskId);
+        taskIdToSentRecords.remove(taskId);
     }
 
     @Override

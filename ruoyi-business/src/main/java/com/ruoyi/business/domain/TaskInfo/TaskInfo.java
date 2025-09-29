@@ -69,6 +69,11 @@ public class TaskInfo extends BaseEntity {
     private Integer completedQuantity;
 
     /**
+     * 打印总接收数
+     */
+    private Integer receivedQuantity;
+
+    /**
      * 动态内容打印时, 提前下发的数据条数 缓存池大小
      */
     private Integer preloadDataCount;

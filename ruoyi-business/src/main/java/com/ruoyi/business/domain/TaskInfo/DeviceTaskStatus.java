@@ -27,6 +27,9 @@ public class DeviceTaskStatus {
     /** 已完成数量 */
     private Integer completedCount;
 
+    /** 接收数量 */
+    private Integer receivedCount;
+
     /** 当前已完成数量（不包含之前启动的完成数量） */
     private Integer currentCompletedCount;
     

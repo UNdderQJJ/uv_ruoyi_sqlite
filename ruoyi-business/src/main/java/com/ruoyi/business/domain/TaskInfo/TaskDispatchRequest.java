@@ -26,6 +26,13 @@ public class TaskDispatchRequest {
 
     /** 原已完成数量 */
     private Integer originalCount;
+
+    /** 已发送指令数量 */
+    private Integer sentCommandCount;
+
+    /** 已接收指令数量 */
+    private Integer receivedCommandCount;
+
     /** 批处理大小 */
     private Integer batchSize;
     
