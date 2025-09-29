@@ -76,9 +76,14 @@ public class DataPoolProducerServiceImpl implements DataPoolProducerService {
             }
             
             // 创建并启动Runner
+            // 读取启动时的计划快照，绑定到本任务的Runner，避免不同任务混用
+            int planPrintCountSnapshot = taskDispatchProperties.getPlanPrintCount();
+            int originalCountSnapshot = taskDispatchProperties.getOriginalCount();
+
             DataPoolProducerRunner runner = new DataPoolProducerRunner(
                     taskId, poolId, commandQueueService, dataPoolItemService, taskDeviceLinkService,
-                    iDataPoolTemplateService, iDeviceFileConfigService, taskDispatchProperties,systemLogService);
+                    iDataPoolTemplateService, iDeviceFileConfigService, taskDispatchProperties,
+                    planPrintCountSnapshot, originalCountSnapshot, systemLogService);
 
             // 创建Future
             Future<?> future = taskProducerExecutor.submit(runner);
