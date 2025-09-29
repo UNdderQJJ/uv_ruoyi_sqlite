@@ -7,7 +7,6 @@ import com.ruoyi.business.domain.TaskInfo.PrintCommand;
 import com.ruoyi.business.enums.*;
 import com.ruoyi.business.service.SystemLog.ISystemLogService;
 import com.ruoyi.business.service.TaskInfo.DeviceDataHandlerService;
-import com.ruoyi.business.service.TaskInfo.ITaskDeviceLinkService;
 import com.ruoyi.business.service.TaskInfo.TaskDispatcherService;
 import com.ruoyi.business.service.TaskInfo.CommandQueueService;
 import com.ruoyi.business.service.DeviceInfo.IDeviceInfoService;
@@ -20,6 +19,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import java.util.Map;
@@ -33,25 +33,25 @@ import java.util.regex.Pattern;
  */
 @Service
 public class DeviceDataHandlerServiceImpl implements DeviceDataHandlerService {
-    
+
     private static final Logger log = LoggerFactory.getLogger(DeviceDataHandlerServiceImpl.class);
-    
+
     // 设备通道映射
     private final ConcurrentHashMap<String, Channel> deviceChannels = new ConcurrentHashMap<>();
-    
+
     // 设备统计信息
     private final ConcurrentHashMap<String, DeviceStatistics> deviceStatistics = new ConcurrentHashMap<>();
-    
+
     // 心跳超时时间（毫秒）
     @Value("${task.dispatch.heartbeat-timeout:5000}")
     private long heartbeatTimeout;
-    
+
     @Autowired
     private TaskDispatcherService dispatcher;
-    
+
     @Autowired
     private IDeviceInfoService deviceInfoService;
-    
+
     @Autowired
     private CommandQueueService commandQueueService;
 
@@ -59,14 +59,13 @@ public class DeviceDataHandlerServiceImpl implements DeviceDataHandlerService {
     private ISystemLogService systemLogService;
 
 
-    
+
     // 正则表达式模式
     private static final Pattern SYSTEM_PATTERN = Pattern.compile("system:(\\d+)");
     private static final Pattern SETA_PATTERN = Pattern.compile("seta:(\\d+)(?::(.+))?");
     private static final Pattern DATA_ERROR_PATTERN = Pattern.compile("data_error");
     private static final Pattern BUFFER_COUNT_PATTERN = Pattern.compile("geta:(\\d+)");
-    @Autowired
-    private ITaskDeviceLinkService iTaskDeviceLinkService;
+
 
     @Override
     public void handleDeviceData(String deviceId, String data) {
@@ -95,31 +94,31 @@ public class DeviceDataHandlerServiceImpl implements DeviceDataHandlerService {
             // 解析并处理不同类型的设备数据
             if (data != null && !data.trim().isEmpty()) {
                 String trimmedData = data.trim();
-                
+
                 // 处理system:2信号（打印完成）
                 if (handleSystemSignal(deviceId, trimmedData)) {
                     return;
                 }
-                
+
                 // 处理seta:0信号（错误）
                 if (handleSetaSignal(deviceId, trimmedData)) {
                     return;
                 }
-                
+
                 // 处理data_error信号
                 if (handleDataErrorSignal(deviceId, trimmedData)) {
                     return;
                 }
-                
+
                 // 处理缓冲区数量报告
                 if (handleBufferCountReport(deviceId, trimmedData)) {
                     return;
                 }
-                
+
                 // 处理其他设备数据
                 handleOtherDeviceData(deviceId, trimmedData);
             }
-            
+
         } catch (Exception e) {
             log.error("处理设备数据异常，设备ID: {}, 数据: {}", deviceId, data, e);
              //记录通讯日志
@@ -133,12 +132,12 @@ public class DeviceDataHandlerServiceImpl implements DeviceDataHandlerService {
                 systemLogService.insert(systemLog);
         }
     }
-    
+
     @Override
     public void handlePrintCompleted(String deviceId) {
         try {
             log.info("处理打印完成信号，设备ID: {}", deviceId);
-            
+
             // 从TaskDispatcherService获取设备任务状态，获取当前任务ID
             DeviceTaskStatus deviceStatus = dispatcher.getDeviceTaskStatus(deviceId);
             Long currentTaskId = null;
@@ -146,13 +145,13 @@ public class DeviceDataHandlerServiceImpl implements DeviceDataHandlerService {
                 currentTaskId = deviceStatus.getCurrentTaskId();
                 log.info("从设备任务状态获取当前任务ID: {}, 设备ID: {}", currentTaskId, deviceId);
             }
-            
+
             // 如果从任务状态获取不到，尝试从数据库获取
             if (currentTaskId == null) {
                 currentTaskId = getCurrentTaskId(deviceId);
                 log.info("从数据库获取当前任务ID: {}, 设备ID: {}", currentTaskId, deviceId);
             }
-            
+
             if (currentTaskId != null) {
                 // 报告指令完成
                 log.info("报告指令完成，设备ID: {}, 任务ID: {}", deviceId, currentTaskId);
@@ -160,17 +159,17 @@ public class DeviceDataHandlerServiceImpl implements DeviceDataHandlerService {
             } else {
                 log.warn("无法获取设备当前任务ID，跳过指令完成报告，设备ID: {}", deviceId);
             }
-            
+
         } catch (Exception e) {
             log.error("处理打印完成信号异常，设备ID: {}", deviceId, e);
         }
     }
-    
+
     @Override
     public void handleError(String deviceId, String errorMessage) {
         try {
             log.error("处理设备错误，设备ID: {}, 错误: {}", deviceId, errorMessage);
-            
+
             // 报告错误
             dispatcher.reportError(deviceId, errorMessage);
 
@@ -188,32 +187,32 @@ public class DeviceDataHandlerServiceImpl implements DeviceDataHandlerService {
             } catch (Exception e) {
                 log.warn("记录打印错误事件失败，设备ID: {}, 错误: {}", deviceId, errorMessage, e);
             }
-            
+
             // 更新设备状态
             updateDeviceStatus(deviceId, DeviceStatus.ERROR.getCode());
-            
+
         } catch (Exception e) {
             log.error("处理设备错误异常，设备ID: {}, 错误: {}", deviceId, errorMessage, e);
         }
     }
-    
+
     @Override
     public void handleHeartbeat(String deviceId) {
         try {
             log.debug("处理设备心跳，设备ID: {}", deviceId);
-            
+
             // 更新设备统计
             DeviceStatistics stats = deviceStatistics.get(deviceId);
             if (stats != null) {
                 stats.setLastHeartbeat(System.currentTimeMillis());
                 stats.setHeartbeatCount(stats.getHeartbeatCount() + 1);
             }
-            
+
         } catch (Exception e) {
             log.error("处理设备心跳异常，设备ID: {}", deviceId, e);
         }
     }
-    
+
     @Override
 //    @Scheduled(fixedRate = 2000) // 每2秒检查一次心跳，使用system:2作为心跳间隔
     public void checkHeartbeats() {
@@ -222,27 +221,27 @@ public class DeviceDataHandlerServiceImpl implements DeviceDataHandlerService {
             if (!dispatcher.hasRunningTasks()) {
                 return;
             }
-            
+
             long currentTime = System.currentTimeMillis();
-            
+
             for (Map.Entry<String, Channel> entry : deviceChannels.entrySet()) {
                 String deviceId = entry.getKey();
                 Channel channel = entry.getValue();
-                
+
                 // 检查通道是否仍然活跃
                 if (channel == null || !channel.isActive()) {
                     log.warn("设备通道已断开，设备ID: {}", deviceId);
                     handleChannelDisconnected(deviceId);
                     continue;
                 }
-                
+
                 // 检查设备是否有正在运行的任务
                 DeviceTaskStatus deviceStatus = dispatcher.getDeviceTaskStatus(deviceId);
                 if (deviceStatus == null || deviceStatus.getCurrentTaskId() == null || !deviceStatus.getStatus().equals(TaskDeviceStatus.PRINTING.getCode())) {
                     // 设备没有运行任务，跳过心跳检查
                     continue;
                 }
-                
+
                 DeviceStatistics stats = deviceStatistics.get(deviceId);
                 if (stats != null) {
                     // 使用最后一次收到system信号的时间来判断心跳超时
@@ -271,20 +270,20 @@ public class DeviceDataHandlerServiceImpl implements DeviceDataHandlerService {
                     }
                 }
             }
-            
+
         } catch (Exception e) {
             log.error("心跳检测异常", e);
         }
     }
-    
+
     @Override
     public void registerDeviceChannel(String deviceId, Object channel) {
         if (channel instanceof Channel) {
             deviceChannels.put(deviceId, (Channel) channel);
-            
+
             // 注册到调度器
             dispatcher.registerDeviceChannel(deviceId, channel);
-            
+
             // 初始化设备统计
             DeviceStatistics stats = new DeviceStatistics();
             stats.setDeviceId(deviceId);
@@ -297,40 +296,40 @@ public class DeviceDataHandlerServiceImpl implements DeviceDataHandlerService {
             stats.setErrorCount(0);
             stats.setStatus(TaskDeviceStatus.PRINTING.getCode());
             deviceStatistics.put(deviceId, stats);
-            
+
             log.info("注册设备通道，设备ID: {}", deviceId);
         }
     }
-    
+
     @Override
     public void unregisterDeviceChannel(String deviceId) {
         deviceChannels.remove(deviceId);
         deviceStatistics.remove(deviceId);
-        
+
         // 从调度器注销
         dispatcher.unregisterDeviceChannel(deviceId);
-        
+
         log.info("注销设备通道，设备ID: {}", deviceId);
     }
-    
+
     @Override
     public Object getDeviceChannel(String deviceId) {
         return deviceChannels.get(deviceId);
     }
-    
+
     @Override
     public void handleDeviceRegistration(String deviceId, String deviceInfo) {
         try {
             log.info("处理设备注册，设备ID: {}, 设备信息: {}", deviceId, deviceInfo);
-            
+
             // 更新设备状态为在线
             updateDeviceStatus(deviceId, DeviceStatus.ONLINE_IDLE.getCode());
-            
+
         } catch (Exception e) {
             log.error("处理设备注册异常，设备ID: {}", deviceId, e);
         }
     }
-    
+
     @Override
     public void handleDeviceStatusReport(String deviceId, String status) {
         try {
@@ -350,13 +349,34 @@ public class DeviceDataHandlerServiceImpl implements DeviceDataHandlerService {
             log.debug("处理缓冲区数量报告，设备ID: {}, 数量: {}", deviceId, bufferCount);
             
             // 更新设备统计
-            DeviceTaskStatus deviceTask = dispatcher.getDeviceTaskStatus(deviceId);
-            if (deviceTask != null) {
-                deviceTask.setInFlightCount(bufferCount);
-            }
-            
+            // 交由调度器统一同步（包含覆盖本地 inFlightCounters）
+            dispatcher.updateDeviceBufferCount(deviceId, bufferCount);
+
         } catch (Exception e) {
             log.error("处理缓冲区数量报告异常，设备ID: {}", deviceId, e);
+        }
+    }
+
+    // 每2秒轮询一次所有在线设备的缓存池数量
+    @Scheduled(fixedRate = 2000)
+    private void pollDeviceBufferCounts() {
+        try {
+            if (!dispatcher.hasRunningTasks()) {
+                return;
+            }
+            for (Map.Entry<String, Channel> entry : deviceChannels.entrySet()) {
+                String deviceId = entry.getKey();
+                Channel channel = entry.getValue();
+                if (channel != null && channel.isActive()) {
+                    // 发送 geta 指令
+                    String cmd = "geta:";
+                    byte[] commandBytes = StxEtxProtocolUtil.buildCommand(cmd);
+                    channel.writeAndFlush(Unpooled.wrappedBuffer(commandBytes));
+                    log.debug("轮询请求设备缓冲区数量，设备ID: {} -> {}", deviceId, cmd);
+                }
+            }
+        } catch (Exception e) {
+            log.error("轮询请求设备缓冲区数量异常", e);
         }
     }
     

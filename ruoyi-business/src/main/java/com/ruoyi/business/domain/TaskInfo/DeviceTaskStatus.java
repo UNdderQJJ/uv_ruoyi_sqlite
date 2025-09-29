@@ -62,4 +62,7 @@ public class DeviceTaskStatus {
 
     /** 缓存池大小**/
     private Integer cachePoolSize;
+
+    /** 当前设备缓存池中的实际数量（轮询geta获得） */
+    private Integer deviceBufferCount;
 }
