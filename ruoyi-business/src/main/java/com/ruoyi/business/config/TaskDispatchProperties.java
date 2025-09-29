@@ -11,7 +11,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 public class TaskDispatchProperties {
     
     /** 批处理大小 */
-    private Integer batchSize = 1000;
+    private Integer batchSize = 2000;
     
     /** 预加载数量 */
     private Integer preloadCount = 20;
@@ -23,7 +23,7 @@ public class TaskDispatchProperties {
     private Integer maxRetryCount = 3;
     
     /** 指令队列大小 */
-    private Integer commandQueueSize = 1000;
+    private Integer commandQueueSize = 2000;
 
     /** 计划打印数量 */
     private Integer planPrintCount = 0;
