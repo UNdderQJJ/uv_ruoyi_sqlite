@@ -111,7 +111,7 @@ public class UDiskDataSchedulerService {
          // 更新连接状态为已连接（文件可读）
         dataPoolService.updateConnectionState(poolId, ConnectionState.CONNECTED.getCode());
            // 检查待打印数据量是否低于阈值
-        if (dataPool.getPendingCount() > threshold) {
+        if (dataPool.getPendingCount() >= threshold) {
             log.debug("数据池 {} 待打印数据量 {} 未低于阈值 {}, 无需读取",
                     dataPool.getPoolName(), dataPool.getPendingCount(), threshold);
             return "启动成功！";

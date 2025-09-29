@@ -86,12 +86,7 @@ public class DataPoolSchedulerService implements ApplicationRunner {
             
             // 创建定时任务，使用匿名内部类避免Lambda序列化问题
             ScheduledFuture<?> task = taskScheduler.scheduleWithFixedDelay(
-                    new Runnable() {
-                        @Override
-                        public void run() {
-                            processDataPool(dataPool);
-                        }
-                    },
+                    () -> processDataPool(dataPool),
                     interval
             );
             
