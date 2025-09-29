@@ -21,6 +21,9 @@ public enum TaskStatus {
     /** 已完成 */
     COMPLETED("COMPLETED", "已完成"),
 
+    /**已报废  */
+    SCRAP("SCRAP", "已报废"),
+
     /** 故障 */
     ERROR("ERROR", "故障");
 

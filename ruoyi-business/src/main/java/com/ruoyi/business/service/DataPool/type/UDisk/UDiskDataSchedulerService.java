@@ -108,6 +108,8 @@ public class UDiskDataSchedulerService {
         //获取阈值
         int threshold =  getThresholdFromConfig(dataPool);
 
+         // 更新连接状态为已连接（文件可读）
+        dataPoolService.updateConnectionState(poolId, ConnectionState.CONNECTED.getCode());
            // 检查待打印数据量是否低于阈值
         if (dataPool.getPendingCount() > threshold) {
             log.debug("数据池 {} 待打印数据量 {} 未低于阈值 {}, 无需读取",
@@ -127,8 +129,6 @@ public class UDiskDataSchedulerService {
             // 更新连接状态为断开
             throw new IllegalStateException("文件读取出错"+e.getMessage());
         }
-        // 更新连接状态为已连接（文件可读）
-        dataPoolService.updateConnectionState(poolId, ConnectionState.CONNECTED.getCode());
 
         if (readCount > 0) {
             log.info("数据池 {} 成功读取 {} 条数据", dataPool.getPoolName(), readCount);
@@ -211,7 +211,7 @@ public class UDiskDataSchedulerService {
                     dataPoolSchedulerService.startDataPoolScheduler(dataPool.getId());
                 } else {
                     // 文件丢失，标记断开
-                    dataPoolService.updateConnectionState(dataPool.getId(), ConnectionState.DISCONNECTED.getCode());
+                    dataPoolService.updateConnectionState(dataPool.getId(), ConnectionState.ERROR.getCode());
                 }
             } catch (Exception e) {
                 log.warn("自动读取失败，poolId={}, err={}", dataPool.getId(), e.getMessage());

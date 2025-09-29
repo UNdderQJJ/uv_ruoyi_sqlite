@@ -106,6 +106,8 @@ public class TaskInfoManagementHandler {
                 return getTodayProductivity();
             } else if (path.endsWith("/getQualityRate")) {
                 return getQualityRate();
+            } else if (path.endsWith("/scrap")){
+                return scrap(body);
             }
             return TcpResponse.error("未知的任务中心接口: " + path);
         } catch (Exception e) {
@@ -291,6 +293,31 @@ public class TaskInfoManagementHandler {
             return TcpResponse.success(taskInfo);
         }
         return TcpResponse.error("更新任务失败");
+    }
+
+    /** 报废任务 */
+    private TcpResponse scrap(String body) throws Exception {
+        Long id = parseId(body);
+        TaskInfo taskInfo = new TaskInfo();
+        taskInfo.setId(id);
+        if (taskInfo.getId() != null) {
+            taskInfo.setStatus(TaskStatus.SCRAP.getCode());
+        }
+        int rows = taskInfoService.updateTaskInfo(taskInfo);
+         //删除后将相应的设备置为空闲，且故障的不做改变
+         List<TaskDeviceLink> links = taskDeviceLinkService.listByTaskId(taskInfo.getId());
+         if(ObjectUtils.isEmpty( links)){
+                return TcpResponse.success();
+            }
+            for (TaskDeviceLink link : links) {
+                // 如果设备已经故障，则不处理
+                if(link.getStatus().equals(TaskDeviceStatus.ERROR.getCode())){
+                     deviceInfoService.removeCurrentTask(link.getDeviceId(),DeviceStatus.ERROR.getCode());
+                }
+                //移除设备任务,设置设备状态为空闲
+                deviceInfoService.removeCurrentTask(link.getDeviceId(),DeviceStatus.ONLINE_IDLE.getCode());
+            }
+        return rows > 0 ? TcpResponse.success() : TcpResponse.error("报废任务失败");
     }
 
     /** 批量删除任务（ids） */
