@@ -20,13 +20,14 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.scheduling.annotation.Scheduled;
 
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
+
 import com.ruoyi.business.config.TaskDispatchProperties;
 import com.ruoyi.business.service.TaskInfo.CommandQueueService;
 import com.ruoyi.business.service.DataPoolItem.IDataPoolItemService;
@@ -59,8 +60,11 @@ public class TaskDispatcherServiceImpl implements TaskDispatcherService {
     
     // 移除本地队列，使用共享的CommandQueueService
     
-    // 完成计数缓冲（设备维度，内存聚合，供批量持久化使用）
+    //接收计数缓冲（设备维度，内存聚合，供批量持久化使用）
     private final ConcurrentHashMap<String, AtomicInteger> completedCountsBuffer = new ConcurrentHashMap<>();
+    
+    // 发送计数缓冲（设备维度，内存聚合，供批量持久化使用）
+    private final ConcurrentHashMap<String, AtomicInteger> sentCountsBuffer = new ConcurrentHashMap<>();
 
     // 当前任务
     private volatile TaskInfo currentTask;
@@ -143,6 +147,21 @@ public class TaskDispatcherServiceImpl implements TaskDispatcherService {
                 throw new RuntimeException("数据池启动失败");
             }
 
+            // 2.2. 检查并记录各设备当前缓存池状态
+            try {
+                checkAndRecordDeviceBufferStatus(request.getTaskId(), request.getDeviceIds());
+            } catch (Exception e) {
+                log.warn("检查设备缓存池状态异常，任务ID: {}", request.getTaskId(), e);
+                // 记录异常但不中断任务启动
+                SystemLog systemLog = new SystemLog();
+                systemLog.setLogType(SystemLogType.PRINT.getCode());
+                systemLog.setLogLevel(SystemLogLevel.WARN.getCode());
+                systemLog.setTaskId(request.getTaskId());
+                systemLog.setPoolId(request.getPoolId());
+                systemLog.setContent("检查设备缓存池状态异常: " + e.getMessage());
+                systemLogService.insert(systemLog);
+            }
+
             // 3. 更新任务状态为运行中
             taskStatus.setStatus(TaskDispatchStatusEnum.RUNNING.getCode());
             // 更新任务状态
@@ -203,14 +222,6 @@ public class TaskDispatcherServiceImpl implements TaskDispatcherService {
         try {
             log.info("停止任务调度，任务ID: {}", taskId);
 
-            // 关闭数据生成队列
-            dataPoolProducerService.stopProduction(taskId);
-            // 停止下发数据队列
-            commandQueueService.clearQueue(taskId);
-
-            // 在停止前等待本任务下所有设备缓存池清空
-            waitUntilDeviceBuffersEmpty(taskId, 10000L);
-
             // 更新任务状态
             TaskDispatchStatus taskStatus = taskStatusMap.get(taskId);
             if (taskStatus != null) {
@@ -245,6 +256,9 @@ public class TaskDispatcherServiceImpl implements TaskDispatcherService {
                     deviceTask.setStatus(TaskDeviceStatus.ERROR.getCode());
                 }
                 }
+                //先更新设备当前数据池数量
+                pollDeviceBufferCounts(taskId);
+
                 //更新任务关联设备数据
                 DeviceTaskStatus deviceTask = deviceStatusMap.get(link.getDeviceId().toString());
                 TaskDeviceLink link1 = new TaskDeviceLink();
@@ -253,21 +267,11 @@ public class TaskDispatcherServiceImpl implements TaskDispatcherService {
                taskDeviceLinkService.updateLink(link1);
 
             }
-            
-            // 在停止时输出接收与完成统计
-            TaskDispatchStatus statusForLog = taskStatusMap.get(taskId);
-            if (statusForLog != null) {
-                 Integer sent = statusForLog.getSentCommandCount();
-                Integer rect = statusForLog.getReceivedCommandCount();
-                log.info("任务停止统计-taskId: {}, 已发送指令数量: {}, 已接收指令数量: {}",
-                        taskId, sent == null ? 0 : sent, rect == null ? 0 : rect);
-            }
 
             // 清空当前任务 与缓存池数据
             if (currentTask != null && currentTask.getId().equals(taskId)) {
                 //清除commandQueue对应任务的缓存池数据
                 commandQueueService.clearQueue(taskId);
-                commandQueueService.removeTrackingQueue(taskId);
                 // 清空当前任务
                 currentTask = null;
             }
@@ -326,14 +330,6 @@ public class TaskDispatcherServiceImpl implements TaskDispatcherService {
             // 停止数据源
             dataSourceLifecycleService.stopDataSource(getPoolId(taskId));
 
-            // 在完成时输出接收与完成统计
-            TaskDispatchStatus statusForLog = taskStatusMap.get(taskId);
-            if (statusForLog != null) {
-                     Integer sent = statusForLog.getSentCommandCount();
-                Integer rect = statusForLog.getReceivedCommandCount();
-                log.info("任务完成统计-taskId: {}, 已发送指令数量: {}, 已接收指令数量: {}",
-                        taskId, sent == null ? 0 : sent, rect == null ? 0 : rect);
-            }
 
             //更新设备状态
             List<TaskDeviceLink> linkList = taskDeviceLinkService.listByTaskId(taskId);
@@ -346,19 +342,19 @@ public class TaskDispatcherServiceImpl implements TaskDispatcherService {
                 }
                 //在设备异常的情况下只能进行状态更新
                 deviceStatusMap.get(link.getDeviceId().toString()).setStatus(TaskDeviceStatus.WAITING.getCode());
+
+                //更新任务关联设备数据
+                DeviceTaskStatus deviceTask = deviceStatusMap.get(link.getDeviceId().toString());
+                TaskDeviceLink link1 = new TaskDeviceLink();
+                link1.setId(link.getId());
+               link.setCachePoolSize(deviceTask.getDeviceBufferCount());
+               taskDeviceLinkService.updateLink(link1);
             }
-
-            //休眠3秒等待设备缓存池消耗完成
-            Thread.sleep(3000);
-
-            // 停止下发数据队列（在设备消耗完缓存池后）
-            commandQueueService.clearQueue(taskId);
 
              // 清空当前任务 与缓存池数据
             if (currentTask != null && currentTask.getId().equals(taskId)) {
                 //清除commandQueue对应任务的缓存池数据
                 commandQueueService.clearQueue(taskId);
-                commandQueueService.removeTrackingQueue(taskId);
                 // 清空当前任务
                 currentTask = null;
             }
@@ -387,6 +383,28 @@ public class TaskDispatcherServiceImpl implements TaskDispatcherService {
                 systemLog.setPoolId(getPoolId(taskId));
                 systemLog.setContent("打印任务完成调度失败："+e.getMessage());
                 systemLogService.insert(systemLog);
+        }
+    }
+
+    /**轮询任务在线设备的缓存池数量*/
+    private  void pollDeviceBufferCounts(Long taskId) {
+
+        List<DeviceTaskStatus> deviceTaskStatusList = deviceStatusMap.values().stream()
+                .filter(deviceTaskStatus -> deviceTaskStatus.getCurrentTaskId().equals(taskId)).toList();
+        try {
+            for(DeviceTaskStatus deviceTask : deviceTaskStatusList){
+                String deviceId = deviceTask.getDeviceId();
+                Channel channel = deviceChannels.get(deviceTask.getDeviceId());
+                      if (channel != null && channel.isActive()) {
+                    // 发送 geta 指令
+                    String cmd = "geta:";
+                    byte[] commandBytes = StxEtxProtocolUtil.buildCommand(cmd);
+                    channel.writeAndFlush(Unpooled.wrappedBuffer(commandBytes));
+                    log.debug("轮询任务在线设备的缓存池数量，设备ID: {} -> {}", deviceId, cmd);
+                }
+            }
+        } catch (Exception e) {
+            log.error("轮询任务在线设备的缓存池数量", e);
         }
     }
 
@@ -466,8 +484,8 @@ public class TaskDispatcherServiceImpl implements TaskDispatcherService {
                 systemLog.setContent("预检设备完成!");
                 systemLogService.insert(systemLog);
 
-                //休眠0.1秒
-                Thread.sleep(100);
+                //休眠0.5秒
+                Thread.sleep(500);
 
             } catch (Exception e) {
                 log.error("预检设备异常，设备ID: {}", deviceIdStr, e);
@@ -662,6 +680,10 @@ public class TaskDispatcherServiceImpl implements TaskDispatcherService {
                     //查询待打印与打印中的数量
                     int planPrintCount = dataPoolItemService.countByPending(taskStatus.getPoolId());
                     if (planPrintCount == 0) {
+                         // 检查设备缓存是否为空
+                        if (!waitUntilDeviceBuffersEmpty(taskId)){
+                             return;
+                        }
                         finishTaskDispatch(taskId);
                     }
                 }else if (taskStatus.getPlannedPrintCount() > 0) {
@@ -672,6 +694,10 @@ public class TaskDispatcherServiceImpl implements TaskDispatcherService {
                     //查询打印中的数量
                     int printingCount = dataPoolItemService.countByPrinting(taskStatus.getPoolId());
                     if (printingCount == 0) {
+                            // 检查设备缓存是否为空
+                         if (!waitUntilDeviceBuffersEmpty(taskId)){
+                             return;
+                         }
                         finishTaskDispatch(taskId);
                     }
                 }
@@ -690,6 +716,18 @@ public class TaskDispatcherServiceImpl implements TaskDispatcherService {
             snapshot.put(e.getKey(), e.getValue().get());
         }
         completedCountsBuffer.clear();
+        return snapshot;
+    }
+    
+    /**
+     * 获取并清空发送计数缓冲
+     */
+    public Map<String, Integer> getAndClearSentBuffer() {
+        Map<String, Integer> snapshot = new HashMap<>();
+        for (Map.Entry<String, AtomicInteger> e : sentCountsBuffer.entrySet()) {
+            snapshot.put(e.getKey(), e.getValue().get());
+        }
+        sentCountsBuffer.clear();
         return snapshot;
     }
     
@@ -767,11 +805,11 @@ public class TaskDispatcherServiceImpl implements TaskDispatcherService {
                 DeviceTaskStatus deviceStatus = deviceStatusMap.get(deviceId);
                 if (deviceStatus != null) {
                     deviceStatus.setDeviceBufferCount(bufferCount);
-                    deviceStatus.setInFlightCount(bufferCount);
+//                    deviceStatus.setInFlightCount(bufferCount);
                 }
                 // 同步覆盖线程安全计数器
-                AtomicInteger counter = inFlightCounters.computeIfAbsent(deviceId, k -> new AtomicInteger(0));
-                counter.set(Math.max(0, bufferCount));
+//                AtomicInteger counter = inFlightCounters.computeIfAbsent(deviceId, k -> new AtomicInteger(0));
+//                counter.set(Math.max(0, bufferCount));
             }
         } catch (Exception e) {
             log.warn("同步设备缓存池数量失败，deviceId: {}", deviceId, e);
@@ -798,6 +836,9 @@ public class TaskDispatcherServiceImpl implements TaskDispatcherService {
                 
                 log.info("指令发送报告，设备ID: {}, 计数器变化: {} -> {}", deviceId, oldValue, newValue);
             }
+            
+            // 关键：仅在内存中累加发送计数，交由统一调度批量持久化
+            sentCountsBuffer.computeIfAbsent(deviceId, k -> new AtomicInteger(0)).incrementAndGet();
         }
     }
 
@@ -1084,20 +1125,10 @@ public class TaskDispatcherServiceImpl implements TaskDispatcherService {
                 return;
             }
 
-             // 在完成前等待本任务下所有设备缓存池清空
-                List<TaskDeviceLink> deviceLinks = taskDeviceLinkService.listByTaskId(taskId);
-                for (TaskDeviceLink link : deviceLinks) {
-                    String deviceId = link.getDeviceId().toString();
-                    DeviceTaskStatus status = deviceStatusMap.get(deviceId);
-                    if (status != null && TaskDeviceStatus.ERROR.getCode().equals(status.getStatus())) {
-                        // 故障设备不阻塞退出
-                        continue;
-                    }
-                    Integer buf = status != null ? status.getInFlightCount() : null;
-                    if (buf != null && buf > 0) {
-                      return;
-                    }
-                }
+            // 检查设备缓存是否为空
+             if (!waitUntilDeviceBuffersEmpty(taskId)){
+                 return;
+             }
 
             // 检查计划打印数量
             if (taskStatus.getPlannedPrintCount() != null && taskStatus.getPlannedPrintCount() != -1) {
@@ -1139,6 +1170,27 @@ public class TaskDispatcherServiceImpl implements TaskDispatcherService {
             log.error("检查任务 {} 完成状态异常", taskId, e);
         }
     }
+
+    /**
+     * 在完成前等待本任务下所有设备缓存池清空
+     */
+    private boolean waitUntilDeviceBuffersEmpty(Long taskId) {
+   List<TaskDeviceLink> deviceLinks = taskDeviceLinkService.listByTaskId(taskId);
+        for (TaskDeviceLink link : deviceLinks) {
+            String deviceId = link.getDeviceId().toString();
+            DeviceTaskStatus status = deviceStatusMap.get(deviceId);
+            if (status != null && TaskDeviceStatus.ERROR.getCode().equals(status.getStatus())) {
+                // 故障设备不阻塞退出
+                continue;
+            }
+            Integer buf = status != null ? status.getInFlightCount() : null;
+            if (buf != null && buf > 0) {
+                return  false;
+            }
+        }
+        return true;
+    }
+
 
     /**
      * 检查任务是否已经启动完成（数据加载是否已经开始）
@@ -1188,6 +1240,107 @@ public class TaskDispatcherServiceImpl implements TaskDispatcherService {
             }
             return false;
         }
+    }
+
+    /**
+     * 检查并记录各设备当前缓存池状态
+     * 在任务开始时调用，用于记录设备缓存池的初始状态
+     * 
+     * @param taskId 任务ID
+     * @param deviceIds 设备ID数组
+     */
+    private void checkAndRecordDeviceBufferStatus(Long taskId, Long[] deviceIds) {
+        log.info("开始检查设备缓存池状态，任务ID: {}", taskId);
+        
+        if (deviceIds == null || deviceIds.length == 0) {
+            log.warn("设备ID数组为空，跳过缓存池状态检查，任务ID: {}", taskId);
+            return;
+        }
+
+        for (Long deviceId : deviceIds) {
+            String deviceIdStr = deviceId.toString();
+            try {
+                // 1. 获取设备信息
+                DeviceInfo deviceInfo = deviceInfoService.selectDeviceInfoById(deviceId);
+                if (deviceInfo == null) {
+                    log.warn("设备不存在，跳过缓存池状态检查，设备ID: {}", deviceIdStr);
+                    continue;
+                }
+
+                // 2. 检查设备通道是否可用
+                Object ch = getDeviceChannel(deviceIdStr);
+                if (!(ch instanceof Channel) || !((Channel) ch).isActive()) {
+                    log.warn("设备通道不可用，跳过缓存池状态检查，设备ID: {}", deviceIdStr);
+                    continue;
+                }
+
+                // 3. 发送geta指令获取当前缓存池数量
+                log.debug("发送geta指令获取设备缓存池状态，设备ID: {}", deviceIdStr);
+                boolean sendSuccess = sendCommandToDevice(deviceIdStr, DeviceConfigKey.GETA.key());
+                if (!sendSuccess) {
+                    log.warn("发送geta指令失败，设备ID: {}", deviceIdStr);
+                    continue;
+                }
+
+
+                // 5. 获取设备状态并记录初始缓存池数量
+                DeviceTaskStatus deviceStatus = deviceStatusMap.get(deviceIdStr);
+                if (deviceStatus != null) {
+                    // 记录初始缓存池数量（如果设备还没有响应，这里会是0或之前的值）
+                    Integer initialBufferCount = deviceStatus.getDeviceBufferCount();
+                    if (initialBufferCount == null) {
+                        initialBufferCount = 0;
+                    }
+                    
+                    log.info("设备缓存池初始状态记录，设备ID: {}, 初始缓存池数量: {}", deviceIdStr, initialBufferCount);
+                    
+                    // 关键：同步更新inFlightCounters计数器
+                    AtomicInteger counter = inFlightCounters.computeIfAbsent(deviceIdStr, k -> new AtomicInteger(0));
+                    int oldCounterValue = counter.get();
+                     counter.set(Math.max(0, initialBufferCount));
+                    log.info("已更新inFlightCounters，设备ID: {}, 计数器变化: {} -> {}", deviceIdStr, oldCounterValue, initialBufferCount);
+                    
+                    // 记录到系统日志
+                    SystemLog systemLog = new SystemLog();
+                    systemLog.setLogType(SystemLogType.PRINT.getCode());
+                    systemLog.setLogLevel(SystemLogLevel.INFO.getCode());
+                    systemLog.setTaskId(taskId);
+                    systemLog.setDeviceId(deviceId);
+                    systemLog.setPoolId(getPoolId(taskId));
+                    systemLog.setContent("设备缓存池初始状态: " + initialBufferCount + " 条，计数器已同步");
+                    systemLogService.insert(systemLog);
+
+                    // 更新TaskDeviceLink中的缓存池大小
+                    TaskDeviceLink query = new TaskDeviceLink();
+                    query.setTaskId(taskId);
+                    query.setDeviceId(deviceId);
+                    List<TaskDeviceLink> links = taskDeviceLinkService.list(query);
+                    if (links != null && !links.isEmpty()) {
+                        TaskDeviceLink link = links.get(0);
+                        link.setCachePoolSize(initialBufferCount);
+                        taskDeviceLinkService.updateLink(link);
+                        log.debug("已更新TaskDeviceLink缓存池大小，设备ID: {}, 大小: {}", deviceIdStr, initialBufferCount);
+                    }
+                } else {
+                    log.warn("设备状态不存在，无法记录缓存池状态，设备ID: {}", deviceIdStr);
+                }
+
+
+            } catch (Exception e) {
+                log.error("检查设备缓存池状态异常，设备ID: {}", deviceIdStr, e);
+                // 记录异常日志
+                SystemLog systemLog = new SystemLog();
+                systemLog.setLogType(SystemLogType.PRINT.getCode());
+                systemLog.setLogLevel(SystemLogLevel.ERROR.getCode());
+                systemLog.setTaskId(taskId);
+                systemLog.setDeviceId(deviceId);
+                systemLog.setPoolId(getPoolId(taskId));
+                systemLog.setContent("检查设备缓存池状态异常: " + e.getMessage());
+                systemLogService.insert(systemLog);
+            }
+        }
+        
+        log.info("设备缓存池状态检查完成，任务ID: {}", taskId);
     }
 
 }

@@ -77,7 +77,10 @@ public class CommandSenderServiceImpl implements CommandSenderService {
     public void startSending(Long taskId) {
         try {
             log.info("启动指令发送，任务ID: {}", taskId);
-            
+
+            //发送启动指令进行延迟,等待其他设备初始化完成
+            Thread.sleep(2000);
+
             // 检查是否已经在运行
             if (runningRunners.containsKey(taskId)) {
                 log.warn("指令发送已在运行，任务ID: {}", taskId);

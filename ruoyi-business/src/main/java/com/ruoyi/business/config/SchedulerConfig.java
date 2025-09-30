@@ -73,8 +73,11 @@ public class SchedulerConfig {
     @Scheduled(fixedRate = 2000)
     @Transactional(rollbackFor = Exception.class)
     public void persistTaskData() {
-        // 抽取并清空完成计数缓冲（设备维度聚合）
-        Map<String, Integer> countsToUpdate = taskDispatcherService.getAndClearCompletedBuffer();
+        // 抽取并清空结束计数缓冲（设备维度聚合）
+        Map<String, Integer> receivedCountsToUpdate = taskDispatcherService.getAndClearCompletedBuffer();
+        
+        // 抽取并清空发送计数缓冲（设备维度聚合）
+        Map<String, Integer> sentCountsToUpdate = taskDispatcherService.getAndClearSentBuffer();
         
         //    1. 更新数据项状态为 PRINTED，并写入 deviceId
         //    2. 批量插入 DataInspect 质检记录
@@ -109,12 +112,73 @@ public class SchedulerConfig {
             dataInspectService.batchInsertDataInspect(toInsert);
         }
 
-        // 基于完成计数，增量刷新 TaskDeviceLink 与 TaskInfo 的完成数量
-        if (countsToUpdate != null && !countsToUpdate.isEmpty()) {
+        // 基于发送计数，增量刷新 TaskDeviceLink 与 TaskInfo 的发送数量
+        if (sentCountsToUpdate != null && !sentCountsToUpdate.isEmpty()) {
+            // 按任务ID聚合发送数量
+            Map<Long, Integer> taskIdToSentDelta = new HashMap<>();
+            
+            for (Map.Entry<String, Integer> e : sentCountsToUpdate.entrySet()) {
+                String deviceIdStr = e.getKey();
+                Integer delta = e.getValue();
+                if (delta == null || delta <= 0) {
+                    continue;
+                }
+                Long taskId = taskDispatcherService.getDeviceTaskId(deviceIdStr);
+                if (taskId == null) {
+                    continue;
+                }
+                // 获取当前设备的在途打印数量
+                DeviceTaskStatus deviceStatus = taskDispatcherService.getDeviceTaskStatus(deviceIdStr);
+
+                TaskDeviceLink query = new TaskDeviceLink();
+                query.setTaskId(taskId);
+                query.setDeviceId(Long.valueOf(deviceIdStr));
+                List<TaskDeviceLink> links = taskDeviceLinkService.list(query);
+
+                if (links != null && !links.isEmpty()) {
+                    TaskDeviceLink link = links.get(0);
+
+                    if (deviceStatus != null) {
+                        // 更新在途打印数量（assignedQuantity）
+                        link.setCachePoolSize(deviceStatus.getInFlightCount());
+
+                        // 更新设备完成数量
+                        deviceStatus.setCompletedCount(deviceStatus.getCompletedCount() + delta);
+                        link.setCompletedQuantity(deviceStatus.getCompletedCount());
+                    }
+
+                      taskDeviceLinkService.updateLink(link);
+                }
+
+                 if (deviceStatus != null) {
+                    taskIdToSentDelta.merge(taskId, deviceStatus.getCompletedCount(), Integer::sum);
+                }
+            }
+            
+            // 更新 TaskInfo 的发送数量
+            for (Map.Entry<Long, Integer> e : taskIdToSentDelta.entrySet()) {
+                Long taskId = e.getKey();
+                Integer delta = e.getValue();
+                if (delta == null || delta <= 0) continue;
+                
+                TaskInfo task = taskInfoService.selectTaskInfoById(taskId);
+                if (task != null) {
+                    TaskInfo toUpdateTask = new TaskInfo();
+                    toUpdateTask.setId(taskId);
+                    // 使用 completedQuantity 字段跟踪发送数量（设备接收到的指令数量）
+                    toUpdateTask.setCompletedQuantity(delta);
+                    taskInfoService.updateTaskInfo(toUpdateTask);
+                }
+            }
+
+        }
+        
+        // 基于接收计数，增量刷新 TaskDeviceLink 与 TaskInfo 的接收数量
+        if (receivedCountsToUpdate != null && !receivedCountsToUpdate.isEmpty()) {
             // 按任务ID聚合完成数量
            Map<Long, Integer> taskIdToDelta = new HashMap<>();
 
-            for (Map.Entry<String, Integer> e : countsToUpdate.entrySet()) {
+            for (Map.Entry<String, Integer> e : receivedCountsToUpdate.entrySet()) {
                 String deviceIdStr = e.getKey();
                 Integer delta = e.getValue();
                 if (delta == null || delta <= 0) {
@@ -134,25 +198,17 @@ public class SchedulerConfig {
                 List<TaskDeviceLink> links = taskDeviceLinkService.list(query);
                 if (links != null && !links.isEmpty()) {
                     TaskDeviceLink link = links.get(0);
-                    
-                    // 更新完成数量
-                    Integer completedCount = link.getCompletedQuantity() == null ? 0 : link.getCompletedQuantity();
-                    link.setCompletedQuantity(completedCount + delta);
-                    
 
 
                     if (deviceStatus != null) {
                         // 更新在途打印数量（assignedQuantity）
                         link.setCachePoolSize(deviceStatus.getInFlightCount());
 
-                        // 更新设备完成数量
-                        link.setCompletedQuantity(deviceStatus.getCompletedCount());
-
                         //获取设备已接收的数量
                         deviceStatus.setReceivedCount( deviceStatus.getReceivedCount() +delta);
                         link.setReceivedQuantity(deviceStatus.getReceivedCount());
 
-                        //获取当前完成数量
+                        //获取当前接收数量
                         Integer currentCompletedCount = deviceStatus.getCurrentCompletedCount() == null ? 0 : deviceStatus.getCurrentCompletedCount();
                         deviceStatus.setCurrentCompletedCount(currentCompletedCount + delta);
                         // 计算并更新吞吐率（每秒完成数量）
@@ -177,13 +233,10 @@ public class SchedulerConfig {
                 Long taskId = e.getKey();
                 Integer delta = e.getValue();
                 if (delta == null || delta <= 0) continue;
-                TaskDispatchStatus status = taskDispatcherService.getTaskDispatchStatus(taskId);
                 TaskInfo task = taskInfoService.selectTaskInfoById(taskId);
                 if (task != null) {
-                    Integer current = task.getReceivedQuantity() == null ? 0 : task.getReceivedQuantity();
                     TaskInfo toUpdateTask = new TaskInfo();
                     toUpdateTask.setId(taskId);
-                    toUpdateTask.setCompletedQuantity(status.getSentCommandCount());
                     toUpdateTask.setReceivedQuantity(delta);
                     taskInfoService.updateTaskInfo(toUpdateTask);
                 }

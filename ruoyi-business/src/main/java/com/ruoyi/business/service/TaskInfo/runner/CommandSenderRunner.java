@@ -174,17 +174,6 @@ public class CommandSenderRunner implements Runnable {
             // 报告指令已发送
             dispatcher.reportCommandSent(deviceId);
 
-            // 统计发送数量:发送加一
-            long taskId = dispatcher.getDeviceTaskId(deviceId);
-            TaskDispatchStatus taskStatus = dispatcher.getTaskDispatchStatus(taskId);
-            if (taskStatus != null) {
-                Integer sent = taskStatus.getSentCommandCount();
-                taskStatus.setSentCommandCount((sent == null ? 0 : sent) + 1);
-            }
-            DeviceTaskStatus deviceTaskStatus = dispatcher.getDeviceTaskStatus(deviceId);
-            if (deviceTaskStatus != null) {
-                deviceTaskStatus.setCompletedCount(deviceTaskStatus.getCompletedCount() + 1);
-            }
 
             sentCount.incrementAndGet();
 
