@@ -224,7 +224,8 @@ public class TaskInfoManagementHandler {
         if (!isConsistent) {
             return TcpResponse.error("设备模版变量名称不一致，请检查设备模版是否一致");
         }
-        taskInfo.setPoolName(null);
+        DataPool dataPool = dataPoolService.selectDataPoolById(taskInfo.getPoolId());
+        taskInfo.setPoolName(dataPool.getPoolName());
 
         int rows = taskInfoService.updateTaskInfo(taskInfo);
 

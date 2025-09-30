@@ -311,7 +311,23 @@ public class DeviceManagementHandler {
 
             int result = deviceInfoService.insertDeviceInfo(deviceInfo);
             if (result > 0) {
-                return TcpResponse.success("创建设备成功");
+                // 创建设备成功后自动尝试连接
+                try {
+                    boolean connectOk = deviceConnectionManager.sendCommandViaRegisteredChannel(deviceInfo.getId().toString(), "get_currfile");
+                    String newStatus = connectOk ? DeviceStatus.ONLINE_IDLE.getCode() : DeviceStatus.ERROR.getCode();
+                    
+                    // 更新设备状态
+                    deviceInfoService.updateDeviceStatus(deviceInfo.getId(), newStatus);
+                    
+                    if (connectOk) {
+                        return TcpResponse.success("创建设备成功，设备已自动连接");
+                    } else {
+                        return TcpResponse.success("创建设备成功，但设备连接失败，请检查设备配置");
+                    }
+                } catch (Exception e) {
+                    log.warn("创建设备后自动连接失败: {}", e.getMessage());
+                    return TcpResponse.success("创建设备成功，但自动连接测试失败，请手动连接设备");
+                }
             } else {
                 return TcpResponse.error("创建设备失败");
             }
