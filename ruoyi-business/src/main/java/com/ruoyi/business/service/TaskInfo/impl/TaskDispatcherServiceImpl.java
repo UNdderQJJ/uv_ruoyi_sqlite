@@ -422,7 +422,7 @@ public class TaskDispatcherServiceImpl implements TaskDispatcherService {
                 }
 
                 // 2. 健康检查 - 发送诊断指令
-                if (!sendDiagnosticCommand(deviceIdStr)) {
+                if (!sendDiagnosticCommand(taskId,deviceIdStr)) {
                     log.warn("设备健康检查失败，设备ID: {}", deviceIdStr);
                     return false;
                 }
@@ -995,13 +995,18 @@ public class TaskDispatcherServiceImpl implements TaskDispatcherService {
     /**
      * 发送诊断指令
      */
-    private boolean sendDiagnosticCommand(String deviceId) {
+    private boolean sendDiagnosticCommand(Long taskId,String deviceId) {
         try {
-            // 发送clearbuf指令清除缓存
-            log.debug("发送clearbuf清除缓存池缓存指令，设备ID: {}", deviceId);
-            sendCommandToDevice(deviceId, DeviceConfigKey.CLEARBUF.key());
-            
-             //发送geta指令获取缓冲区数量
+
+
+            TaskInfo taskInfo = taskInfoService.selectTaskInfoById(taskId);
+            // 在任务是待开始状态时 发送clearbuf指令清除缓存
+            if (taskInfo.getStatus().equals(TaskStatus.PENDING.getCode())) {
+                log.debug("发送clearbuf清除缓存池缓存指令，设备ID: {}", deviceId);
+                sendCommandToDevice(deviceId, DeviceConfigKey.CLEARBUF.key());
+            }
+
+            //发送geta指令获取缓冲区数量
             log.debug("发送geta:指令获取缓冲区数量，设备ID: {}", deviceId);
             sendCommandToDevice(deviceId, DeviceConfigKey.GETA.key());
             

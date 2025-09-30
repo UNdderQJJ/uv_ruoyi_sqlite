@@ -71,6 +71,13 @@ public class TaskDeviceLinkServiceImpl implements ITaskDeviceLinkService {
     public TaskDeviceLink selectByTaskIdAndDeviceId(Long taskId, Long deviceId) {
         return taskDeviceLinkMapper.selectByTaskIdAndDeviceId(taskId,deviceId);
     }
+
+    /** 按任务ID和设备ID删除关联（软删除） */
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public int deleteByTaskIdAndDeviceId(Long taskId, Long deviceId) {
+        return taskDeviceLinkMapper.deleteByTaskIdAndDeviceId(taskId, deviceId);
+    }
 }
 
 

@@ -36,6 +36,9 @@ public interface TaskDeviceLinkMapper {
 
     /** 查询（按任务ID和设备ID） */
     TaskDeviceLink selectByTaskIdAndDeviceId(Long taskId, Long deviceId);
+
+    /** 软删除（按任务ID和设备ID） */
+    int deleteByTaskIdAndDeviceId(@Param("taskId") Long taskId, @Param("deviceId") Long deviceId);
 }
 
 

@@ -5,9 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ruoyi.business.domain.DataPool.DataPool;
 import com.ruoyi.business.domain.DeviceFileConfig.DeviceFileConfig;
 import com.ruoyi.business.domain.TaskInfo.TaskInfo;
-import com.ruoyi.business.enums.DeviceStatus;
-import com.ruoyi.business.enums.ItemStatus;
-import com.ruoyi.business.enums.TaskStatus;
+import com.ruoyi.business.enums.*;
 import com.ruoyi.business.domain.TaskInfo.TaskDeviceLink;
 import com.ruoyi.business.enums.TaskDeviceStatus;
 import com.ruoyi.business.service.DataPool.DataSourceLifecycleService;
@@ -36,6 +34,8 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * 任务中心 TaskInfo TCP 处理器
@@ -224,6 +224,7 @@ public class TaskInfoManagementHandler {
         if (!isConsistent) {
             return TcpResponse.error("设备模版变量名称不一致，请检查设备模版是否一致");
         }
+        taskInfo.setPoolName(null);
 
         int rows = taskInfoService.updateTaskInfo(taskInfo);
 
@@ -232,29 +233,49 @@ public class TaskInfoManagementHandler {
         if (rows > 0) {
             // 解析可选的设备关联更新参数
             try {
-                //清除设备的当前任务
-                deviceInfoService.removeCurrentTask(taskInfo.getId());
-
-                    // 先删除该任务的所有现有设备关联
-                    taskDeviceLinkService.deleteByTaskId(taskInfo.getId());
+                // 获取现有的设备关联
+                List<TaskDeviceLink> existingLinks = taskDeviceLinkService.listByTaskId(taskInfo.getId());
+                Set<Long> existingDeviceIds = existingLinks.stream()
+                        .map(TaskDeviceLink::getDeviceId)
+                        .collect(Collectors.toSet());
+                
+                // 如果 deviceIds 不为空，则处理设备关联
+                if (map.deviceIds.length > 0) {
+                    Set<Long> newDeviceIds = Set.of(map.deviceIds);
                     
-                    // 如果 deviceIds 不为空，则重新创建关联
-                    if (map.deviceIds.length > 0) {
-                        List<TaskDeviceLink> links = new java.util.ArrayList<>();
-                        List<String> deviceNames = new java.util.ArrayList<>(); // 收集设备名称
-                        List<String> deviceIds = new java.util.ArrayList<>();
-                        
-                        for (Long deviceId : map.deviceIds) {
+                    // 找出需要删除的设备（现有设备中不在新设备列表中的）
+                    Set<Long> devicesToRemove = existingDeviceIds.stream()
+                            .filter(deviceId -> !newDeviceIds.contains(deviceId))
+                            .collect(Collectors.toSet());
+                    
+                    // 找出需要添加的设备（新设备中不在现有设备列表中的）
+                    Set<Long> devicesToAdd = newDeviceIds.stream()
+                            .filter(deviceId -> !existingDeviceIds.contains(deviceId))
+                            .collect(Collectors.toSet());
+                    
+                    // 删除不需要的设备
+                    for (Long deviceId : devicesToRemove) {
+                        // 删除任务设备关联
+                        taskDeviceLinkService.deleteByTaskIdAndDeviceId(taskInfo.getId(), deviceId);
+                        // 将设备状态改为空闲并移除当前任务
+                        deviceInfoService.removeCurrentTask(deviceId, DeviceStatus.ONLINE_IDLE.getCode());
+                    }
+                    if (!devicesToRemove.isEmpty()) {
+                        log.info("[TaskUpdate] 移除了 {} 个设备关联，设备状态已改为空闲", devicesToRemove.size());
+                    }
+                    
+                    // 添加新设备
+                    if (!devicesToAdd.isEmpty()) {
+                        List<TaskDeviceLink> newLinks = new ArrayList<>();
+                        for (Long deviceId : devicesToAdd) {
                             TaskDeviceLink link = new TaskDeviceLink();
                             link.setTaskId(taskInfo.getId());
                             link.setDeviceId(deviceId);
-                            // 查询设备名称（可选）
+                            // 查询设备名称
                             try {
                                 DeviceInfo di = deviceInfoService.selectDeviceInfoById(deviceId);
                                 if (di != null) {
                                     link.setDeviceName(di.getName());
-                                    deviceNames.add(di.getName()); // 收集设备名称
-                                    deviceIds.add(deviceId.toString());
                                 }
                             } catch (Exception ignore) { }
                             link.setDeviceFileConfigId(deviceFileConfig.get(0).getId());
@@ -264,28 +285,62 @@ public class TaskInfoManagementHandler {
                             link.setCompletedQuantity(0);
                             link.setStatus(TaskDeviceStatus.WAITING.getCode());//等待
                             link.setDelFlag(0);
-                            links.add(link);
+                            newLinks.add(link);
                         }
-                        // 批量创建关联
-                        taskDeviceLinkService.batchCreateLinks(links);
-
-                        // 更新设备当前任务
-                        deviceInfoService.updateCurrentTask(deviceIds, taskInfo.getId());
+                        taskDeviceLinkService.batchCreateLinks(newLinks);
                         
-                        // 更新任务中的设备名称
-                        String deviceNamesStr = String.join(",", deviceNames);
-                        String deviceIdsStr = String.join(",", deviceIds);
-                        taskInfo.setDeviceName(deviceNamesStr);
-                        taskInfo.setDeviceId(deviceIdsStr);
-                        taskInfoService.updateTaskInfo(taskInfo);
-
-                        log.info("[TaskUpdate] 任务设备名称已更新: {}", deviceNamesStr);
-                    } else {
-                        // 如果 deviceIds 为空数组，清空设备名称
-                        taskInfo.setDeviceName("");
-                        taskInfoService.updateTaskInfo(taskInfo);
-                        log.info("[TaskUpdate] 任务设备名称已清空");
+                        // 对新加入的设备进行缓存池清空操作
+                        for (Long deviceId : devicesToAdd) {
+                            try {
+                                taskDispatcherService.sendCommandToDevice(deviceId.toString(), DeviceConfigKey.CLEARBUF.key());
+                                log.info("[TaskUpdate] 已向设备 {} 发送缓存池清空命令", deviceId);
+                            } catch (Exception e) {
+                                log.warn("[TaskUpdate] 向设备 {} 发送缓存池清空命令失败: {}", deviceId, e.getMessage());
+                            }
+                        }
+                        
+                        log.info("[TaskUpdate] 新增了 {} 个设备关联", newLinks.size());
                     }
+                    
+                    // 重新获取更新后的设备关联列表
+                    List<TaskDeviceLink> updatedLinks = taskDeviceLinkService.listByTaskId(taskInfo.getId());
+                    List<String> allDeviceNames = new ArrayList<>();
+                    List<String> allDeviceIds = new ArrayList<>();
+                    
+                    for (TaskDeviceLink link : updatedLinks) {
+                        allDeviceNames.add(link.getDeviceName());
+                        allDeviceIds.add(link.getDeviceId().toString());
+                    }
+                    
+                    // 更新设备当前任务
+                    deviceInfoService.updateCurrentTask(allDeviceIds, taskInfo.getId());
+                    
+                    // 更新任务中的设备名称
+                    String deviceNamesStr = String.join(",", allDeviceNames);
+                    String deviceIdsStr = String.join(",", allDeviceIds);
+                    taskInfo.setDeviceName(deviceNamesStr);
+                    taskInfo.setDeviceId(deviceIdsStr);
+                    taskInfoService.updateTaskInfo(taskInfo);
+
+                    log.info("[TaskUpdate] 任务设备名称已更新: {}", deviceNamesStr);
+                } else {
+                    // 如果 deviceIds 为空数组，删除所有设备关联
+                    for (Long deviceId : existingDeviceIds) {
+                        // 删除任务设备关联
+                        taskDeviceLinkService.deleteByTaskIdAndDeviceId(taskInfo.getId(), deviceId);
+                        // 将设备状态改为空闲并移除当前任务
+                        deviceInfoService.removeCurrentTask(deviceId, DeviceStatus.ONLINE_IDLE.getCode());
+                    }
+                    if (!existingDeviceIds.isEmpty()) {
+                        log.info("[TaskUpdate] 移除了所有 {} 个设备关联，设备状态已改为空闲", existingDeviceIds.size());
+                    }
+                    
+                    // 清空设备名称
+                    taskInfo.setDeviceName("");
+                    taskInfo.setDeviceId("");
+                    taskInfoService.updateTaskInfo(taskInfo);
+                    log.info("[TaskUpdate] 任务设备名称已清空");
+                }
 
             } catch (Exception e) {
                 log.warn("更新任务设备关联时发生非致命异常: {}", e.getMessage());

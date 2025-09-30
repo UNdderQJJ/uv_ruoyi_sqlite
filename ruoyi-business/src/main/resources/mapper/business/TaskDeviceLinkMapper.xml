@@ -77,6 +77,12 @@
         WHERE task_id = #{taskId} AND del_flag = 0
     </update>
 
+    <!-- 软删除（按任务ID和设备ID） -->
+    <update id="deleteByTaskIdAndDeviceId" parameterType="map">
+        UPDATE task_device_link SET del_flag = 2
+        WHERE task_id = #{taskId} AND device_id = #{deviceId} AND del_flag = 0
+    </update>
+
     <!-- 查询列表 -->
     <select id="selectTaskDeviceLinkList" parameterType="com.ruoyi.business.domain.TaskInfo.TaskDeviceLink" resultType="com.ruoyi.business.domain.TaskInfo.TaskDeviceLink">
         SELECT * FROM task_device_link

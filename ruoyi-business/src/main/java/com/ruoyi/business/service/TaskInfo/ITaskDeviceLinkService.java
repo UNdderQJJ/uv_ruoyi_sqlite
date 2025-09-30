@@ -33,6 +33,9 @@ public interface ITaskDeviceLinkService {
 
     /** 根据任务ID和设备ID查询关联 */
     TaskDeviceLink selectByTaskIdAndDeviceId(Long taskId, Long deviceId);
+
+    /** 按任务ID和设备ID删除关联（软删除） */
+    int deleteByTaskIdAndDeviceId(Long taskId, Long deviceId);
 }
 
 
