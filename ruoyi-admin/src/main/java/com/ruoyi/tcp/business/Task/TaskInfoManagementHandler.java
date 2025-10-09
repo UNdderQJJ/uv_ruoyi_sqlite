@@ -501,6 +501,10 @@ public class TaskInfoManagementHandler {
         if(taskInfo.getStatus().equals(TaskStatus.COMPLETED.getCode())){
             return TcpResponse.error("任务已完成");
         }
+        // 判断任务是否已经报废
+        if(taskInfo.getStatus().equals(TaskStatus.SCRAP.getCode())){
+            return TcpResponse.error("任务已报废");
+        }
 
         TaskDeviceLink query = new TaskDeviceLink();
         query.setTaskId(id);

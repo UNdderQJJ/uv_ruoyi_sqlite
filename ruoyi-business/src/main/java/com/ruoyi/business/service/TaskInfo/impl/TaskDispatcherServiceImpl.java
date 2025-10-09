@@ -1,4 +1,5 @@
 package com.ruoyi.business.service.TaskInfo.impl;
+import com.ruoyi.business.config.SchedulerConfig;
 import com.ruoyi.business.domain.SystemLog.SystemLog;
 import com.ruoyi.business.domain.TaskInfo.*;
 import com.ruoyi.business.enums.*;
@@ -20,13 +21,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.scheduling.annotation.Scheduled;
 
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.stream.Collectors;
 
 import com.ruoyi.business.config.TaskDispatchProperties;
 import com.ruoyi.business.service.TaskInfo.CommandQueueService;
@@ -101,7 +102,12 @@ public class TaskDispatcherServiceImpl implements TaskDispatcherService {
     private DataSourceLifecycleService dataSourceLifecycleService;
 
     @Autowired
-    private DataPoolProducerService dataPoolProducerService;
+    @Lazy
+    private CommandSenderService commandSenderService;
+
+    @Resource
+    @Lazy
+    private SchedulerConfig schedulerConfig;
 
 
     @Override
@@ -173,6 +179,9 @@ public class TaskDispatcherServiceImpl implements TaskDispatcherService {
             }
             // 4. 发布任务启动事件，让其他服务监听并启动
             eventPublisher.publishEvent(new TaskStartEvent(this, request));
+
+            //发布设备启动指令
+            commandSenderService.startSending(request.getTaskId());
             
             // 5. 设置当前任务
             currentTask = taskInfoService.selectTaskInfoById(request.getTaskId());
@@ -222,6 +231,9 @@ public class TaskDispatcherServiceImpl implements TaskDispatcherService {
         try {
             log.info("停止任务调度，任务ID: {}", taskId);
 
+             //同步当前任务数据
+             schedulerConfig.persistTaskData();
+
             // 更新任务状态
             TaskDispatchStatus taskStatus = taskStatusMap.get(taskId);
             if (taskStatus != null) {
@@ -230,6 +242,9 @@ public class TaskDispatcherServiceImpl implements TaskDispatcherService {
             }
             // 更新任务状态
             taskInfoService.updateTaskStatus(taskId, TaskStatus.STOPPED);
+
+            //发布设备停止指令
+            commandSenderService.stopSending(taskId);
 
             // 发布任务停止事件
             eventPublisher.publishEvent(new TaskStopEvent(this, taskId));
@@ -245,7 +260,7 @@ public class TaskDispatcherServiceImpl implements TaskDispatcherService {
             for(TaskDeviceLink link : linkList){
                 DeviceInfo deviceInfo = deviceInfoService.selectDeviceInfoById(link.getDeviceId());
                 //在设备正常的情况下可以进行状态更新
-                if(deviceInfo.getStatus().equals(DeviceStatus.ONLINE_PRINTING.getCode()) || deviceInfo.getStatus().equals(DeviceStatus.ONLINE_IDLE.getCode())) {
+                if(!deviceInfo.getStatus().equals(DeviceStatus.ERROR.getCode())) {
                     deviceInfoService.updateDeviceStatus(link.getDeviceId(), DeviceStatus.ONLINE_PRINTING.getCode());
                     taskDeviceLinkService.updateDeviceStatus(taskId, link.getDeviceId(), TaskDeviceStatus.WAITING.getCode());
                     //在设备异常的情况下只能进行状态更新
@@ -308,8 +323,8 @@ public class TaskDispatcherServiceImpl implements TaskDispatcherService {
          try {
             log.info("完成任务调度，任务ID: {}", taskId);
 
-            // 在完成前等待本任务下所有设备缓存池清空
-            waitUntilDeviceBuffersEmpty(taskId, 10000L);
+            //同步当前任务数据
+             schedulerConfig.persistTaskData();
 
             // 更新任务状态
             TaskDispatchStatus taskStatus = taskStatusMap.get(taskId);
@@ -320,6 +335,9 @@ public class TaskDispatcherServiceImpl implements TaskDispatcherService {
 
             // 更新任务状态
             taskInfoService.updateTaskStatus(taskId, TaskStatus.COMPLETED);
+
+            //发布设备停止指令
+            commandSenderService.stopSending(taskId);
 
             // 发布任务停止事件
             eventPublisher.publishEvent(new TaskStopEvent(this, taskId));
@@ -336,9 +354,18 @@ public class TaskDispatcherServiceImpl implements TaskDispatcherService {
             for(TaskDeviceLink link : linkList){
                 DeviceInfo deviceInfo = deviceInfoService.selectDeviceInfoById(link.getDeviceId());
                 //在设备正常的情况下可以进行状态更新
-                if(deviceInfo.getStatus().equals(DeviceStatus.ONLINE_PRINTING.getCode()) || deviceInfo.getStatus().equals(DeviceStatus.ONLINE_IDLE.getCode())) {
-                    deviceInfoService.updateDeviceStatus(link.getDeviceId(), DeviceStatus.ONLINE_IDLE.getCode());
+                if(!deviceInfo.getStatus().equals(DeviceStatus.ERROR.getCode())) {
+                    deviceInfoService.removeCurrentTask(link.getDeviceId(), DeviceStatus.ONLINE_IDLE.getCode());
                     taskDeviceLinkService.updateDeviceStatus(taskId, link.getDeviceId(), TaskDeviceStatus.COMPLETED.getCode());
+
+                    //任务完成清除设备缓存池数量
+                    try {
+                        sendCommandToDevice(link.getDeviceId().toString(), DeviceConfigKey.CLEARBUF.key());
+                        log.info("任务完成向设备 {} 发送缓存池清空命令", link.getDeviceId());
+                    } catch (Exception e) {
+                        log.warn("任务完成向设备 {} 发送缓存池清空命令失败: {}", link.getDeviceId(), e.getMessage());
+                    }
+
                 }
                 //在设备异常的情况下只能进行状态更新
                 deviceStatusMap.get(link.getDeviceId().toString()).setStatus(TaskDeviceStatus.WAITING.getCode());
@@ -673,13 +700,11 @@ public class TaskDispatcherServiceImpl implements TaskDispatcherService {
         try {
             if (commandQueueService.getQueueSize(taskId) == 0) {
                 if (taskStatus.getPlannedPrintCount() == -1) {
-                    // 检查任务是否已经启动完成（数据加载是否已经开始）
-                    if (!isTaskStartupCompleted(taskId)) {
-                        return;
-                    }
+
                     //查询待打印与打印中的数量
                     int planPrintCount = dataPoolItemService.countByPending(taskStatus.getPoolId());
                     if (planPrintCount == 0) {
+                         // 同步设备缓存池数量
                          // 检查设备缓存是否为空
                         if (!waitUntilDeviceBuffersEmpty(taskId)){
                              return;
@@ -687,10 +712,7 @@ public class TaskDispatcherServiceImpl implements TaskDispatcherService {
                         finishTaskDispatch(taskId);
                     }
                 }else if (taskStatus.getPlannedPrintCount() > 0) {
-                    // 检查任务是否已经启动完成（数据加载是否已经开始）
-                    if (!isTaskStartupCompleted(taskId)) {
-                        return;
-                    }
+
                     //查询打印中的数量
                     int printingCount = dataPoolItemService.countByPrinting(taskStatus.getPoolId());
                     if (printingCount == 0) {
@@ -963,19 +985,24 @@ public class TaskDispatcherServiceImpl implements TaskDispatcherService {
     public DeviceTaskStatus getDeviceTaskStatus(String deviceId) {
         return deviceStatusMap.get(deviceId);
     }
-    
+
+
+    /**
+     * 注册设备通道
+     */
     @Override
     public void registerDeviceChannel(String deviceId, Object channel) {
         if (channel instanceof Channel) {
             deviceChannels.put(deviceId, (Channel) channel);
-            log.info("注册设备通道，设备ID: {}", deviceId);
         }
     }
-    
+
+    /**
+     * 注销设备通道
+     */
     @Override
     public void unregisterDeviceChannel(String deviceId) {
         deviceChannels.remove(deviceId);
-        log.info("注销设备通道，设备ID: {}", deviceId);
     }
     
     @Override
@@ -1038,19 +1065,12 @@ public class TaskDispatcherServiceImpl implements TaskDispatcherService {
      */
     private boolean sendDiagnosticCommand(Long taskId,String deviceId) {
         try {
-
-
             TaskInfo taskInfo = taskInfoService.selectTaskInfoById(taskId);
             // 在任务是待开始状态时 发送clearbuf指令清除缓存
             if (taskInfo.getStatus().equals(TaskStatus.PENDING.getCode())) {
                 log.debug("发送clearbuf清除缓存池缓存指令，设备ID: {}", deviceId);
                 sendCommandToDevice(deviceId, DeviceConfigKey.CLEARBUF.key());
             }
-
-            //发送geta指令获取缓冲区数量
-            log.debug("发送geta:指令获取缓冲区数量，设备ID: {}", deviceId);
-            sendCommandToDevice(deviceId, DeviceConfigKey.GETA.key());
-            
             return true;
         } catch (Exception e) {
             log.error("发送诊断指令失败，设备ID: {}", deviceId, e);
@@ -1298,6 +1318,8 @@ public class TaskDispatcherServiceImpl implements TaskDispatcherService {
                     AtomicInteger counter = inFlightCounters.computeIfAbsent(deviceIdStr, k -> new AtomicInteger(0));
                     int oldCounterValue = counter.get();
                      counter.set(Math.max(0, initialBufferCount));
+                     // 更新设备计数器数量
+                     deviceStatus.setInFlightCount(counter.get());
                     log.info("已更新inFlightCounters，设备ID: {}, 计数器变化: {} -> {}", deviceIdStr, oldCounterValue, initialBufferCount);
                     
                     // 记录到系统日志

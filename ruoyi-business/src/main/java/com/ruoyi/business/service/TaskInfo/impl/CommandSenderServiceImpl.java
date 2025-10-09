@@ -78,9 +78,6 @@ public class CommandSenderServiceImpl implements CommandSenderService {
         try {
             log.info("启动指令发送，任务ID: {}", taskId);
 
-            //发送启动指令进行延迟,等待其他设备初始化完成
-            Thread.sleep(2000);
-
             // 检查是否已经在运行
             if (runningRunners.containsKey(taskId)) {
                 log.warn("指令发送已在运行，任务ID: {}", taskId);
@@ -316,42 +313,42 @@ public class CommandSenderServiceImpl implements CommandSenderService {
         return statistics;
     }
     
-    /**
-     * 监听任务启动事件
-     */
-    @EventListener
-    public void handleTaskStartEvent(TaskStartEvent event) {
-        try {
-            log.info("收到任务启动事件，任务ID: {}", event.getTaskId());
-            startSending(event.getTaskId());
-        } catch (Exception e) {
-            log.error("处理任务启动事件异常，任务ID: {}", event.getTaskId(), e);
-        }
-    }
-
-       /**
-     * 监听任务暂停事件
-     */
-    @EventListener
-    public void handleTaskPauseEvent(TaskPauseEvent event) {
-        try {
-            log.info("收到任务暂停事件，任务ID: {}", event.getTaskId());
-            pauseSending(event.getTaskId());
-        } catch (Exception e) {
-            log.error("处理任务暂停事件异常，任务ID: {}", event.getTaskId(), e);
-        }
-    }
+//    /**
+//     * 监听任务启动事件
+//     */
+//    @EventListener
+//    public void handleTaskStartEvent(TaskStartEvent event) {
+//        try {
+//            log.info("收到任务启动事件，任务ID: {}", event.getTaskId());
+//            startSending(event.getTaskId());
+//        } catch (Exception e) {
+//            log.error("处理任务启动事件异常，任务ID: {}", event.getTaskId(), e);
+//        }
+//    }
+//
+//       /**
+//     * 监听任务暂停事件
+//     */
+//    @EventListener
+//    public void handleTaskPauseEvent(TaskPauseEvent event) {
+//        try {
+//            log.info("收到任务暂停事件，任务ID: {}", event.getTaskId());
+//            pauseSending(event.getTaskId());
+//        } catch (Exception e) {
+//            log.error("处理任务暂停事件异常，任务ID: {}", event.getTaskId(), e);
+//        }
+//    }
     
-    /**
-     * 监听任务停止事件
-     */
-    @EventListener
-    public void handleTaskStopEvent(TaskStopEvent event) {
-        try {
-            log.info("收到任务停止事件，任务ID: {}", event.getTaskId());
-            stopSending(event.getTaskId());
-        } catch (Exception e) {
-            log.error("处理任务停止事件异常，任务ID: {}", event.getTaskId(), e);
-        }
-    }
+//    /**
+//     * 监听任务停止事件
+//     */
+//    @EventListener
+//    public void handleTaskStopEvent(TaskStopEvent event) {
+//        try {
+//            log.info("收到任务停止事件，任务ID: {}", event.getTaskId());
+//            stopSending(event.getTaskId());
+//        } catch (Exception e) {
+//            log.error("处理任务停止事件异常，任务ID: {}", event.getTaskId(), e);
+//        }
+//    }
 }
