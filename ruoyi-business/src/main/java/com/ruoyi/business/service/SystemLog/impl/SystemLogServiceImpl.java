@@ -33,7 +33,7 @@ public class SystemLogServiceImpl implements ISystemLogService {
     @Resource
     private ArchivedSystemLogMapper archivedSystemLogMapper;
 
-    @Value("${business.systemLog.archive.days:30}")
+    @Value("${business.systemLog.archive.days:7}")
     private int archiveKeepDays;
 
     @Value("${business.systemLog.archive.batchSize:500}")
