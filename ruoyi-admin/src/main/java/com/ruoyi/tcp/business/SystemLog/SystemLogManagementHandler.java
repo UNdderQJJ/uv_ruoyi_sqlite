@@ -9,11 +9,13 @@ import com.ruoyi.common.core.page.CursorPageResult;
 import com.ruoyi.common.core.page.PageQuery;
 import com.ruoyi.common.core.page.PageResult;
 import com.ruoyi.common.utils.StringUtils;
+import org.springframework.beans.factory.annotation.Value;
 import jakarta.annotation.Resource;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
 import java.util.Map;
+import java.util.HashMap;
 
 /**
  * 系统日志 TCP 处理器
@@ -28,6 +30,9 @@ public class SystemLogManagementHandler {
 
     @Resource
     private ISystemLogService systemLogService;
+
+    @Value("${app.logging.path:${user.home}/UVControlSystem/logs}")
+    private String configuredLogDir;
 
     /**
      * 系统日志统一入口，根据 path 分派到具体方法。
@@ -50,11 +55,38 @@ public class SystemLogManagementHandler {
                 return pageList(body);
             } else if (path.endsWith("/cursorPageList")) {
                 return cursorPageList(body);
+            } else if (path.endsWith("/logDir")) {
+                return logDir();
             }
             return TcpResponse.error("未知的系统日志接口: " + path);
         } catch (Exception e) {
             return TcpResponse.error(e.getMessage());
         }
+    }
+
+    /**
+     * 返回当前操作系统信息与日志存储目录
+     * 路径: /business/systemLog/logDir
+     */
+    private TcpResponse logDir() {
+        String osName = System.getProperty("os.name", "");// 操作系统名称
+        String osLower = osName.toLowerCase();// 操作系统名称
+        String osType;// 操作系统类型
+        if (osLower.contains("win")) {
+            osType = "Windows";
+        } else if (osLower.contains("mac")) {
+            osType = "macOS";
+        } else if (osLower.contains("nix") || osLower.contains("nux") || osLower.contains("aix")) {
+            osType = "Linux";
+        } else {
+            osType = "Other";
+        }
+
+        Map<String, Object> data = new HashMap<>();
+        data.put("osName", osName);
+        data.put("osType", osType);
+        data.put("logDir", configuredLogDir);// 日志存储目录
+        return TcpResponse.success(data);
     }
 
     /** 新增单条日志 */
