@@ -348,7 +348,7 @@ public class DataPoolProducerRunner implements Runnable {
         try {
             PrintCommand command = new PrintCommand();
             // 使用数据项ID作为指令ID，便于关联数据库项
-            command.setId(String.valueOf(item.getId()));
+            command.setId(item.getId());
             command.setTaskId(taskId);
             // deviceId 由调度器动态分配，这里不设置
             command.setData(item.getItemData());

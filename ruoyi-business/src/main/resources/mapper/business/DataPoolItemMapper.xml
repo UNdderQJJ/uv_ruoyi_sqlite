@@ -57,7 +57,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         <include refid="selectDataPoolItemVo"/>
         where status = 'PENDING' and del_flag = '0'
         <if test="poolId != null">and pool_id = #{poolId}</if>
-        order by received_time asc
+        order by id asc
         <if test="limit != null">limit #{limit}</if>
     </select>
 

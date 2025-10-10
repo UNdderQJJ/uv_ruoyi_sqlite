@@ -10,7 +10,7 @@ import lombok.Data;
 public class PrintCommand {
     
     /** 指令唯一ID */
-    private String id;
+    private Long id;
     
     /** 目标设备ID - 由调度器动态分配 */
     private String deviceId;

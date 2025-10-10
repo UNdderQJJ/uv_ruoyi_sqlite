@@ -46,9 +46,9 @@ public class CommandQueueServiceImpl implements CommandQueueService {
 public void addCommandToQueue(PrintCommand command) {
     initQueues();
 
-    // 假设 command.getData() 是指令的唯一标识 (例如打印的SN码)
+    // 假设 command.getId() 是指令的唯一标识 (例如打印的SN码)
     // queuedCommandDataSet.add() 是一个原子操作，如果数据已存在，它会返回false
-       boolean rest  = Boolean.parseBoolean(queuedCommandDataSet.put(command.getTaskId(), command.getData()));
+       boolean rest  = Boolean.parseBoolean(queuedCommandDataSet.put(command.getTaskId(), String.valueOf(command.getId())));
        // ---- 如果添加失败，说明Set中已存在该数据，是重复指令 ----
            if (!rest) {
            // ---- 如果添加成功，说明这是新指令 ----
@@ -60,6 +60,9 @@ public void addCommandToQueue(PrintCommand command) {
                    // 如果队列已满导致添加失败，我们必须把刚刚添加到Set中的标识也移除，以保证数据一致性
                    queuedCommandDataSet.remove(command.getTaskId(), command.getData());
                    System.err.println("指令队列已满，丢弃指令: " + command.getId());
+               } else {
+                   // 添加成功后，对队列进行排序（按ID从小到大）
+                   sortQueueByCommandId();
                }
            } catch (InterruptedException e) {
                // 如果在等待入队时被中断，同样需要移除Set中的标识
@@ -73,8 +76,12 @@ public void addCommandToQueue(PrintCommand command) {
     @Override
     public PrintCommand getNextCommand(Long taskId){
         initQueues();
-        PrintCommand command = commandQueue.stream().filter(command1 -> command1.getTaskId().equals(taskId))
-                .findFirst().orElse( null);
+        // 按ID从小到大排序后获取第一个匹配的指令
+        PrintCommand command = commandQueue.stream()
+                .filter(command1 -> command1.getTaskId().equals(taskId))
+                .sorted(Comparator.comparingLong(PrintCommand::getId))
+                .findFirst()
+                .orElse(null);
          if (command != null) {
         // 关键步骤：一旦指令被成功取出，就将其唯一标识从追踪Set中移除
         // 这样，后续相同数据的新指令就可以被再次添加进来
@@ -156,5 +163,26 @@ public void addCommandToQueue(PrintCommand command) {
         List<SentRecord> list = new ArrayList<>(q.size());
         q.drainTo(list);
         return list;
+    }
+    
+    /**
+     * 对队列中的指令按ID从小到大进行排序
+     */
+    private void sortQueueByCommandId() {
+        if (commandQueue == null || commandQueue.isEmpty()) {
+            return;
+        }
+        
+        // 将队列中的所有元素取出
+        List<PrintCommand> commands = new ArrayList<>();
+        commandQueue.drainTo(commands);
+        
+        // 按ID从小到大排序
+        commands.sort(Comparator.comparingLong(PrintCommand::getId));
+        
+        // 将排序后的元素重新放回队列
+        for (PrintCommand command : commands) {
+            commandQueue.offer(command);
+        }
     }
 }
