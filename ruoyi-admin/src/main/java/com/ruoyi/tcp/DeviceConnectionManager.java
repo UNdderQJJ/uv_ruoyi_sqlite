@@ -141,7 +141,7 @@ public class DeviceConnectionManager {
                     log.info("设备连接成功: {} ({}:{})", device.getName(), device.getIpAddress(), device.getPort());
 
                     //不等于在线打印 更新设备状态为在线
-                    if(device.getStatus().equals(DeviceStatus.ONLINE_PRINTING.getCode()) || ObjectUtils.isNotEmpty(device.getCurrentTaskName())) {
+                    if(ObjectUtils.isNotEmpty(device.getCurrentTaskName())) {
                         deviceInfoService.updateDeviceStatus(device.getId(), DeviceStatus.ONLINE_PRINTING.getCode());
                     }else {
                         deviceInfoService.updateDeviceStatus(device.getId(), DeviceStatus.ONLINE_IDLE.getCode());

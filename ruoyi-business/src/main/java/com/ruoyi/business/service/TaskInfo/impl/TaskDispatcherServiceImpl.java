@@ -66,7 +66,7 @@ public class TaskDispatcherServiceImpl implements TaskDispatcherService {
     
     // 发送计数缓冲（设备维度，内存聚合，供批量持久化使用）
     private final ConcurrentHashMap<String, AtomicInteger> sentCountsBuffer = new ConcurrentHashMap<>();
-
+    
     // 当前任务
     private volatile TaskInfo currentTask;
 
@@ -97,7 +97,7 @@ public class TaskDispatcherServiceImpl implements TaskDispatcherService {
 
     @Autowired
     private ISystemLogService systemLogService;
-
+    
     @Resource
     private DataSourceLifecycleService dataSourceLifecycleService;
 
@@ -109,7 +109,7 @@ public class TaskDispatcherServiceImpl implements TaskDispatcherService {
     @Lazy
     private SchedulerConfig schedulerConfig;
 
-
+    
     @Override
     public void startNewTask(TaskDispatchRequest request) {
         try {
@@ -233,7 +233,7 @@ public class TaskDispatcherServiceImpl implements TaskDispatcherService {
 
              //同步当前任务数据
              schedulerConfig.persistTaskData();
-
+            
             // 更新任务状态
             TaskDispatchStatus taskStatus = taskStatusMap.get(taskId);
             if (taskStatus != null) {
@@ -496,6 +496,19 @@ public class TaskDispatcherServiceImpl implements TaskDispatcherService {
 
                 deviceStatusMap.put(deviceIdStr, deviceStatus);
                 heartbeatTimestamps.put(deviceIdStr, System.currentTimeMillis());
+
+                //5. 初始化设备锁
+//                if (taskInfo.getStatus().equals(TaskStatus.PENDING.getCode())) {
+//                    // 初始化线程安全的在途指令计数器和设备锁
+//                    inFlightCounters.put(deviceIdStr, new AtomicInteger(0));
+//                    deviceLocks.put(deviceIdStr, new Object());
+//                }else {
+//                     // 初始化线程安全的在途指令计数器和设备锁
+//                    deviceStatus.setInFlightCount(link.getCachePoolSize());
+//                    inFlightCounters.put(deviceIdStr, new AtomicInteger(link.getCachePoolSize()));
+//                    deviceLocks.put(deviceIdStr, new Object());
+//
+//                }
 
                 // 初始化线程安全的在途指令计数器和设备锁
                 inFlightCounters.put(deviceIdStr, new AtomicInteger(0));
@@ -827,11 +840,11 @@ public class TaskDispatcherServiceImpl implements TaskDispatcherService {
                 DeviceTaskStatus deviceStatus = deviceStatusMap.get(deviceId);
                 if (deviceStatus != null) {
                     deviceStatus.setDeviceBufferCount(bufferCount);
-//                    deviceStatus.setInFlightCount(bufferCount);
+                    deviceStatus.setInFlightCount(bufferCount);
                 }
                 // 同步覆盖线程安全计数器
-//                AtomicInteger counter = inFlightCounters.computeIfAbsent(deviceId, k -> new AtomicInteger(0));
-//                counter.set(Math.max(0, bufferCount));
+                AtomicInteger counter = inFlightCounters.computeIfAbsent(deviceId, k -> new AtomicInteger(0));
+                counter.set(Math.max(0, bufferCount));
             }
         } catch (Exception e) {
             log.warn("同步设备缓存池数量失败，deviceId: {}", deviceId, e);
@@ -1153,7 +1166,7 @@ public class TaskDispatcherServiceImpl implements TaskDispatcherService {
             // 检查计划打印数量
             if (taskStatus.getPlannedPrintCount() != null && taskStatus.getPlannedPrintCount() != -1) {
                 // 有具体计划打印数量，检查是否达到目标
-                int completedCount = taskStatus.getSentCommandCount() != null ? taskStatus.getSentCommandCount() : 0;
+                int completedCount = taskStatus.getReceivedCommandCount() != null ? taskStatus.getReceivedCommandCount() : 0;
                 int plannedCount = taskStatus.getPlannedPrintCount();
 
                 if (completedCount >= plannedCount) {

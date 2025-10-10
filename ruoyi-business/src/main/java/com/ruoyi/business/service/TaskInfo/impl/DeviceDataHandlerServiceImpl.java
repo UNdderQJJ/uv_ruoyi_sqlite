@@ -482,6 +482,10 @@ public class DeviceDataHandlerServiceImpl implements DeviceDataHandlerService {
             
             // 重新构建指令
             String retryCommand = "seta:" + commandData;
+
+            //截取“=”后面“+”前面的数据
+            commandData = commandData.substring(commandData.indexOf("=") + 1 , commandData.indexOf("+"));
+
             
             // 获取设备当前任务ID
             DeviceTaskStatus deviceStatus = dispatcher.getDeviceTaskStatus(deviceId);
@@ -497,12 +501,14 @@ public class DeviceDataHandlerServiceImpl implements DeviceDataHandlerService {
             if (currentTaskId != null) {
                 // 创建重试的打印指令
                 PrintCommand retryPrintCommand = new PrintCommand();
-                retryPrintCommand.setDeviceId(deviceId);
+                retryPrintCommand.setId(1L);
+                 retryPrintCommand.setTaskId(currentTaskId);
+                 retryPrintCommand.setData(retryCommand);
                 retryPrintCommand.setCommand(retryCommand);
-                retryPrintCommand.setTaskId(currentTaskId);
                 retryPrintCommand.setStatus(PrintCommandStatusEnum.PENDING.getCode());
                 retryPrintCommand.setRetryCount(0);
                 retryPrintCommand.setMaxRetryCount(3); // 设置最大重试次数
+                retryPrintCommand.setPriority(1);
                 retryPrintCommand.setCreateTime(System.currentTimeMillis());
                 
                 // 将重试指令放回队列
