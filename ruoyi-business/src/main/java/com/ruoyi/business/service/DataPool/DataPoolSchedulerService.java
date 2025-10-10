@@ -23,9 +23,10 @@ import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
 
 import jakarta.annotation.Resource;
-import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.locks.ReentrantLock;
+import java.time.Duration;
 
 /**
  * 动态数据池调度器服务
@@ -87,7 +88,7 @@ public class DataPoolSchedulerService implements ApplicationRunner {
             // 创建定时任务，使用匿名内部类避免Lambda序列化问题
             ScheduledFuture<?> task = taskScheduler.scheduleWithFixedDelay(
                     () -> processDataPool(dataPool),
-                    interval
+                    Duration.ofMillis(interval)
             );
             
             scheduledTasks.put(poolId, task);
@@ -242,9 +243,10 @@ public class DataPoolSchedulerService implements ApplicationRunner {
         int threshold = getThreshold(trigger);
         
         // 检查是否需要触发读取
-        if (dataPool.getPendingCount() < threshold) {
-            uDiskDataSchedulerService.manualTriggerDataReading(pool.getId(), null);
+        if (dataPool.getPendingCount() >=  threshold) {
+            return;
         }
+        uDiskDataSchedulerService.manualTriggerDataReading(pool.getId(), null);
     }
 
     /**

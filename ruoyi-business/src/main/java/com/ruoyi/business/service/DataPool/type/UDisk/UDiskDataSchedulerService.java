@@ -108,10 +108,13 @@ public class UDiskDataSchedulerService {
         //获取阈值
         int threshold =  getThresholdFromConfig(dataPool);
 
+        //待打印数量
+        long pendingCount = dataPool.getPendingCount();
+
          // 更新连接状态为已连接（文件可读）
         dataPoolService.updateConnectionState(poolId, ConnectionState.CONNECTED.getCode());
            // 检查待打印数据量是否低于阈值
-        if (dataPool.getPendingCount() >= threshold) {
+        if (pendingCount >= threshold) {
             log.debug("数据池 {} 待打印数据量 {} 未低于阈值 {}, 无需读取",
                     dataPool.getPoolName(), dataPool.getPendingCount(), threshold);
             return "启动成功！";
@@ -127,7 +130,7 @@ public class UDiskDataSchedulerService {
             //更新数据池为故障
             dataPoolService.updateDataPoolStatus(poolId, PoolStatus.ERROR.getCode());
             // 更新连接状态为断开
-            throw new IllegalStateException("文件读取出错"+e.getMessage());
+             throw new IllegalStateException("文件读取出错"+e.getMessage());
         }
 
         if (readCount > 0) {
@@ -215,35 +218,6 @@ public class UDiskDataSchedulerService {
                 }
             } catch (Exception e) {
                 log.warn("自动读取失败，poolId={}, err={}", dataPool.getId(), e.getMessage());
-            }
-        }
-    }
-    
-    /**
-     * 处理单个数据池
-     * 
-     * @param dataPool 数据池对象
-     */
-    private void processDataPool(DataPool dataPool) {
-//        log.debug("检查数据池: {}, ID: {}, 待打印数量: {}",
-//                dataPool.getPoolName(), dataPool.getId(), dataPool.getPendingCount());
-        
-        // 从数据池配置中获取阈值和批次大小，如果没有配置则使用默认值
-        int threshold = getThresholdFromConfig(dataPool);
-        int batchSize = getBatchSizeFromConfig(dataPool);
-        
-        // 检查是否应该触发数据读取
-        if (shouldTriggerDataReading(dataPool, threshold)) {
-            log.info("数据池 {} 触发数据读取, 待打印数量: {}, 阈值: {}", 
-                    dataPool.getPoolName(), dataPool.getPendingCount(), threshold);
-            
-            // 调用文件读取服务
-            int readCount = uDiskFileReaderService.readDataIfBelowThreshold(dataPool, threshold, batchSize);
-            
-            if (readCount > 0) {
-                log.info("数据池 {} 成功读取 {} 条数据", dataPool.getPoolName(), readCount);
-            } else {
-//                log.debug("数据池 {} 没有新数据可读取", dataPool.getPoolName());
             }
         }
     }

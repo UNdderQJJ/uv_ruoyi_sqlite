@@ -16,8 +16,8 @@ public enum VariableType {
     /** 日期 */
     DATE("DATE", "日期"),
     
-    /** 序列号 */
-    SERIAL("SERIAL", "序列号"),
+    /** 条型码 */
+    SERIAL("SERIAL", "条型码"),
     
     /** 二维码 */
     QR_CODE("QR_CODE", "二维码");
