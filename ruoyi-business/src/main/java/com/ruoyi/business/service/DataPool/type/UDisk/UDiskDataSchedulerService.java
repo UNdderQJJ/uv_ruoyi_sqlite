@@ -154,8 +154,9 @@ public class UDiskDataSchedulerService {
         try {
             DataPool queryParam = new DataPool();
             queryParam.setSourceType(SourceType.U_DISK.getCode());
-            queryParam.setDelFlag("0");
-            queryParam.setAutoUpdate("1");
+            queryParam.setDelFlag("0");//未删除
+            queryParam.setAutoUpdate("1");//自动更新
+            queryParam.setFileReadCompleted("0");//待读取完成
             List<DataPool> pools = dataPoolService.selectDataPoolList(queryParam);
             log.debug("[UDiskScheduler] 找到 {} 个需要运行的 UDisk 数据池", pools.size());
             if (pools == null || pools.isEmpty()) {
