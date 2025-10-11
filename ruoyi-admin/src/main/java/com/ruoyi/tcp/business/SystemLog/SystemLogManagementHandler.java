@@ -82,11 +82,27 @@ public class SystemLogManagementHandler {
             osType = "Other";
         }
 
+        // 规范化路径，解决Windows下双反斜杠问题
+        String normalizedLogDir = normalizePath(configuredLogDir);
+
         Map<String, Object> data = new HashMap<>();
         data.put("osName", osName);
         data.put("osType", osType);
-        data.put("logDir", configuredLogDir);// 日志存储目录
+        data.put("logDir", normalizedLogDir);// 日志存储目录
         return TcpResponse.success(data);
+    }
+
+    /**
+     * 规范化路径，解决Windows下路径分隔符问题
+     */
+    private String normalizePath(String path) {
+        if (StringUtils.isEmpty(path)) {
+            return path;
+        }
+        
+        // 替换所有反斜杠为正斜杠，然后替换为系统正确的路径分隔符
+        String normalized = path.replace("\\", "/");
+        return normalized.replace("/", java.io.File.separator);
     }
 
     /** 新增单条日志 */
