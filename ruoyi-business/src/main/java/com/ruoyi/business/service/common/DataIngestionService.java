@@ -2,6 +2,7 @@ package com.ruoyi.business.service.common;
 
 import com.ruoyi.business.domain.DataPool.DataPool;
 import com.ruoyi.business.events.DataPoolCountChangedEvent;
+import com.ruoyi.business.service.DataPool.DataPoolSchedulerService;
 import com.ruoyi.business.service.DataPoolItem.IDataPoolItemService;
 import com.ruoyi.business.service.DataPool.IDataPoolService;
 import com.ruoyi.business.mapper.DataPoolItemStaging.DataPoolItemStagingMapper;
@@ -28,8 +29,6 @@ public class DataIngestionService {
 
     private static final Logger log = LoggerFactory.getLogger(DataIngestionService.class);
 
-    @Resource
-    private IDataPoolItemService dataPoolItemService;
 
     @Resource
     private IDataPoolService dataPoolService;

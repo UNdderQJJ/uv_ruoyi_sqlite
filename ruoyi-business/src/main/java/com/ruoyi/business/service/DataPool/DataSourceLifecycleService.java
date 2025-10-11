@@ -70,34 +70,38 @@ public class DataSourceLifecycleService {
         // 更新数据池状态为运行中
         dataPoolService.updateDataPoolStatus(poolId, PoolStatus.RUNNING.getCode());
 
+         // 启动调度任务
+        dataPoolSchedulerService.startDataPoolWithScheduler(dataPool.getId());
+
         String successMessage;
         switch (sourceType) {
             case "U_DISK":
-                successMessage = uDiskDataSchedulerService.manualTriggerDataReading(poolId, null);
+//                successMessage = uDiskDataSchedulerService.manualTriggerDataReading(poolId, null);
+                log.info("[DataSourceLifecycle] U盘数据源启动成功");
+                successMessage = "U盘数据源启动成功";
                 break;
             case "TCP_SERVER":
-                tcpClientManager.getOrCreateProvider(poolId).ensureConnected();
+//                tcpClientManager.getOrCreateProvider(poolId).ensureConnected();
                 log.info("[DataSourceLifecycle] TCP服务端数据源启动成功");
                 successMessage = "TCP服务端数据源启动成功";
                 break;
             case "TCP_CLIENT":
-                tcpServerManager.getOrCreateProvider(poolId);
+//                tcpServerManager.getOrCreateProvider(poolId);
                 log.info("[DataSourceLifecycle] TCP客户端数据源启动成功");
                 successMessage = "TCP客户端数据源启动成功";
                 break;
             case "HTTP":
-                dataPoolService.updateConnectionState(poolId, ConnectionState.CONNECTING.getCode());
-                httpManager.getOrCreateProvider(poolId);
+//                httpManager.getOrCreateProvider(poolId);
                 log.info("[DataSourceLifecycle] HTTP数据源启动成功");
                 successMessage = "HTTP数据源启动成功";
                 break;
             case "MQTT":
-                mqttManager.getOrCreateProvider(poolId);
+//                mqttManager.getOrCreateProvider(poolId);
                 log.info("[DataSourceLifecycle] MQTT数据源启动成功");
                 successMessage = "MQTT数据源启动成功";
                 break;
             case "WEBSOCKET":
-                webSocketManager.getOrCreateProvider(poolId);
+//                webSocketManager.getOrCreateProvider(poolId);
                 log.info("[DataSourceLifecycle] WebSocket数据源启动成功");
                 successMessage = "WebSocket数据源启动成功";
                 break;
@@ -105,9 +109,6 @@ public class DataSourceLifecycleService {
                 successMessage = "不支持的数据源类型: " + sourceType;
                 break;
         }
-
-        // 启动调度任务
-        dataPoolSchedulerService.startDataPoolWithScheduler(dataPool.getId());
 
         return successMessage;
     }

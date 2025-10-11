@@ -8,6 +8,7 @@ import com.ruoyi.business.config.TaskStagingTransfer;
 import com.ruoyi.business.domain.DataPool.DataPool;
 import com.ruoyi.business.domain.DataPoolItem.DataPoolItem;
 import com.ruoyi.business.domain.ArchivedDataPoolItem.ArchivedDataPoolItem;
+import com.ruoyi.business.domain.config.TriggerConfig;
 import com.ruoyi.business.domain.config.UDiskSourceConfig;
 import com.ruoyi.business.enums.SourceType;
 import com.ruoyi.business.enums.PoolStatus;
@@ -251,6 +252,15 @@ public class DataPoolManagementHandler
         if (!validationResult.isValid()) {
             return TcpResponse.error("数据源配置无效: " + validationResult.getErrorMessage());
         }
+        
+        // 检查是否修改了阈值配置，如果修改了则清除pendingCount历史记录
+        boolean thresholdChanged = isThresholdConfigChanged(currentDataPool, dataPool);
+        if (thresholdChanged) {
+            dataPoolSchedulerService.clearPendingCountHistory(dataPool.getId());
+        }
+
+
+
          int result = dataPoolService.updateDataPool(dataPool);
 
         if (currentDataPool.getStatus().equals(PoolStatus.RUNNING.getCode())) {
@@ -263,6 +273,60 @@ public class DataPoolManagementHandler
             return TcpResponse.success("更新数据池成功");
         } else {
             return TcpResponse.error("更新数据池失败");
+        }
+    }
+    
+    /**
+     * 检查阈值配置是否发生变化
+     */
+    private boolean isThresholdConfigChanged(DataPool currentDataPool, DataPool newDataPool) {
+        try {
+            // 比较触发配置JSON字符串
+            String currentTriggerConfigJson = currentDataPool.getTriggerConfigJson();
+            String newTriggerConfigJson = newDataPool.getTriggerConfigJson();
+            
+            // 如果两个都为null，则认为没有变化
+            if (currentTriggerConfigJson == null && newTriggerConfigJson == null) {
+                return false;
+            }
+            
+            // 如果其中一个为null，另一个不为null，则认为有变化
+            if (currentTriggerConfigJson == null || newTriggerConfigJson == null) {
+                return true;
+            }
+            
+            // 比较JSON字符串内容
+            if (!currentTriggerConfigJson.equals(newTriggerConfigJson)) {
+                // 如果JSON字符串不同，进一步比较阈值
+                try {
+                    TriggerConfig currentTriggerConfig = JSON.parseObject(currentTriggerConfigJson, TriggerConfig.class);
+                    TriggerConfig newTriggerConfig = JSON.parseObject(newTriggerConfigJson, TriggerConfig.class);
+                    
+                    if (currentTriggerConfig != null && newTriggerConfig != null) {
+                        Integer currentThreshold = currentTriggerConfig.getThreshold();
+                        Integer newThreshold = newTriggerConfig.getThreshold();
+                        
+                        // 比较阈值是否发生变化
+                        if (currentThreshold == null && newThreshold == null) {
+                            return false;
+                        }
+                        if (currentThreshold == null || newThreshold == null) {
+                            return true;
+                        }
+                        return !currentThreshold.equals(newThreshold);
+                    }
+                } catch (Exception e) {
+                    log.warn("[DataPoolManagement] 解析触发配置失败，使用字符串比较: {}", e.getMessage());
+                }
+                
+                // 如果解析失败，使用字符串比较
+                return true;
+            }
+            
+            return false;
+        } catch (Exception e) {
+            log.error("[DataPoolManagement] 检查阈值配置变化时发生异常", e);
+            return false; // 发生异常时保守处理，不清理历史记录
         }
     }
     
