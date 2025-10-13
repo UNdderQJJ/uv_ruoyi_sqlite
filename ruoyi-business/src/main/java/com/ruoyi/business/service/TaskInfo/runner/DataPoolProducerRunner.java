@@ -383,7 +383,7 @@ public class DataPoolProducerRunner implements Runnable {
         Integer height = template.getHeight();// 高度
         StringBuilder command = new StringBuilder();
         command.append("seta:data#").append(fileConfig.getVariableName()).append("=").append(item.getItemData())
-                .append("+size#").append(width).append("|").append( height)
+                .append("+size#").append(height).append("|").append(width)
                 .append("+pos#").append(xAxis).append("|").append(yAxis).append("|").append(angle).append("|").append("0");
         
         return command.toString();

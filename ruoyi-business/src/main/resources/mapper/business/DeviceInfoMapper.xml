@@ -62,7 +62,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="description != null  and description != ''"> and description like concat('%', #{description}, '%')</if>
             and del_flag = 0
         </where>
-        order by id
+        order by id  desc
     </select>
     
     <select id="selectDeviceInfoById" parameterType="Long" resultMap="DeviceInfoResult">
@@ -127,7 +127,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         select status, count(1) as id from device_info where del_flag = 0 group by status
     </select>
         
-    <insert id="insertDeviceInfo" parameterType="DeviceInfo" useGeneratedKeys="true" keyProperty="id">
+    <insert id="insertDeviceInfo" parameterType="DeviceInfo">
         insert into device_info
         <trim prefix="(" suffix=")" suffixOverrides=",">
             <if test="deviceUuid != null and deviceUuid != ''">device_uuid,</if>
@@ -183,6 +183,9 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             datetime('now','localtime'),
             0
          </trim>
+        <selectKey keyProperty="id" resultType="long" order="AFTER">
+            SELECT last_insert_rowid()
+        </selectKey>
     </insert>
 
     <update id="updateDeviceInfo" parameterType="DeviceInfo">

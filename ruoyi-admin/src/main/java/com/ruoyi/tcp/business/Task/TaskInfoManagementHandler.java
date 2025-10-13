@@ -230,6 +230,10 @@ public class TaskInfoManagementHandler {
         int rows = taskInfoService.updateTaskInfo(taskInfo);
 
          List<DeviceFileConfig> deviceFileConfig = deviceFileConfigService.selectDefaultDeviceFileConfigListByDeviceId(deviceIdList.get(0));
+
+         if (ObjectUtils.isEmpty(deviceFileConfig)){
+             return TcpResponse.error("请先设置设备模版");
+         }
         
         if (rows > 0) {
             // 解析可选的设备关联更新参数
@@ -278,7 +282,7 @@ public class TaskInfoManagementHandler {
                                 if (di != null) {
                                     link.setDeviceName(di.getName());
                                 }
-                            } catch (Exception ignore) { }
+                                } catch (Exception ignore) { }
                             link.setDeviceFileConfigId(deviceFileConfig.get(0).getId());
                             link.setPoolTemplateId(taskInfo.getPoolTemplateId());
                             link.setAssignedQuantity(taskInfo.getPreloadDataCount());

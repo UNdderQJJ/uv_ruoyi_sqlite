@@ -5,6 +5,7 @@ import java.util.List;
 import com.ruoyi.business.domain.DeviceInfo.DeviceInfo;
 import com.ruoyi.business.service.DeviceInfo.IDeviceInfoService;
 import com.ruoyi.business.service.DeviceInfo.impl.DeviceInfoServiceImpl;
+import com.ruoyi.common.core.TcpResponse;
 import com.ruoyi.common.utils.DateUtils;
 import com.ruoyi.common.utils.StringUtils;
 import jakarta.annotation.Resource;
@@ -304,9 +305,17 @@ public class DeviceFileConfigServiceImpl implements IDeviceFileConfigService
         // 获取第一个设备的默认配置作为基准
         List<DeviceFileConfig> firstDeviceConfigs = selectDefaultDeviceFileConfigListByDeviceId(deviceIds.get(0));
 
+         if (ObjectUtils.isEmpty(firstDeviceConfigs)){
+          throw  new RuntimeException("请先设置设备默认文件配置");
+         }
         // 比较其他设备的默认配置与第一个设备是否一致
         for (int i = 1; i < deviceIds.size(); i++) {
             List<DeviceFileConfig> otherConfigs = selectDefaultDeviceFileConfigListByDeviceId(deviceIds.get(i));
+
+            if (ObjectUtils.isEmpty(otherConfigs)){
+                DeviceInfo deviceInfo = deviceInfoService.selectDeviceInfoById(deviceIds.get(i));
+                throw  new RuntimeException("请先设置"+deviceInfo.getName()+"设备默认文件配置");
+            }
 
             // 比较每个配置的详细信息
             for (DeviceFileConfig firstConfig : firstDeviceConfigs) {

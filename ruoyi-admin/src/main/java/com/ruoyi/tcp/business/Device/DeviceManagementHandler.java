@@ -1,10 +1,13 @@
 package com.ruoyi.tcp.business.Device;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.ruoyi.business.domain.DeviceFileConfig.DeviceFileConfig;
 import com.ruoyi.business.domain.DeviceInfo.DeviceInfo;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.ruoyi.business.enums.DeviceConfigKey;
 import com.ruoyi.business.enums.DeviceStatus;
+import com.ruoyi.business.enums.VariableType;
+import com.ruoyi.business.service.DeviceFileConfig.IDeviceFileConfigService;
 import com.ruoyi.tcp.DeviceConnectionManager;
 import com.ruoyi.business.service.DeviceInfo.DeviceCommandService;
 import com.ruoyi.business.service.DeviceInfo.DeviceConfigService;
@@ -43,6 +46,9 @@ public class DeviceManagementHandler {
 
     @Autowired
     private DeviceConnectionManager deviceConnectionManager;
+
+    @Autowired
+    private IDeviceFileConfigService deviceFileConfigService;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -311,6 +317,16 @@ public class DeviceManagementHandler {
 
             int result = deviceInfoService.insertDeviceInfo(deviceInfo);
             if (result > 0) {
+                // 创建默认文件模版
+                DeviceFileConfig defaultFileConfig = new DeviceFileConfig();
+                defaultFileConfig.setDeviceId(deviceInfo.getId());
+                defaultFileConfig.setFileName("default");
+                defaultFileConfig.setVariableName("data1");
+                defaultFileConfig.setVariableType(VariableType.TEXT.getCode());
+                defaultFileConfig.setIsDefault(1);
+                defaultFileConfig.setDescription("默认文件模版");
+                deviceFileConfigService.insertDeviceFileConfig(defaultFileConfig);
+
                 // 创建设备成功后自动尝试连接
                 try {
                     boolean connectOk = deviceConnectionManager.sendCommandViaRegisteredChannel(deviceInfo.getId().toString(), "get_currfile");
@@ -392,6 +408,16 @@ public class DeviceManagementHandler {
 
                     int r = deviceInfoService.insertDeviceInfo(di);
                     if (r > 0) {
+                         // 创建默认文件模版
+                        DeviceFileConfig defaultFileConfig = new DeviceFileConfig();
+                        defaultFileConfig.setDeviceId(di.getId());
+                        defaultFileConfig.setFileName("default");
+                        defaultFileConfig.setVariableName("data1");
+                        defaultFileConfig.setVariableType(VariableType.TEXT.getCode());
+                        defaultFileConfig.setIsDefault(1);
+                        defaultFileConfig.setDescription("默认文件模版");
+                        deviceFileConfigService.insertDeviceFileConfig(defaultFileConfig);
+
                         success++;
                     } else {
                         fail++;
