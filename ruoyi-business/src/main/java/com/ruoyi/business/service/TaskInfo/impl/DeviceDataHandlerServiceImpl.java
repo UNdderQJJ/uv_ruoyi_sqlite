@@ -218,7 +218,7 @@ public class DeviceDataHandlerServiceImpl implements DeviceDataHandlerService {
     }
 
     @Override
-    @Scheduled(fixedRate = 1000) // 每1秒检查一次心跳，仅对打印中设备生效
+    @Scheduled(fixedRate = 2500) // 每2.5秒检查一次心跳，仅对打印中设备生效
     public void checkHeartbeats() {
         try {
             // 只有在有任务运行时才进行心跳检查
