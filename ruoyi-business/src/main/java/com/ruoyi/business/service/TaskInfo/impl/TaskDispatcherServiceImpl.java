@@ -480,7 +480,7 @@ public class TaskDispatcherServiceImpl implements TaskDispatcherService {
                 deviceStatus.setStatus(TaskDeviceStatus.WAITING.getCode());
                 deviceStatus.setInFlightCount(0);
                 deviceStatus.setDeviceBufferCount(0);
-                deviceStatus.setLastHeartbeat(System.currentTimeMillis());
+                deviceStatus.setLastHeartbeat(0L);
                 deviceStatus.setCurrentTaskId(taskId);
                 deviceStatus.setCompletedCount(link.getCompletedQuantity());//获取任务完成数量
                 deviceStatus.setReceivedCount(link.getReceivedQuantity());//获取任务接收数量
