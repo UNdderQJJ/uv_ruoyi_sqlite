@@ -1,14 +1,14 @@
 package com.ruoyi.business.service.TaskInfo.runner;
 
 import com.ruoyi.business.config.TaskDispatchProperties;
+import com.ruoyi.business.domain.DataPool.DataPool;
 import com.ruoyi.business.domain.DataPoolTemplate.DataPoolTemplate;
 import com.ruoyi.business.domain.DeviceFileConfig.DeviceFileConfig;
 import com.ruoyi.business.domain.SystemLog.SystemLog;
 import com.ruoyi.business.domain.TaskInfo.PrintCommand;
 import com.ruoyi.business.domain.DataPoolItem.DataPoolItem;
-import com.ruoyi.business.enums.ItemStatus;
-import com.ruoyi.business.enums.SystemLogLevel;
-import com.ruoyi.business.enums.SystemLogType;
+import com.ruoyi.business.enums.*;
+import com.ruoyi.business.service.DataPool.IDataPoolService;
 import com.ruoyi.business.service.DataPoolItem.IDataPoolItemService;
 import com.ruoyi.business.service.DataPoolTemplate.IDataPoolTemplateService;
 import com.ruoyi.business.service.DeviceFileConfig.IDeviceFileConfigService;
@@ -16,7 +16,6 @@ import com.ruoyi.business.service.SystemLog.ISystemLogService;
 import com.ruoyi.business.service.TaskInfo.ITaskDeviceLinkService;
 import com.ruoyi.business.service.TaskInfo.CommandQueueService;
 import com.ruoyi.business.domain.TaskInfo.TaskDeviceLink;
-import com.ruoyi.business.enums.PrintCommandStatusEnum;
 import org.apache.commons.lang3.ObjectUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -38,6 +37,7 @@ public class DataPoolProducerRunner implements Runnable {
     private final Long poolId;
     private final CommandQueueService commandQueueService;
     private final IDataPoolItemService dataPoolItemService;
+    private final IDataPoolService dataPoolService;
     private final ITaskDeviceLinkService taskDeviceLinkService;
     private final IDataPoolTemplateService iDataPoolTemplateService;
     private final IDeviceFileConfigService iDeviceFileConfigService;
@@ -61,8 +61,9 @@ public class DataPoolProducerRunner implements Runnable {
     public DataPoolProducerRunner(Long taskId, Long poolId,
                                   CommandQueueService commandQueueService,
                                   IDataPoolItemService dataPoolItemService,
-                                  ITaskDeviceLinkService taskDeviceLinkService, 
-                                  IDataPoolTemplateService iDataPoolTemplateService, 
+                                  IDataPoolService dataPoolService,
+                                  ITaskDeviceLinkService taskDeviceLinkService,
+                                  IDataPoolTemplateService iDataPoolTemplateService,
                                   IDeviceFileConfigService iDeviceFileConfigService,
                                   TaskDispatchProperties taskDispatchProperties,
                                   int planPrintCountSnapshot,
@@ -72,6 +73,7 @@ public class DataPoolProducerRunner implements Runnable {
         this.poolId = poolId;
         this.commandQueueService = commandQueueService;
         this.dataPoolItemService = dataPoolItemService;
+        this.dataPoolService = dataPoolService;
         this.taskDeviceLinkService = taskDeviceLinkService;
         this.iDataPoolTemplateService = iDataPoolTemplateService;
         this.iDeviceFileConfigService = iDeviceFileConfigService;
@@ -144,10 +146,30 @@ public class DataPoolProducerRunner implements Runnable {
                 log.debug("已达到计划目标或无可查询数据，任务ID: {}", taskId);
                 return;
             }
-            
-            // 批量查询待打印数据
-            List<DataPoolItem> items = dataPoolItemService.selectPendingItems(poolId, queryBatchSize);
-            
+
+            //查询数据池
+            DataPool dataPool = dataPoolService.selectDataPoolById(poolId);
+
+            List<DataPoolItem> items = null;
+            //判断数据池是否为固定数据
+            if(dataPool.getSourceType().equals(SourceType.FIXED_DATA.getCode())){
+                if(ObjectUtils.isEmpty(dataPool.getFixedData())){
+                    throw new RuntimeException("数据池'"+dataPool.getPoolName()+"'固定数据不能为空!");
+                }
+                //生成queryBatchSize个固定数据
+                items = new ArrayList<>();
+                for (int i = 0; i < queryBatchSize; i++) {
+                    DataPoolItem item = new DataPoolItem();
+                    item.setId((long) i);
+                    item.setItemData(dataPool.getFixedData());
+                    item.setStatus(ItemStatus.PENDING.getCode());
+                    items.add(item);
+                }
+            }else {
+                // 批量查询待打印数据
+                items =  dataPoolItemService.selectPendingItems(poolId, queryBatchSize);
+            }
+
             if (items == null || items.isEmpty()) {
                 log.debug("没有待处理数据，任务ID: {}", taskId);
                 return;
@@ -160,9 +182,12 @@ public class DataPoolProducerRunner implements Runnable {
                 return;
             }
 
-            //更新成打印中
-            dataPoolItemService.updateItemsStatus(itemsToProcess, ItemStatus.PRINTING.getCode());
-            
+            //不等于固定数据
+            if (!dataPool.getSourceType().equals(SourceType.FIXED_DATA.getCode())) {
+                //更新成打印中
+                dataPoolItemService.updateItemsStatus(itemsToProcess, ItemStatus.PRINTING.getCode());
+            }
+
             log.debug("获取到 {} 条待处理数据，实际处理 {} 条，任务ID: {}", items.size(), itemsToProcess.size(), taskId);
             
             // 获取任务关联的设备信息

@@ -23,7 +23,13 @@ public enum SourceType
     MQTT("MQTT", "MQTT"),
     
     /** WebSocket */
-    WEBSOCKET("WEBSOCKET", "WebSocket");
+    WEBSOCKET("WEBSOCKET", "WebSocket"),
+
+    /**固定数据 */
+    FIXED_DATA("FIXED_DATA", "固定数据"),
+
+    /** 扫描录入 */
+    SCAN_CODE("SCAN_CODE", "扫码录入");
 
     private final String code;
     private final String info;

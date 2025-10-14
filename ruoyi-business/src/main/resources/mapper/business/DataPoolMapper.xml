@@ -24,10 +24,11 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         <result property="updateTime"        column="update_time"       />
         <result property="remark"            column="remark"            />
         <result property="autoUpdate"        column="auto_update"/>
+        <result property="fixedData"        column="fixed_data"/>
     </resultMap>
 
     <sql id="selectDataPoolVo">
-        select id, pool_name, source_type, total_count, pending_count, status, connection_state, source_config_json, parsing_rule_json, trigger_config_json, del_flag, file_read_completed, data_fetch_interval, create_by, create_time, update_by, update_time, remark,auto_update from data_pool
+        select id, pool_name, source_type, total_count, pending_count, status, connection_state, source_config_json, parsing_rule_json, trigger_config_json, del_flag, file_read_completed, data_fetch_interval, create_by, create_time, update_by, update_time, remark,auto_update,fixed_data from data_pool
     </sql>
 
     <select id="selectDataPoolList" parameterType="DataPool" resultMap="DataPoolResult">
@@ -48,7 +49,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         where id = #{id} and del_flag = '0'
     </select>
         
-    <insert id="insertDataPool" parameterType="DataPool" useGeneratedKeys="true" keyProperty="id">
+    <insert id="insertDataPool" parameterType="DataPool">
         insert into data_pool
         <trim prefix="(" suffix=")" suffixOverrides=",">
             <if test="poolName != null and poolName != ''">pool_name,</if>
@@ -69,6 +70,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="updateTime != null">update_time,</if>
             <if test="remark != null">remark,</if>
             <if test="autoUpdate != null">auto_update,</if>
+            <if test="fixedData != null">fixed_data,</if>
          </trim>
         <trim prefix="values (" suffix=")" suffixOverrides=",">
             <if test="poolName != null and poolName != ''">#{poolName},</if>
@@ -89,7 +91,11 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="updateTime != null">#{updateTime},</if>
             <if test="remark != null">#{remark},</if>
             <if test="autoUpdate != null">#{autoUpdate},</if>
+            <if test="fixedData != null">#{fixedData},</if>
          </trim>
+        <selectKey keyProperty="id" resultType="long" order="AFTER">
+            SELECT last_insert_rowid()
+        </selectKey>
     </insert>
 
     <update id="updateDataPool" parameterType="DataPool">
@@ -113,11 +119,15 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="updateTime != null">update_time = #{updateTime},</if>
             <if test="remark != null">remark = #{remark},</if>
             <if test="autoUpdate != null">auto_update = #{autoUpdate},</if>
+            <if test="fixedData != null">fixed_data = #{fixedData},</if>
         </trim>
         where id = #{id}
     </update>
     <update id="updateDataPendingCount">
         update data_pool set pending_count = #{planPrintCount}, total_count = #{totalCount}  where id = #{poolId}
+    </update>
+    <update id="updateDataPoolCountNumber">
+        update data_pool set total_count = total_count + #{totalCount}, pending_count = pending_count + #{pendingCount} where id = #{poolId}
     </update>
 
     <delete id="deleteDataPoolById" parameterType="Long">

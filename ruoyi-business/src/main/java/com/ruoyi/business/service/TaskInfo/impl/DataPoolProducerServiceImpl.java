@@ -4,6 +4,7 @@ import com.ruoyi.business.domain.SystemLog.SystemLog;
 import com.ruoyi.business.enums.SystemLogLevel;
 import com.ruoyi.business.enums.SystemLogType;
 import com.ruoyi.business.events.TaskPauseEvent;
+import com.ruoyi.business.service.DataPool.IDataPoolService;
 import com.ruoyi.business.service.DataPoolTemplate.IDataPoolTemplateService;
 import com.ruoyi.business.service.DeviceFileConfig.IDeviceFileConfigService;
 import com.ruoyi.business.service.SystemLog.ISystemLogService;
@@ -42,6 +43,9 @@ public class DataPoolProducerServiceImpl implements DataPoolProducerService {
     
     @Autowired
     private CommandQueueService commandQueueService;
+
+    @Autowired
+    private IDataPoolService dataPoolService;
     
     @Autowired
     private IDataPoolItemService dataPoolItemService;
@@ -81,7 +85,7 @@ public class DataPoolProducerServiceImpl implements DataPoolProducerService {
             int originalCountSnapshot = taskDispatchProperties.getOriginalCount();
 
             DataPoolProducerRunner runner = new DataPoolProducerRunner(
-                    taskId, poolId, commandQueueService, dataPoolItemService, taskDeviceLinkService,
+                    taskId, poolId, commandQueueService, dataPoolItemService,dataPoolService, taskDeviceLinkService,
                     iDataPoolTemplateService, iDeviceFileConfigService, taskDispatchProperties,
                     planPrintCountSnapshot, originalCountSnapshot, systemLogService);
 

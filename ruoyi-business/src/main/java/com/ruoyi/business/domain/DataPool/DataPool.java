@@ -57,6 +57,9 @@ public class DataPool extends BaseEntity
     /** 自动更新 **/
     private String autoUpdate;
 
+    /** 固定数据 **/
+    private String fixedData;
+
     @Override
     public String toString() {
         return new ToStringBuilder(this, ToStringStyle.MULTI_LINE_STYLE)
@@ -76,6 +79,8 @@ public class DataPool extends BaseEntity
             .append("createTime", getCreateTime())
             .append("updateTime", getUpdateTime())
             .append("remark", getRemark())
+                .append("autoUpdate", getAutoUpdate())
+                .append("fixedData", getFixedData())
             .toString();
     }
 }
