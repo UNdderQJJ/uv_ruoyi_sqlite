@@ -210,4 +210,24 @@ public interface IDeviceInfoService
      * @param status 设备状态
      */
     void removeCurrentTask(Long deviceId,String status);
+
+    /**
+     * 更新扫描器绑定信息
+     * @param scannerId 扫描器id
+     * @param deviceId 设备id
+     * @param deviceName 设备名称
+     */
+    void updateScanner(Long scannerId, Long deviceId, String deviceName);
+
+    /**
+     * 移除扫描器绑定信息
+     * @param scannerId 扫描器id
+     */
+    void removeScanner(Long scannerId);
+
+    /**
+     * 移除打印机绑定信息
+     * @param printerId 打印机id
+     */
+    void removePrinter(Long printerId);
 }

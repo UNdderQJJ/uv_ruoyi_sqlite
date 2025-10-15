@@ -321,6 +321,12 @@ public class DeviceManagementHandler {
 
             int result = deviceInfoService.insertDeviceInfo(deviceInfo);
             if (result > 0) {
+
+                if(ObjectUtils.isNotEmpty(deviceInfo.getScannerId()) && ObjectUtils.isNotEmpty(deviceInfo.getScannerName())){
+                    //更新扫描仪绑定设备
+                   deviceInfoService.updateScanner(deviceInfo.getScannerId(),deviceInfo.getId(),deviceInfo.getName());
+                }
+
                 // 创建默认文件模版
                 DeviceFileConfig defaultFileConfig = new DeviceFileConfig();
                 defaultFileConfig.setDeviceId(deviceInfo.getId());
@@ -457,6 +463,9 @@ public class DeviceManagementHandler {
                 return TcpResponse.error("请求体不能为空，需要提供设备信息");
             }
             DeviceInfo deviceInfo = objectMapper.readValue(body, DeviceInfo.class);
+
+            DeviceInfo oldDeviceInfo = deviceInfoService.selectDeviceInfoById(deviceInfo.getId());
+
             //设备运行时不允许更新设备信息
             if (deviceInfo.getStatus() != null && deviceInfo.getStatus().equals(DeviceStatus.ONLINE_PRINTING.getCode())) {
                 return TcpResponse.error("设备运行时不允许更新设备信息");
@@ -479,20 +488,15 @@ public class DeviceManagementHandler {
 
             int result = deviceInfoService.updateDeviceInfo(deviceInfo);
             if (result > 0) {
-                // 检查设备是否在线且参数有变化，如果是则自动下发配置
-                if (isDeviceOnline(originalDevice.getStatus()) && hasParametersChanged(originalDevice.getParameters(), deviceInfo.getParameters())) {
-                    try {
-                        log.info("设备 {} 在线且参数有变化，自动下发配置", deviceInfo.getId());
-                        Map<DeviceConfigKey, Object> parsed = deviceConfigService.parseAndValidate(deviceInfo.getParameters());
-                        deviceCommandService.applyParameters(deviceInfo.getId(), parsed);
-                        return TcpResponse.success("更新设备成功，配置已自动下发");
-                    } catch (Exception e) {
-                        log.warn("设备 {} 配置下发失败: {}", deviceInfo.getId(), e.getMessage());
-                        return TcpResponse.success("更新设备成功，但配置下发失败: " + e.getMessage());
-                    }
-                } else {
-                return TcpResponse.success("更新设备成功");
-                }
+                //为扫描仪绑定设备
+              if(ObjectUtils.isNotEmpty(deviceInfo.getScannerId()) && ObjectUtils.isNotEmpty(deviceInfo.getScannerName())){
+                  if (!deviceInfo.getScannerId().equals(oldDeviceInfo.getScannerId()) && !deviceInfo.getScannerName().equals(oldDeviceInfo.getScannerName())) {
+                      //移除上一个扫描仪绑定设备
+                      deviceInfoService.removeScanner(oldDeviceInfo.getScannerId());
+                      //更新扫描仪绑定设备
+                      deviceInfoService.updateScanner(deviceInfo.getScannerId(),deviceInfo.getId(),deviceInfo.getName());
+                  }
+              }
             } else {
                 return TcpResponse.error("更新设备失败");
             }
@@ -500,6 +504,7 @@ public class DeviceManagementHandler {
             log.error("更新设备异常", e);
             return TcpResponse.error("更新设备异常: " + e.getMessage());
         }
+        return TcpResponse.success("更新设备成功");
     }
 
     /**
@@ -534,6 +539,15 @@ public class DeviceManagementHandler {
                 }
                 int result = deviceInfoService.deleteDeviceInfoById(id);
                 if (result > 0) {
+
+                  if(ObjectUtils.isNotEmpty(deviceInfo.getScannerId()) && ObjectUtils.isNotEmpty(deviceInfo.getScannerName())){
+                          //移除扫描仪绑定设备
+                          deviceInfoService.removeScanner(deviceInfo.getScannerId());
+                  }
+                  if(ObjectUtils.isNotEmpty(deviceInfo.getPrinterId()) && ObjectUtils.isNotEmpty(deviceInfo.getPrinterName())){
+                          //移除打印机绑定扫描仪
+                          deviceInfoService.removePrinter(deviceInfo.getPrinterId());
+                  }
                     return TcpResponse.success("删除设备成功");
                 } else {
                     return TcpResponse.error("删除设备失败");

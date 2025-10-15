@@ -268,6 +268,9 @@ public class DataPoolServiceImpl implements IDataPoolService
     @Transactional(rollbackFor = Exception.class, isolation = Isolation.READ_COMMITTED)
     public void refreshPendingCount() {
         List<DataPool> dataPools = dataPoolMapper.selectDataPoolList(new DataPool());
+        if (dataPools == null){
+            return;
+        }
         for (DataPool dataPool : dataPools) {
             //查询数据池的待打印数量
             int pendingCount = dataPoolItemMapper.countByPending(dataPool.getId());

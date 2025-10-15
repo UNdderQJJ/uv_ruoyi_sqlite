@@ -24,7 +24,7 @@ import com.ruoyi.business.service.DeviceInfo.IDeviceInfoService;
  * @date 2025-01-30
  */
 @Service
-public class DeviceInfoServiceImpl implements IDeviceInfoService 
+public class DeviceInfoServiceImpl implements IDeviceInfoService
 {
     @Resource
     private DeviceInfoMapper deviceInfoMapper;
@@ -393,5 +393,37 @@ public class DeviceInfoServiceImpl implements IDeviceInfoService
     @Override
     public void removeCurrentTask(Long deviceId, String status) {
         deviceInfoMapper.removeCurrentTaskStatus(deviceId, status);
+    }
+
+    /**
+     * 更新设备扫描器
+     *
+     * @param scannerId 扫描器ID
+     * @param deviceId 设备ID
+     * @param deviceName 设备名称
+     */
+    @Override
+    public void updateScanner(Long scannerId, Long deviceId, String deviceName) {
+        deviceInfoMapper.updateScanner(scannerId, deviceId, deviceName);
+    }
+
+    /**
+     * 移除设备扫描器
+     *
+     * @param scannerId 扫描器ID
+     */
+    @Override
+    public void removeScanner(Long scannerId) {
+        deviceInfoMapper.removeScanner(scannerId);
+    }
+
+    /**
+     * 移除设备打印机
+     *
+     * @param printerId 打印机ID
+     */
+    @Override
+    public void removePrinter(Long printerId) {
+        deviceInfoMapper.removePrinter(printerId);
     }
 }

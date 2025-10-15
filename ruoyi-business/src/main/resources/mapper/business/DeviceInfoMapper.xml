@@ -26,6 +26,10 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         <result property="lastHeartbeatTime"    column="last_heartbeat_time"    />
         <result property="parameters"    column="parameters"    />
         <result property="description"    column="description"    />
+        <result property="scannerId"    column="scanner_id"    />
+        <result property="scannerName"    column="scanner_name"    />
+        <result property="printerId"    column="printer_id"    />
+        <result property="printerName"    column="printer_name"    />
         <result property="createBy"    column="create_by"    />
         <result property="createTime"    column="create_time"    />
         <result property="updateBy"    column="update_by"    />
@@ -34,7 +38,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
     </resultMap>
 
     <sql id="selectDeviceInfoVo">
-        select id, device_uuid, name, device_type, model, location, connection_type, ip_address, port, serial_port, baud_rate, data_bits, stop_bits, parity, status, current_task_id, current_task_name, is_enabled, last_heartbeat_time, parameters, description, create_by, create_time, update_by, update_time, del_flag from device_info
+        select id, device_uuid, name, device_type, model, location, connection_type, ip_address, port, serial_port, baud_rate, data_bits, stop_bits, parity, status, current_task_id, current_task_name, is_enabled, last_heartbeat_time, parameters, description,scanner_id, scanner_name, printer_id, printer_name, create_by, create_time, update_by, update_time, del_flag from device_info
     </sql>
 
     <select id="selectDeviceInfoList" parameterType="DeviceInfo" resultMap="DeviceInfoResult">
@@ -60,6 +64,10 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="lastHeartbeatTime != null "> and last_heartbeat_time = #{lastHeartbeatTime}</if>
             <if test="parameters != null  and parameters != ''"> and parameters = #{parameters}</if>
             <if test="description != null  and description != ''"> and description like concat('%', #{description}, '%')</if>
+             <if test="scannerId != null "> and scanner_id = #{scannerId}</if>
+              <if test="scannerName != null  and scannerName != ''"> and scanner_name like concat('%', #{scannerName}, '%')</if>
+              <if test="printerId != null "> and printer_id = #{printerId}</if>
+               <if test="printerName != null  and printerName != ''"> and printer_name like concat('%', #{printerName}, '%')</if>
             and del_flag = 0
         </where>
         order by id  desc
@@ -150,6 +158,10 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="lastHeartbeatTime != null">last_heartbeat_time,</if>
             <if test="parameters != null">parameters,</if>
             <if test="description != null">description,</if>
+            <if test="scannerId != null">scanner_id,</if>
+            <if test="scannerName != null">scanner_name,</if>
+            <if test="printerId != null">printer_id,</if>
+            <if test="printerName != null">printer_name,</if>
             <if test="createBy != null">create_by,</if>
             create_time,
             <if test="updateBy != null">update_by,</if>
@@ -177,6 +189,10 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="lastHeartbeatTime != null">#{lastHeartbeatTime},</if>
             <if test="parameters != null">#{parameters},</if>
             <if test="description != null">#{description},</if>
+            <if test="scannerId != null">#{scannerId},</if>
+            <if test="scannerName != null">#{scannerName},</if>
+            <if test="printerId != null">#{printerId},</if>
+            <if test="printerName != null">#{printerName},</if>
             <if test="createBy != null">#{createBy},</if>
             datetime('now','localtime'),
             <if test="updateBy != null">#{updateBy},</if>
@@ -211,6 +227,10 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="lastHeartbeatTime != null">last_heartbeat_time = #{lastHeartbeatTime},</if>
             <if test="parameters != null">parameters = #{parameters},</if>
             <if test="description != null">description = #{description},</if>
+            <if test="scannerId != null">scanner_id = #{scannerId},</if>
+            <if test="scannerName != null">scanner_name = #{scannerName},</if>
+            <if test="printerId != null">printer_id = #{printerId},</if>
+            <if test="printerName != null">printer_name = #{printerName},</if>
             <if test="updateBy != null">update_by = #{updateBy},</if>
             update_time = datetime('now','localtime')
         </trim>
@@ -244,4 +264,13 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
     </update>
     <update id="removeCurrentTaskStatus">
         update device_info set status =#{status},current_task_id = null,current_task_name = null, update_time = datetime('now','localtime') where id = #{deviceId}   </update>
+    <update id="updateScanner">
+        update device_info set printer_id = #{printerId},printer_name = #{printerName}, update_time = datetime('now','localtime') where id = #{scannerId}
+    </update>
+    <update id="removeScanner">
+        update device_info set printer_id = null,printer_name = null, update_time = datetime('now','localtime') where id = #{scannerId}
+    </update>
+    <update id="removePrinter">
+        update device_info set scanner_id = null,scanner_name = null, update_time = datetime('now','localtime') where id = #{printerId}
+    </update>
 </mapper>

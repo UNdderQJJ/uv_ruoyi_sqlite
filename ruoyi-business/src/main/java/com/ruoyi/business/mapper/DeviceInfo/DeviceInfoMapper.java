@@ -169,4 +169,21 @@ public interface DeviceInfoMapper
      * @param status 设备状态
      */
     void removeCurrentTaskStatus(Long deviceId, String status);
+
+    /** 更新扫描器信息
+     * @param scannerId 扫描器ID
+     * @param deviceId 设备ID
+     * @param deviceName 设备名称
+     */
+    void updateScanner(Long scannerId, Long deviceId, String deviceName);
+
+    /** 移除扫描器信息
+     * @param scannerId 扫描器ID
+     */
+    void removeScanner(Long scannerId);
+
+    /** 移除打印机信息
+     * @param printerId 打印机ID
+     */
+    void removePrinter(Long printerId);
 }
