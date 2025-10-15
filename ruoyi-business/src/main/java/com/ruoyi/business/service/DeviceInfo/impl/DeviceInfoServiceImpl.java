@@ -12,6 +12,7 @@ import com.ruoyi.common.utils.DateUtils;
 import com.ruoyi.common.utils.PageQueryUtils;
 import com.ruoyi.common.utils.StringUtils;
 import jakarta.annotation.Resource;
+import org.apache.commons.lang3.ObjectUtils;
 import org.springframework.stereotype.Service;
 import com.ruoyi.business.mapper.DeviceInfo.DeviceInfoMapper;
 import com.ruoyi.business.domain.DeviceInfo.DeviceInfo;
@@ -425,5 +426,23 @@ public class DeviceInfoServiceImpl implements IDeviceInfoService
     @Override
     public void removePrinter(Long printerId) {
         deviceInfoMapper.removePrinter(printerId);
+    }
+
+    /**
+     * 设备是否已经绑定了扫描器
+     *
+     * @param deviceIdList 设备ID
+     * @return 是否已经绑定了扫描器
+     */
+    @Override
+    public String checkDeviceHasScanner(List<Long> deviceIdList) {
+        for(Long deviceId : deviceIdList){
+            //查询设备信息
+            DeviceInfo deviceInfo = deviceInfoMapper.selectDeviceInfoById(deviceId);
+            if(ObjectUtils.isNotEmpty(deviceInfo) && ObjectUtils.isEmpty(deviceInfo.getScannerId())){
+                return "设备'" + deviceInfo.getName() + "'未绑定扫描器";
+            }
+        }
+        return "true";
     }
 }

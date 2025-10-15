@@ -230,4 +230,11 @@ public interface IDeviceInfoService
      * @param printerId 打印机id
      */
     void removePrinter(Long printerId);
+
+    /**
+     * 检查设备是否绑定了扫描器
+     * @param deviceIdList 设备id
+     * @return true:已绑定
+     */
+    String checkDeviceHasScanner(List<Long> deviceIdList);
 }

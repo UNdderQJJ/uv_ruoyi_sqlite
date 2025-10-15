@@ -87,6 +87,11 @@ public class TaskInfo extends BaseEntity {
      * 删除标记 0-正常 2-删除
      */
     private Integer delFlag;
+
+    /**
+     * 是否启用质检
+     */
+    private Boolean enableCheck;
 }
 
 

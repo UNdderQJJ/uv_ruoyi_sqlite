@@ -25,6 +25,7 @@
         <result property="createBy"          column="create_by" />
         <result property="updateBy"          column="update_by" />
         <result property="remark"            column="remark" />
+        <result property="enableCheck"       column="enable_check" />
     </resultMap>
 
     <!-- 根据ID查询任务 -->
@@ -102,12 +103,12 @@
     INSERT INTO task_info (
         name, status, device_name, device_id, device_type,
         pool_id, pool_template_id, pool_name, planned_quantity,
-        completed_quantity, received_quantity, preload_data_count, description,
+        completed_quantity, received_quantity, preload_data_count, description,enable_check
         del_flag, create_time
     ) VALUES (
         #{name}, #{status}, #{deviceName}, #{deviceId}, #{deviceType},
         #{poolId}, #{poolTemplateId}, #{poolName}, #{plannedQuantity},
-        #{completedQuantity},#{receivedQuantity},#{preloadDataCount}, #{description},
+        #{completedQuantity},#{receivedQuantity},#{preloadDataCount}, #{description},#{enableCheck},
         COALESCE(#{delFlag}, 0),
         COALESCE(#{createTime}, datetime('now', 'localtime'))
     )
@@ -130,6 +131,7 @@
             <if test="receivedQuantity != null">received_quantity = #{receivedQuantity},</if>
             <if test="preloadDataCount != null">preload_data_count = #{preloadDataCount},</if>
             <if test="description != null">description = #{description},</if>
+            <if test="enableCheck != null">enable_check = #{enableCheck},</if>
             update_time = COALESCE(#{updateTime}, datetime('now','localtime'))
         </set>
         WHERE id = #{id} AND del_flag = 0

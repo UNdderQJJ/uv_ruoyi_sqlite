@@ -49,6 +49,18 @@ public class TaskDeviceLink extends BaseEntity {
     /**设备吞吐率 */
     private Integer throughput;
 
+    /** 读码器Id */
+    private Long scannerId;
+
+    /** 读码器名称 */
+    private String scannerName;
+
+    /** 读码器状态 */
+    private String scannerStatus;
+
+    /** 扫描个数 */
+    private Integer scanQuantity;
+
     /** 删除标记 0-正常 2-删除 */
     private Integer delFlag;
 

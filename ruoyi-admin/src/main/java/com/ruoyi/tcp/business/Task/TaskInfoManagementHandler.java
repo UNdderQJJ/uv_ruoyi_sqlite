@@ -134,6 +134,14 @@ public class TaskInfoManagementHandler {
         if (!isConsistent){
             return TcpResponse.error("设备模版变量名称不一致，请检查设备模版是否一致");
         }
+        //如果启用质检，检测设备是否绑定了扫描仪
+        if (taskInfo.getEnableCheck()){
+            String result = deviceInfoService.checkDeviceHasScanner(deviceIdList);
+            if (!result.equals("true")){
+                return TcpResponse.error(result);
+            }
+
+        }
         int rows = taskInfoService.insertTaskInfo(taskInfo);
 
         List<DeviceFileConfig> deviceFileConfig = deviceFileConfigService.selectDefaultDeviceFileConfigListByDeviceId(deviceIdList.get(0));
@@ -158,6 +166,13 @@ public class TaskInfoManagementHandler {
                                 link.setDeviceName(di.getName());
                                 deviceNames.add(di.getName()); // 收集设备名称
                                 deviceIds.add(deviceId.toString());
+
+                                //添加扫描仪
+                                if(ObjectUtils.isNotEmpty(di.getScannerId())) {
+                                        link.setScannerId(di.getScannerId());
+                                        link.setScannerName(di.getScannerName());
+                                        link.setScannerStatus(TaskDeviceStatus.WAITING.getCode());
+                                }
                             }
                         } catch (Exception ignore) { }
 
@@ -227,6 +242,15 @@ public class TaskInfoManagementHandler {
         DataPool dataPool = dataPoolService.selectDataPoolById(taskInfo.getPoolId());
         taskInfo.setPoolName(dataPool.getPoolName());
 
+         //如果启用质检，检测设备是否绑定了扫描仪
+        if (taskInfo.getEnableCheck()){
+            String result = deviceInfoService.checkDeviceHasScanner(deviceIdList);
+            if (!result.equals("true")){
+                return TcpResponse.error(result);
+            }
+
+        }
+
         int rows = taskInfoService.updateTaskInfo(taskInfo);
 
          List<DeviceFileConfig> deviceFileConfig = deviceFileConfigService.selectDefaultDeviceFileConfigListByDeviceId(deviceIdList.get(0));
@@ -281,6 +305,12 @@ public class TaskInfoManagementHandler {
                                 DeviceInfo di = deviceInfoService.selectDeviceInfoById(deviceId);
                                 if (di != null) {
                                     link.setDeviceName(di.getName());
+                                    //添加扫描仪
+                                    if(ObjectUtils.isNotEmpty(di.getScannerId())) {
+                                            link.setScannerId(di.getScannerId());
+                                            link.setScannerName(di.getScannerName());
+                                            link.setScannerStatus(TaskDeviceStatus.WAITING.getCode());
+                                    }
                                 }
                                 } catch (Exception ignore) { }
                             link.setDeviceFileConfigId(deviceFileConfig.get(0).getId());
