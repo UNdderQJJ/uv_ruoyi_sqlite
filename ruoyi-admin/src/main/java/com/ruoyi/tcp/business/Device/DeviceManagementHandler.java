@@ -294,7 +294,11 @@ public class DeviceManagementHandler {
             if (body == null || body.trim().isEmpty()) {
                 return TcpResponse.error("请求体不能为空，需要提供设备信息");
             }
-            DeviceInfo deviceInfo = objectMapper.readValue(body, DeviceInfo.class);
+            Map<String, Object> params = objectMapper.readValue(body, new TypeReference<>() {});
+
+            DeviceInfo deviceInfo = objectMapper.convertValue(params.get("deviceInfo"), DeviceInfo.class);
+
+            DeviceFileConfig fileConfig = objectMapper.convertValue(params.get("fileConfig"), DeviceFileConfig.class);
             
             // 验证必填字段
             if (StringUtils.isEmpty(deviceInfo.getName())) {
@@ -320,11 +324,11 @@ public class DeviceManagementHandler {
                 // 创建默认文件模版
                 DeviceFileConfig defaultFileConfig = new DeviceFileConfig();
                 defaultFileConfig.setDeviceId(deviceInfo.getId());
-                defaultFileConfig.setFileName("default");
-                defaultFileConfig.setVariableName("data1");
-                defaultFileConfig.setVariableType(VariableType.TEXT.getCode());
-                defaultFileConfig.setIsDefault(1);
-                defaultFileConfig.setDescription("默认文件模版");
+                defaultFileConfig.setFileName(fileConfig.getFileName());// 模板文件名称
+                defaultFileConfig.setVariableName(fileConfig.getVariableName());// 变量名称
+                defaultFileConfig.setVariableType(fileConfig.getVariableType());// 变量类型
+                defaultFileConfig.setIsDefault(1);// 默认配置
+                defaultFileConfig.setDescription(fileConfig.getDescription());// 配置描述
                 deviceFileConfigService.insertDeviceFileConfig(defaultFileConfig);
 
                 // 创建设备成功后自动尝试连接
@@ -371,6 +375,8 @@ public class DeviceManagementHandler {
             String deviceType = params.get("deviceType") == null ? null : String.valueOf(params.get("deviceType"));
             String connectionType = params.get("connectionType") == null ? null : String.valueOf(params.get("connectionType"));
             String name = params.get("name") == null ? "设备" : String.valueOf(params.get("name"));
+            //默认文件配置
+            DeviceFileConfig fileConfig = objectMapper.convertValue(params.get("fileConfig"), DeviceFileConfig.class);
 
             if (StringUtils.isEmpty(ipPrefix)) {
                 return TcpResponse.error("ip前缀不能为空，例如 192.168.1");
@@ -411,11 +417,11 @@ public class DeviceManagementHandler {
                          // 创建默认文件模版
                         DeviceFileConfig defaultFileConfig = new DeviceFileConfig();
                         defaultFileConfig.setDeviceId(di.getId());
-                        defaultFileConfig.setFileName("default");
-                        defaultFileConfig.setVariableName("data1");
-                        defaultFileConfig.setVariableType(VariableType.TEXT.getCode());
-                        defaultFileConfig.setIsDefault(1);
-                        defaultFileConfig.setDescription("默认文件模版");
+                        defaultFileConfig.setFileName(fileConfig.getFileName());// 模板文件名称
+                        defaultFileConfig.setVariableName(fileConfig.getVariableName());// 变量名称
+                        defaultFileConfig.setVariableType(fileConfig.getVariableType());// 变量类型
+                        defaultFileConfig.setIsDefault(1);// 默认配置
+                        defaultFileConfig.setDescription(fileConfig.getDescription());// 配置描述
                         deviceFileConfigService.insertDeviceFileConfig(defaultFileConfig);
 
                         success++;
