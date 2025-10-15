@@ -29,6 +29,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.task.TaskExecutor;
 import org.springframework.stereotype.Component;
+import org.springframework.util.ObjectUtils;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -232,7 +233,11 @@ public class NettyServerHandler extends SimpleChannelInboundHandler<String> {
         try {
             // 构建响应数据
             Map<String, Object> responseData = new HashMap<>();
-            responseData.put("code", response.getCode());
+            if (ObjectUtils.isEmpty(response.getCode())) {
+                responseData.put("code", response.getCode());
+            }else {
+                responseData.put("code", 200);
+            }
             responseData.put("message", response.getMessage());
             responseData.put("data", response.getResult());
             

@@ -28,6 +28,7 @@ import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.core.task.TaskExecutor;
 import org.springframework.stereotype.Service;
+import org.springframework.util.ObjectUtils;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -249,7 +250,11 @@ public class StdioCommunicator implements CommandLineRunner {
         try {
             // 构建响应数据
             Map<String, Object> responseData = new HashMap<>();
-            responseData.put("code", response.getCode());
+             if (ObjectUtils.isEmpty(response.getCode())) {
+                responseData.put("code", response.getCode());
+            }else {
+                responseData.put("code", 200);
+            }
             responseData.put("message", response.getMessage());
             responseData.put("data", response.getResult());
             
