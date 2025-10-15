@@ -322,8 +322,8 @@ public class DeviceManagementHandler {
             int result = deviceInfoService.insertDeviceInfo(deviceInfo);
             if (result > 0) {
 
-                if(ObjectUtils.isNotEmpty(deviceInfo.getScannerId()) && ObjectUtils.isNotEmpty(deviceInfo.getScannerName())){
-                    //更新扫描仪绑定设备
+                if(ObjectUtils.isNotEmpty(deviceInfo.getScannerId())){
+                    //更新读码器绑定设备
                    deviceInfoService.updateScanner(deviceInfo.getScannerId(),deviceInfo.getId(),deviceInfo.getName());
                 }
 
@@ -488,14 +488,17 @@ public class DeviceManagementHandler {
 
             int result = deviceInfoService.updateDeviceInfo(deviceInfo);
             if (result > 0) {
-                //为扫描仪绑定设备
+                //为读码器绑定设备
               if(ObjectUtils.isNotEmpty(deviceInfo.getScannerId()) && ObjectUtils.isNotEmpty(deviceInfo.getScannerName())){
-                  if (!deviceInfo.getScannerId().equals(oldDeviceInfo.getScannerId()) && !deviceInfo.getScannerName().equals(oldDeviceInfo.getScannerName())) {
-                      //移除上一个扫描仪绑定设备
+                  if (!deviceInfo.getScannerId().equals(oldDeviceInfo.getScannerId())) {
+                      //移除上一个读码器绑定设备
                       deviceInfoService.removeScanner(oldDeviceInfo.getScannerId());
-                      //更新扫描仪绑定设备
+                      //更新读码器绑定设备
                       deviceInfoService.updateScanner(deviceInfo.getScannerId(),deviceInfo.getId(),deviceInfo.getName());
                   }
+              }else if (ObjectUtils.isEmpty(deviceInfo.getScannerId())) {
+                  //移除上一个读码器绑定设备
+                  deviceInfoService.removeScanner(oldDeviceInfo.getScannerId());
               }
             } else {
                 return TcpResponse.error("更新设备失败");
@@ -541,11 +544,11 @@ public class DeviceManagementHandler {
                 if (result > 0) {
 
                   if(ObjectUtils.isNotEmpty(deviceInfo.getScannerId()) && ObjectUtils.isNotEmpty(deviceInfo.getScannerName())){
-                          //移除扫描仪绑定设备
+                          //移除读码器绑定设备
                           deviceInfoService.removeScanner(deviceInfo.getScannerId());
                   }
                   if(ObjectUtils.isNotEmpty(deviceInfo.getPrinterId()) && ObjectUtils.isNotEmpty(deviceInfo.getPrinterName())){
-                          //移除打印机绑定扫描仪
+                          //移除打印机绑定读码器
                           deviceInfoService.removePrinter(deviceInfo.getPrinterId());
                   }
                     return TcpResponse.success("删除设备成功");

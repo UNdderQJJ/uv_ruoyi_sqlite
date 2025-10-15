@@ -227,8 +227,8 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="lastHeartbeatTime != null">last_heartbeat_time = #{lastHeartbeatTime},</if>
             <if test="parameters != null">parameters = #{parameters},</if>
             <if test="description != null">description = #{description},</if>
-            <if test="scannerId != null">scanner_id = #{scannerId},</if>
-            <if test="scannerName != null">scanner_name = #{scannerName},</if>
+            scanner_id = #{scannerId},
+            scanner_name = #{scannerName},
             <if test="printerId != null">printer_id = #{printerId},</if>
             <if test="printerName != null">printer_name = #{printerName},</if>
             <if test="updateBy != null">update_by = #{updateBy},</if>

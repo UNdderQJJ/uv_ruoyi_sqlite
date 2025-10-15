@@ -172,10 +172,10 @@ public interface DeviceInfoMapper
 
     /** 更新扫描器信息
      * @param scannerId 扫描器ID
-     * @param deviceId 设备ID
-     * @param deviceName 设备名称
+     * @param printerId 设备ID
+     * @param printerName 设备名称
      */
-    void updateScanner(Long scannerId, Long deviceId, String deviceName);
+    void updateScanner(Long scannerId, Long printerId, String printerName);
 
     /** 移除扫描器信息
      * @param scannerId 扫描器ID

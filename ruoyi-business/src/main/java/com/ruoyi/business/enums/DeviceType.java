@@ -13,8 +13,8 @@ public enum DeviceType {
     /** 喷码机 */
     CODER("CODER", "喷码机"),
     
-    /** 扫码枪 */
-    SCANNER("SCANNER", "扫码枪");
+    /** 读码器 */
+    SCANNER("SCANNER", "读码器");
 
     private final String code;
     private final String info;
