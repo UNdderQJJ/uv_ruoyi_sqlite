@@ -8,6 +8,7 @@ import com.ruoyi.business.config.TaskStagingTransfer;
 import com.ruoyi.business.domain.DataPool.DataPool;
 import com.ruoyi.business.domain.DataPoolItem.DataPoolItem;
 import com.ruoyi.business.domain.ArchivedDataPoolItem.ArchivedDataPoolItem;
+import com.ruoyi.business.domain.DataPoolTemplate.DataPoolTemplate;
 import com.ruoyi.business.domain.config.TriggerConfig;
 import com.ruoyi.business.domain.config.UDiskSourceConfig;
 import com.ruoyi.business.enums.SourceType;
@@ -26,7 +27,9 @@ import com.ruoyi.business.service.DataPool.type.TcpServer.tcp.TcpClientManager;
 import com.ruoyi.business.service.DataPool.type.Http.HttpManager;
 import com.ruoyi.business.service.DataPool.type.Mqtt.MqttManager;
 import com.ruoyi.business.service.DataPool.DataSourceLifecycleService;
+import com.ruoyi.business.service.DataPoolTemplate.IDataPoolTemplateService;
 import com.ruoyi.common.core.TcpResponse;
+import com.ruoyi.common.utils.DateUtils;
 import com.ruoyi.common.utils.StringUtils;
 import jakarta.annotation.Resource;
 import org.slf4j.Logger;
@@ -35,10 +38,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
+import java.util.*;
 
 /**
  * 数据池管理TCP处理器
@@ -94,6 +94,9 @@ public class DataPoolManagementHandler
     @Resource
     private TaskStagingTransfer taskStagingTransfer;
 
+    @Resource
+    private IDataPoolTemplateService dataPoolTemplateService;
+
 
     /**
      * 处理数据池相关的TCP请求
@@ -131,6 +134,10 @@ public class DataPoolManagementHandler
                     return stopDataSource(body);
                 case "/business/dataPool/schedulerStatus":
                     return getSchedulerStatus(body);
+                case "/business/dataPool/scanDataEntry":
+                    return ScanDataEntry(body);
+                case "/business/dataPool/deleteDataEntry":
+                    return deleteDataEntry(body);
                 default:
                     log.warn("[DataPoolManagement] 未知的数据池操作路径: {}", path);
                     return TcpResponse.error("未知的数据池操作: " + path);
@@ -197,20 +204,35 @@ public class DataPoolManagementHandler
         }
 
 
-        //判断数据源是否填写正确
-        DataPoolConfigValidationService.ValidationResult validationResult =
-                dataPoolConfigValidationService.validateDataPoolConfig(dataPool.getSourceType(),
-                dataPool.getSourceConfigJson(),
-                dataPool.getParsingRuleJson(),
-                dataPool.getTriggerConfigJson(),
-                dataPool.getDataFetchInterval());
-        if (!validationResult.isValid()) {
-            return TcpResponse.error("数据源配置无效: " + validationResult.getErrorMessage());
+        if (!dataPool.getSourceType().equals(SourceType.FIXED_DATA.getCode()) && !dataPool.getSourceType().equals(SourceType.SCAN_CODE.getCode())) {
+            //判断数据源是否填写正确
+            DataPoolConfigValidationService.ValidationResult validationResult =
+                    dataPoolConfigValidationService.validateDataPoolConfig(dataPool.getSourceType(),
+                    dataPool.getSourceConfigJson(),
+                    dataPool.getParsingRuleJson(),
+                    dataPool.getTriggerConfigJson(),
+                    dataPool.getDataFetchInterval());
+            if (!validationResult.isValid()) {
+                return TcpResponse.error("数据源配置无效: " + validationResult.getErrorMessage());
+            }
         }
 
         //创建数据源
         int result = dataPoolService.insertDataPool(dataPool);
         if (result > 0) {
+            //创建默认模板
+            DataPoolTemplate defaultTemplate = new DataPoolTemplate();
+            defaultTemplate.setPoolId(dataPool.getId());
+            defaultTemplate.setTempName("默认模板");
+            defaultTemplate.setTempContent("打印数据");
+            defaultTemplate.setXAxis(0);
+            defaultTemplate.setYAxis(0);
+            defaultTemplate.setAngle(0);
+            defaultTemplate.setWidth(20);
+            defaultTemplate.setHeight(10);
+            defaultTemplate.setDelFlag("0");
+            dataPoolTemplateService.insertDataPoolTemplate(defaultTemplate);
+
             var responseData = new HashMap<String, Object>();
             responseData.put("id", dataPool.getId());
             return TcpResponse.success("创建数据池成功", responseData);
@@ -242,17 +264,19 @@ public class DataPoolManagementHandler
             return TcpResponse.error("数据池正在运行中，不允许修改数据获取间隔时间");
         }
 
-        //判断数据源是否填写正确
-        DataPoolConfigValidationService.ValidationResult validationResult =
-                dataPoolConfigValidationService.validateDataPoolConfig(dataPool.getSourceType(),
-                dataPool.getSourceConfigJson(),
-                dataPool.getParsingRuleJson(),
-                dataPool.getTriggerConfigJson(),
-                dataPool.getDataFetchInterval());
-        if (!validationResult.isValid()) {
-            return TcpResponse.error("数据源配置无效: " + validationResult.getErrorMessage());
+         if (!dataPool.getSourceType().equals(SourceType.FIXED_DATA.getCode()) && !dataPool.getSourceType().equals(SourceType.SCAN_CODE.getCode())) {
+            //判断数据源是否填写正确
+            DataPoolConfigValidationService.ValidationResult validationResult =
+                    dataPoolConfigValidationService.validateDataPoolConfig(dataPool.getSourceType(),
+                    dataPool.getSourceConfigJson(),
+                    dataPool.getParsingRuleJson(),
+                    dataPool.getTriggerConfigJson(),
+                    dataPool.getDataFetchInterval());
+            if (!validationResult.isValid()) {
+                return TcpResponse.error("数据源配置无效: " + validationResult.getErrorMessage());
+            }
         }
-        
+
         // 检查是否修改了阈值配置，如果修改了则清除pendingCount历史记录
         boolean thresholdChanged = isThresholdConfigChanged(currentDataPool, dataPool);
         if (thresholdChanged) {
@@ -579,6 +603,61 @@ public class DataPoolManagementHandler
         } catch (Exception e) {
             log.error("[DataPoolManagement] 获取调度器状态失败", e);
             return TcpResponse.error("获取调度器状态失败: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 扫描录入数据
+     */
+    private TcpResponse ScanDataEntry(String body) throws JsonProcessingException {
+        //获取poolId与扫描数据
+        Map<String, Object> params = objectMapper.readValue(body, new TypeReference<>() {});
+        Long poolId = Long.valueOf(params.get("poolId").toString());
+        String scanData = params.get("scanData").toString();
+
+        //判断是否录入数据是否重复
+        if (dataPoolItemService.isDuplicateData(poolId, scanData)) {
+            return TcpResponse.error("数据重复");
+        }
+
+
+        Date now = DateUtils.getNowDate();
+        //先创建item
+        DataPoolItem item = new DataPoolItem();
+         item.setPoolId(poolId);
+         item.setItemData(scanData);
+         item.setStatus("PENDING");
+         item.setPrintCount(0);
+         item.setReceivedTime(now);
+         item.setDelFlag("0");
+         item.setCreateTime(now);
+         item.setUpdateTime(now);
+         dataPoolItemService.insertDataPoolItem(item);
+
+         //对待扫描与总数进行加一，并更新数据库
+        dataPoolService.updateDataPoolCountNumber(poolId, 1, 1);
+
+        return  TcpResponse.success("录入成功");
+    }
+
+    /**
+     *  删除录入数据（可批量删除）
+     */
+    private TcpResponse deleteDataEntry(String body) throws JsonProcessingException {
+         // 解析参数
+        Map<String, Object> params = objectMapper.readValue(body, new TypeReference<>() {});
+        Long poolId = Long.valueOf(params.get("poolId").toString());
+        //获取ids
+        List<?> idListRaw = (List<?>) params.get("itemIds");
+        Long[] idList = idListRaw.stream().map(id -> Long.valueOf(id.toString())).toArray(Long[]::new);
+
+        int result = dataPoolItemService.deleteDataPoolItemByIds(idList);
+        if(result>0){
+            //减少总数与待打印数量
+            dataPoolService.updateDataPoolCountNumber(poolId, -1, -1);
+            return TcpResponse.success("删除成功");
+        }else {
+            return TcpResponse.error("删除失败");
         }
     }
 }

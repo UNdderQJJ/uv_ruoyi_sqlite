@@ -217,6 +217,23 @@ public class DataPoolServiceImpl implements IDataPoolService
         }
     }
 
+     /**
+     * 更新数据池计数加1
+     *
+     * @param id 数据池主键
+     * @param totalCount 总数据量
+     * @param pendingCount 待打印数量
+     * @return 结果
+     */
+    @Override
+    public void updateDataPoolCountNumber(Long id, int totalCount, int pendingCount) {
+       try {
+             dataPoolMapper.updateDataPoolCountNumber(id, totalCount, pendingCount);
+        } catch (Exception e) {
+            throw new RuntimeException("更新数据池计数失败", e);
+        }
+    }
+
     /**
      * 更新数据池连接状态
      */

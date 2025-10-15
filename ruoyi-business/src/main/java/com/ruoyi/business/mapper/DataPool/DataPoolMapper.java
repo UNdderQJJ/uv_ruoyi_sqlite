@@ -65,4 +65,13 @@ public interface DataPoolMapper
      * @param totalCount 总数
      */
     void updateDataPendingCount(Long poolId, int planPrintCount,int totalCount);
+
+    /**
+     * 更新数据池计数
+     * @param id 数据池ID
+     * @param totalCount 总数
+     * @param pendingCount 待打印数量
+     * @return
+     */
+    void updateDataPoolCountNumber(Long id, int totalCount, int pendingCount);
 }

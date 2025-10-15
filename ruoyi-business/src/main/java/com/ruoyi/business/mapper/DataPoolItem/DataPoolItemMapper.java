@@ -238,4 +238,9 @@ public interface DataPoolItemMapper {
      * 按数据池ID和del_flag='2'分批真删除（LIMIT）
      */
     int hardDeleteByPoolIdLimit(Long poolId, int batchSize);
+
+    /**
+     * 判断数据项数据是否重复
+     */
+    int isDuplicateData(Long poolId, String scanData);
 }

@@ -40,7 +40,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
              <if test="autoUpdate != null  and autoUpdate != ''"> and auto_update = #{autoUpdate}</if>
             <if test="connectionState != null  and connectionState != ''"> and connection_state = #{connectionState}</if>
               <if test="fileReadCompleted != null  and fileReadCompleted != ''"> and file_read_completed = #{fileReadCompleted}</if>
-            and del_flag = '0'
+            and del_flag = '0' order by id desc
         </where>
     </select>
     
@@ -127,7 +127,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         update data_pool set pending_count = #{planPrintCount}, total_count = #{totalCount}  where id = #{poolId}
     </update>
     <update id="updateDataPoolCountNumber">
-        update data_pool set total_count = total_count + #{totalCount}, pending_count = pending_count + #{pendingCount} where id = #{poolId}
+        update data_pool set total_count = total_count + #{totalCount}, pending_count = pending_count + #{pendingCount} where id = #{id}
     </update>
 
     <delete id="deleteDataPoolById" parameterType="Long">

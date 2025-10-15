@@ -590,4 +590,9 @@ public void updateDataPoolItemsStatus(List<DataPoolItem> itemList, String status
     public int softDeleteByPoolIdLimit(Long id, int batchSize) {
         return dataPoolItemMapper.softDeleteByPoolIdLimit(id, batchSize);
     }
+
+    @Override
+    public boolean isDuplicateData(Long poolId, String scanData) {
+        return  dataPoolItemMapper.isDuplicateData(poolId, scanData) > 0;
+    }
 }

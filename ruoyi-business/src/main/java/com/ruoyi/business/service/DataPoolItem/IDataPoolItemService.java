@@ -295,4 +295,13 @@ public interface IDataPoolItemService {
      * 按poolId批量软删除（单批执行，返回影响行数）
      */
     int softDeleteByPoolIdLimit(Long id, int batchSize);
+
+    /**
+     * 判断数据项是否重复
+     *
+     * @param poolId 数据池ID
+     * @param scanData 扫描数据
+     * @return 是否重复
+     */
+    boolean isDuplicateData(Long poolId, String scanData);
 }

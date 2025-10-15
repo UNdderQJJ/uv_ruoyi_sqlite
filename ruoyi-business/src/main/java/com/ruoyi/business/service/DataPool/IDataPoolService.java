@@ -93,6 +93,16 @@ public interface IDataPoolService
      */
     public int updateDataPoolCount(Long id, Long totalCount, Long pendingCount);
 
+        /**
+     * 更新数据池计数加1
+     *
+     * @param id 数据池主键
+     * @param totalCount 总数据量
+     * @param pendingCount 待打印数量
+     * @return 结果
+     */
+    public void updateDataPoolCountNumber(Long id, int totalCount, int pendingCount);
+
     /**
      * 更新数据池连接状态
      * @param id 数据池主键
