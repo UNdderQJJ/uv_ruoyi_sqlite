@@ -52,5 +52,5 @@ public class TaskDispatchRequest {
     private Integer assignedQuantity;
 
     /** 是否启用质检  */
-    private Boolean enableCheck;
+    private Integer enableCheck;
 }

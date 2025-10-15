@@ -103,7 +103,7 @@
     INSERT INTO task_info (
         name, status, device_name, device_id, device_type,
         pool_id, pool_template_id, pool_name, planned_quantity,
-        completed_quantity, received_quantity, preload_data_count, description,enable_check
+        completed_quantity, received_quantity, preload_data_count, description,enable_check,
         del_flag, create_time
     ) VALUES (
         #{name}, #{status}, #{deviceName}, #{deviceId}, #{deviceType},

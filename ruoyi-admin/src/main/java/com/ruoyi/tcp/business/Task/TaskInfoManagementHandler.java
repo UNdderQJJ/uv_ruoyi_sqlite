@@ -132,7 +132,7 @@ public class TaskInfoManagementHandler {
             return TcpResponse.error("设备模版变量名称不一致，请检查设备模版是否一致");
         }
         //如果启用质检，检测设备是否绑定了读码器
-        if (taskInfo.getEnableCheck()){
+        if (taskInfo.getEnableCheck().equals(1)){
             String result = deviceInfoService.checkDeviceHasScanner(deviceIdList);
             if (!result.equals("true")){
                 return TcpResponse.error(result);
@@ -242,7 +242,7 @@ public class TaskInfoManagementHandler {
         taskInfo.setPoolName(dataPool.getPoolName());
 
          //如果启用质检，检测设备是否绑定了读码器
-        if (taskInfo.getEnableCheck()){
+        if (taskInfo.getEnableCheck().equals(1)){
             String result = deviceInfoService.checkDeviceHasScanner(deviceIdList);
             if (!result.equals("true")){
                 return TcpResponse.error(result);
@@ -349,7 +349,7 @@ public class TaskInfoManagementHandler {
                     for (TaskDeviceLink link : updatedLinks) {
                         allDeviceNames.add(link.getDeviceName());
                         allDeviceIds.add(link.getDeviceId().toString());
-                        allDeviceIds.add(link.getScannerId().toString());// 添加扫描器ID
+                        allDeviceIds.add(link.getScannerId().toString());// 添加读码器ID
                     }
                     
                     // 更新设备当前任务

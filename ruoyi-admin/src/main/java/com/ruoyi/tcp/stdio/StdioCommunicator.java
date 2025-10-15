@@ -21,6 +21,7 @@ import com.ruoyi.tcp.business.Task.TaskInfoManagementHandler;
 import com.ruoyi.tcp.business.SystemLog.SystemLogManagementHandler;
 import com.ruoyi.tcp.business.DataInspect.DataInspectManagementHandler;
 import jakarta.annotation.Resource;
+import org.apache.commons.lang3.ObjectUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -28,7 +29,6 @@ import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.core.task.TaskExecutor;
 import org.springframework.stereotype.Service;
-import org.springframework.util.ObjectUtils;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -250,7 +250,7 @@ public class StdioCommunicator implements CommandLineRunner {
         try {
             // 构建响应数据
             Map<String, Object> responseData = new HashMap<>();
-             if (ObjectUtils.isEmpty(response.getCode())) {
+             if (ObjectUtils.isNotEmpty(response.getCode())) {
                 responseData.put("code", response.getCode());
             }else {
                 responseData.put("code", 200);

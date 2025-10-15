@@ -68,4 +68,7 @@ public class TaskDispatchStatus {
     
     /** 实际完成时间 */
     private Long actualCompletionTime;
+
+    /** 是否启用质检 0-否 1-是  */
+    private Integer enableCheck;
 }

@@ -89,9 +89,9 @@ public class TaskInfo extends BaseEntity {
     private Integer delFlag;
 
     /**
-     * 是否启用质检
+     * 是否启用质检 0-否 1-是
      */
-    private Boolean enableCheck;
+    private Integer enableCheck;
 }
 
 

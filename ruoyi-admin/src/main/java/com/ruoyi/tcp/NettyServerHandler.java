@@ -24,12 +24,12 @@ import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
 import jakarta.annotation.Resource;
+import org.apache.commons.lang3.ObjectUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.task.TaskExecutor;
 import org.springframework.stereotype.Component;
-import org.springframework.util.ObjectUtils;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -233,7 +233,7 @@ public class NettyServerHandler extends SimpleChannelInboundHandler<String> {
         try {
             // 构建响应数据
             Map<String, Object> responseData = new HashMap<>();
-            if (ObjectUtils.isEmpty(response.getCode())) {
+            if (ObjectUtils.isNotEmpty(response.getCode())) {
                 responseData.put("code", response.getCode());
             }else {
                 responseData.put("code", 200);

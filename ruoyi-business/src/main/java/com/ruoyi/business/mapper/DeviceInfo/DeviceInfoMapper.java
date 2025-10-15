@@ -170,15 +170,15 @@ public interface DeviceInfoMapper
      */
     void removeCurrentTaskStatus(Long deviceId, String status);
 
-    /** 更新扫描器信息
-     * @param scannerId 扫描器ID
+    /** 更新读码器信息
+     * @param scannerId 读码器ID
      * @param printerId 设备ID
      * @param printerName 设备名称
      */
     void updateScanner(Long scannerId, Long printerId, String printerName);
 
-    /** 移除扫描器信息
-     * @param scannerId 扫描器ID
+    /** 移除读码器信息
+     * @param scannerId 读码器ID
      */
     void removeScanner(Long scannerId);
 

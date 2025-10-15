@@ -128,6 +128,7 @@ public class TaskDispatcherServiceImpl implements TaskDispatcherService {
             taskStatus.setPlannedPrintCount(request.getPrintCount());
             taskStatus.setSentCommandCount(request.getSentCommandCount());//已发送指令数量
             taskStatus.setReceivedCommandCount(request.getReceivedCommandCount());//接收到的指令数量
+            taskStatus.setEnableCheck(request.getEnableCheck());//是否启用质检
             taskDispatchProperties.setPlanPrintCount(request.getPrintCount());//设置计划打印数量
             taskDispatchProperties.setOriginalCount(request.getSentCommandCount());//设置已完成的原始数量
              // 加入任务线程

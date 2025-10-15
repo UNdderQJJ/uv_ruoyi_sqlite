@@ -401,9 +401,9 @@ public class DeviceInfoServiceImpl implements IDeviceInfoService
     }
 
     /**
-     * 更新设备扫描器
+     * 更新设备读码器
      *
-     * @param scannerId 扫描器ID
+     * @param scannerId 读码器ID
      * @param deviceId 设备ID
      * @param deviceName 设备名称
      */
@@ -413,9 +413,9 @@ public class DeviceInfoServiceImpl implements IDeviceInfoService
     }
 
     /**
-     * 移除设备扫描器
+     * 移除设备读码器
      *
-     * @param scannerId 扫描器ID
+     * @param scannerId 读码器ID
      */
     @Override
     public void removeScanner(Long scannerId) {
@@ -433,10 +433,10 @@ public class DeviceInfoServiceImpl implements IDeviceInfoService
     }
 
     /**
-     * 设备是否已经绑定了扫描器
+     * 设备是否已经绑定了读码器
      *
      * @param deviceIdList 设备ID
-     * @return 是否已经绑定了扫描器
+     * @return 是否已经绑定了读码器
      */
     @Override
     public String checkDeviceHasScanner(List<Long> deviceIdList) {
@@ -444,7 +444,7 @@ public class DeviceInfoServiceImpl implements IDeviceInfoService
             //查询设备信息
             DeviceInfo deviceInfo = deviceInfoMapper.selectDeviceInfoById(deviceId);
             if(ObjectUtils.isNotEmpty(deviceInfo) && ObjectUtils.isEmpty(deviceInfo.getScannerId())){
-                return "设备'" + deviceInfo.getName() + "'未绑定扫描器";
+                return "设备'" + deviceInfo.getName() + "'未绑定读码器";
             }
         }
         return "true";

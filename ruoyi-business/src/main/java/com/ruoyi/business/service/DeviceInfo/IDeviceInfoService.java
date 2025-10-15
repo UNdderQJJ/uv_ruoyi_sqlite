@@ -212,16 +212,16 @@ public interface IDeviceInfoService
     void removeCurrentTask(Long deviceId,String status);
 
     /**
-     * 更新扫描器绑定信息
-     * @param scannerId 扫描器id
+     * 更新读码器绑定信息
+     * @param scannerId 读码器id
      * @param deviceId 设备id
      * @param deviceName 设备名称
      */
     void updateScanner(Long scannerId, Long deviceId, String deviceName);
 
     /**
-     * 移除扫描器绑定信息
-     * @param scannerId 扫描器id
+     * 移除读码器绑定信息
+     * @param scannerId 读码器id
      */
     void removeScanner(Long scannerId);
 
@@ -232,7 +232,7 @@ public interface IDeviceInfoService
     void removePrinter(Long printerId);
 
     /**
-     * 检查设备是否绑定了扫描器
+     * 检查设备是否绑定了读码器
      * @param deviceIdList 设备id
      * @return true:已绑定
      */
