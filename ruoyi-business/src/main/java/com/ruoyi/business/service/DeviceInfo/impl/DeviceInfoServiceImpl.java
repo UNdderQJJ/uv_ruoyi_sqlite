@@ -5,6 +5,7 @@ import java.util.List;
 import com.github.pagehelper.Page;
 import com.ruoyi.business.domain.TaskInfo.TaskInfo;
 import com.ruoyi.business.enums.DeviceStatus;
+import com.ruoyi.business.enums.DeviceType;
 import com.ruoyi.business.service.TaskInfo.ITaskInfoService;
 import com.ruoyi.common.core.page.PageQuery;
 import com.ruoyi.common.core.page.PageResult;
@@ -365,10 +366,13 @@ public class DeviceInfoServiceImpl implements IDeviceInfoService
     public void updateCurrentTask(List<String> deviceIds, Long taskId) {
         for(String deviceId : deviceIds){
             TaskInfo taskInfo = taskInfoService.selectTaskInfoById(taskId);
+            DeviceInfo deviceInfo = selectDeviceInfoById(Long.parseLong(deviceId));
             //为设备绑定任务
-            DeviceInfo deviceInfo = new DeviceInfo();
-            deviceInfo.setId(Long.parseLong(deviceId));
-            deviceInfo.setStatus(DeviceStatus.ONLINE_PRINTING.getCode());
+            if (deviceInfo.getDeviceType().equals(DeviceType.PRINTER.getCode())) {
+                deviceInfo.setStatus(DeviceStatus.ONLINE_PRINTING.getCode());
+            }else if (deviceInfo.getDeviceType().equals(DeviceType.SCANNER.getCode())) {
+                deviceInfo.setStatus(DeviceStatus.ONLINE_SCANNING.getCode());
+            }
             deviceInfo.setCurrentTaskId(taskId);
             deviceInfo.setCurrentTaskName(taskInfo.getName());
             deviceInfoMapper.updateDeviceCurrentTask(deviceInfo);

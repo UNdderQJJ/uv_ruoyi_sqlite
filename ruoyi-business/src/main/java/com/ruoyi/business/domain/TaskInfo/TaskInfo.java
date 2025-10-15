@@ -39,7 +39,7 @@ public class TaskInfo extends BaseEntity {
     private String deviceId;
 
     /**
-     * 设备类型 （打印机，扫描仪）
+     * 设备类型 （打印机，读码器）
      */
     private String deviceType;
 

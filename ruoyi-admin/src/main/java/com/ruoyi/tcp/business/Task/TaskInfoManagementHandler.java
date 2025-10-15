@@ -30,12 +30,9 @@ import org.slf4j.LoggerFactory;
 import org.springframework.security.core.parameters.P;
 import org.springframework.stereotype.Component;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * 任务中心 TaskInfo TCP 处理器
@@ -134,7 +131,7 @@ public class TaskInfoManagementHandler {
         if (!isConsistent){
             return TcpResponse.error("设备模版变量名称不一致，请检查设备模版是否一致");
         }
-        //如果启用质检，检测设备是否绑定了扫描仪
+        //如果启用质检，检测设备是否绑定了读码器
         if (taskInfo.getEnableCheck()){
             String result = deviceInfoService.checkDeviceHasScanner(deviceIdList);
             if (!result.equals("true")){
@@ -167,11 +164,13 @@ public class TaskInfoManagementHandler {
                                 deviceNames.add(di.getName()); // 收集设备名称
                                 deviceIds.add(deviceId.toString());
 
-                                //添加扫描仪
+                                //添加读码器
                                 if(ObjectUtils.isNotEmpty(di.getScannerId())) {
                                         link.setScannerId(di.getScannerId());
                                         link.setScannerName(di.getScannerName());
                                         link.setScannerStatus(TaskDeviceStatus.WAITING.getCode());
+                                        //添加读码器id
+                                        deviceIds.add(di.getScannerId().toString());
                                 }
                             }
                         } catch (Exception ignore) { }
@@ -242,7 +241,7 @@ public class TaskInfoManagementHandler {
         DataPool dataPool = dataPoolService.selectDataPoolById(taskInfo.getPoolId());
         taskInfo.setPoolName(dataPool.getPoolName());
 
-         //如果启用质检，检测设备是否绑定了扫描仪
+         //如果启用质检，检测设备是否绑定了读码器
         if (taskInfo.getEnableCheck()){
             String result = deviceInfoService.checkDeviceHasScanner(deviceIdList);
             if (!result.equals("true")){
@@ -284,10 +283,15 @@ public class TaskInfoManagementHandler {
                     
                     // 删除不需要的设备
                     for (Long deviceId : devicesToRemove) {
+                        //查询设备信息
+                        DeviceInfo deviceInfo = deviceInfoService.selectDeviceInfoById(deviceId);
                         // 删除任务设备关联
                         taskDeviceLinkService.deleteByTaskIdAndDeviceId(taskInfo.getId(), deviceId);
+                         taskDeviceLinkService.deleteByTaskIdAndDeviceId(taskInfo.getId(), deviceInfo.getScannerId());
+
                         // 将设备状态改为空闲并移除当前任务
                         deviceInfoService.removeCurrentTask(deviceId, DeviceStatus.ONLINE_IDLE.getCode());
+                         deviceInfoService.removeCurrentTask(deviceInfo.getScannerId(), DeviceStatus.ONLINE_IDLE.getCode());
                     }
                     if (!devicesToRemove.isEmpty()) {
                         log.info("[TaskUpdate] 移除了 {} 个设备关联，设备状态已改为空闲", devicesToRemove.size());
@@ -305,7 +309,7 @@ public class TaskInfoManagementHandler {
                                 DeviceInfo di = deviceInfoService.selectDeviceInfoById(deviceId);
                                 if (di != null) {
                                     link.setDeviceName(di.getName());
-                                    //添加扫描仪
+                                    //添加读码器
                                     if(ObjectUtils.isNotEmpty(di.getScannerId())) {
                                             link.setScannerId(di.getScannerId());
                                             link.setScannerName(di.getScannerName());
@@ -345,6 +349,7 @@ public class TaskInfoManagementHandler {
                     for (TaskDeviceLink link : updatedLinks) {
                         allDeviceNames.add(link.getDeviceName());
                         allDeviceIds.add(link.getDeviceId().toString());
+                        allDeviceIds.add(link.getScannerId().toString());// 添加扫描器ID
                     }
                     
                     // 更新设备当前任务
@@ -361,10 +366,15 @@ public class TaskInfoManagementHandler {
                 } else {
                     // 如果 deviceIds 为空数组，删除所有设备关联
                     for (Long deviceId : existingDeviceIds) {
+                        //查询设备信息
+                        DeviceInfo deviceInfo = deviceInfoService.selectDeviceInfoById(deviceId);
                         // 删除任务设备关联
                         taskDeviceLinkService.deleteByTaskIdAndDeviceId(taskInfo.getId(), deviceId);
+                         taskDeviceLinkService.deleteByTaskIdAndDeviceId(taskInfo.getId(), deviceInfo.getScannerId());
+
                         // 将设备状态改为空闲并移除当前任务
                         deviceInfoService.removeCurrentTask(deviceId, DeviceStatus.ONLINE_IDLE.getCode());
+                         deviceInfoService.removeCurrentTask(deviceInfo.getScannerId(), DeviceStatus.ONLINE_IDLE.getCode());
                     }
                     if (!existingDeviceIds.isEmpty()) {
                         log.info("[TaskUpdate] 移除了所有 {} 个设备关联，设备状态已改为空闲", existingDeviceIds.size());
@@ -436,6 +446,7 @@ public class TaskInfoManagementHandler {
                 }
                 //移除设备任务,设置设备状态为空闲
                 deviceInfoService.removeCurrentTask(link.getDeviceId(),DeviceStatus.ONLINE_IDLE.getCode());
+                 deviceInfoService.removeCurrentTask(link.getScannerId(),DeviceStatus.ONLINE_IDLE.getCode());
             }
         }
         return TcpResponse.success(rows);
@@ -563,6 +574,7 @@ public class TaskInfoManagementHandler {
             request.setPrintCount(taskInfo.getPlannedQuantity());
             request.setSentCommandCount(taskInfo.getCompletedQuantity());
             request.setReceivedCommandCount(taskInfo.getReceivedQuantity());
+            request.setEnableCheck(taskInfo.getEnableCheck());//是否启用质检
 
         try {
             taskDispatcherService.startNewTask(request);

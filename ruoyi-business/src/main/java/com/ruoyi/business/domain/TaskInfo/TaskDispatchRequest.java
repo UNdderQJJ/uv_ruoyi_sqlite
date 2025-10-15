@@ -50,4 +50,7 @@ public class TaskDispatchRequest {
     
     /** 分配给设备的打印数量 */
     private Integer assignedQuantity;
+
+    /** 是否启用质检  */
+    private Boolean enableCheck;
 }
